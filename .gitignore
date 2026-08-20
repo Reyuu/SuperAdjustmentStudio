@@ -1,0 +1,9 @@
+env.bat
+build/*
+build/
+.vscode/*
+.vscode/
+.cache/*
+.cache/
+compile_commands.json
+package-lock.json

@@ -1,0 +1,12 @@
+[submodule "thirdparty/LExSDKv2"]
+	path = thirdparty/LExSDKv2
+	url = https://github.com/llamathings/LExSDKv2
+[submodule "thirdparty/imgui"]
+	path = thirdparty/imgui
+	url = https://github.com/ocornut/imgui
+[submodule "thirdparty/kiero"]
+	path = thirdparty/kiero
+	url = https://github.com/Rebzzel/kiero
+[submodule "thirdparty/spdlog"]
+	path = thirdparty/spdlog
+	url = https://github.com/gabime/spdlog
