@@ -1,4 +1,3 @@
-# SuperAdjustmentStudio
 <p align="center">
   <img src="assets/logo_small.png" alt="Logo" />
 </p>
@@ -100,7 +99,7 @@ Code from:
 If I used your code and did not credit you, please reach out, I'll be more than happy to do it.
 
 ### Special thanks
-- to my friend M., who always listens to my technical yapping
+- to my friend Tris, who always listens to my technical yapping
 - Mass Effect Modding Discord
 
 ## Other things
