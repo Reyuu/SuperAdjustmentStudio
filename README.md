@@ -21,6 +21,7 @@ Please treat this release as <ins>**BETA**</ins>.
 
 ### Known issues (what doesn't work)
 - hiding all game UI - fully borked
+- after animation is played back and the character reset - animations stay broken, notably walking animation, which can lead to "sliding" Shepard
 - trying to spawn some objects will do nothing, hang the game or crash to desktop, no matter the properties (seems like engine limitation?? or I'm just stupid)
 - scaling the bones in non-uniform manner can give weird results (the scale is forced to be uniform by extension)
 - some of the components are not editable (for some of them, it's not really possible to make them editable, as we're risking infinite recursion and race conditions)
