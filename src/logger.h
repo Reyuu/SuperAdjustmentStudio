@@ -8,6 +8,8 @@
 
 inline std::shared_ptr<spdlog::logger> define_logger() {
     spdlog::set_level(spdlog::level::debug);
+    // we kinda need the live log to diagnose the issues in the future
+    spdlog::flush_on(spdlog::level::debug);
     spdlog::enable_backtrace(32);
     std::string name = std::string(PLUGIN_NAME);
     if (std::shared_ptr<spdlog::logger> existing = spdlog::get(name)) {
