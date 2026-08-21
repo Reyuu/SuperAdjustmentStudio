@@ -7,3 +7,4 @@ build/
 .cache/
 compile_commands.json
 package-lock.json
+.build_last_config

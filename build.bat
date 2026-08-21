@@ -4,11 +4,19 @@ REM build.bat [Debug|Release] [clean]
 setlocal enabledelayedexpansion
 call env.bat
 
+REM Clean if requested (either position)
+if /I "%~1"=="clean" set "DO_CLEAN=1"
+if /I "%~2"=="clean" set "DO_CLEAN=1"
+
 REM Configuration
 if "%~1"=="" (
     set "CONFIGURATION=Release"
-) else (
+) else if /I not "%~1"=="clean" (
     set "CONFIGURATION=%~1"
+)
+if /I not "%CONFIGURATION%"=="Debug" if /I not "%CONFIGURATION%"=="Release" (
+    echo Unknown configuration "%CONFIGURATION%", defaulting to Release.
+    set "CONFIGURATION=Release"
 )
 
 REM Get root
@@ -17,11 +25,7 @@ REM Remove trailing backslash if present
 if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
 set "BUILD_DIR=%ROOT_DIR%\build"
 
-REM Clean build directory if requested
-if /I "%~2"=="clean" (
-    echo Cleaning build directory...
-    rmdir /s /q "%BUILD_DIR%"
-) else if /I "%~1"=="clean" (
+if defined DO_CLEAN (
     echo Cleaning build directory...
     rmdir /s /q "%BUILD_DIR%"
 )
@@ -60,4 +64,5 @@ if errorlevel 1 (
 )
 
 echo Build succeeded with configuration: !CONFIGURATION!
+echo !CONFIGURATION!>"%~dp0.build_last_config"
 exit /b 0

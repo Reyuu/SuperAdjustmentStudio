@@ -17,8 +17,11 @@ for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio
 echo Found Visual Studio at: !VS_PATH!
 call "!VS_PATH!\VC\Auxiliary\Build\vcvarsall.bat" x64
 
+set "CC_CONFIG=%~1"
+if "%CC_CONFIG%"=="" set "CC_CONFIG=Release"
+
 REM Configure (no build - only the compile database is needed)
-cmake -S "%ROOT_DIR%" -B "%BUILD_DIR%" -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake -S "%ROOT_DIR%" -B "%BUILD_DIR%" -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=%CC_CONFIG% -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 if errorlevel 1 (
     echo Failed to configure compile database.
     exit /b 1
