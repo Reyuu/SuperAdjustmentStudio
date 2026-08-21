@@ -8,7 +8,14 @@
 #include <vector>
 
 #include "util.h"
+#include "hook_manager.h"
+#include "sdk.h"
 #include <LESDK/Includes.LE2.hpp>
+
+struct PackageLoadTask {
+    std::string package;
+    std::function<void()> onLoaded;
+};
 
 class Engine {
     
@@ -26,6 +33,9 @@ class Engine {
         void postGameThreadTask(std::function<void()> fn);
         void drainGameThreadTasks();
 
+        void postPackageLoad(const std::string& package, std::function<void()> onLoaded);
+        void drainPackageLoads();
+
         void setPause(bool pause);
 
         AActor* findActorByName(const std::string& name);
@@ -41,9 +51,14 @@ class Engine {
         void applyHUDVisibility();
         void freezeLook(bool freeze);
 
+        void initTickHook(HookManager& hookManager, SDKContext& sdk);
+
     private:
         std::mutex gameTasksMutex;
         std::vector<std::function<void()>> gameTasks;
+
+        std::mutex loadTasksMutex;
+        std::vector<PackageLoadTask> loadTasks;
 
         bool isGameUIHiddenState = false;
         std::atomic<bool> isCameraDragActiveState{false };

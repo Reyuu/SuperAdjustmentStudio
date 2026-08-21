@@ -13,17 +13,37 @@
 
 #include <LESDK/Common/Math.hpp>
 
+// UGameEngine::Tick
+using gameEngineTickType = void(void*, float);
+static gameEngineTickType* origGameEngineTick = nullptr;
+
+static void hkGameEngineTick(void* self, float dt) {
+    if (origGameEngineTick) {
+        origGameEngineTick(self, dt);
+    }
+    Application::instance().engine().drainPackageLoads();
+}
+
+void Engine::initTickHook(HookManager& hookManager, SDKContext& sdk) {
+    void* tickAddress = sdk.gameEngineTickAddress();
+    if (tickAddress && sdk.initializer()) {
+        origGameEngineTick = (gameEngineTickType*)hookManager.install(
+            "GameEngineTick", 
+            tickAddress, 
+            &hkGameEngineTick
+        );
+    }
+}
+
 // This is engine task queue handling. Every time we have something to do on the Engine side,
 // we do it here.
 
-void Engine::postGameThreadTask(std::function<void()> fn)
-{
+void Engine::postGameThreadTask(std::function<void()> fn) {
     std::lock_guard<std::mutex> lock(gameTasksMutex);
     gameTasks.push_back(std::move(fn));
 }
 
-void Engine::drainGameThreadTasks()
-{
+void Engine::drainGameThreadTasks() {
     std::vector<std::function<void()>> local;
     {
         std::lock_guard<std::mutex> lock(gameTasksMutex);
@@ -33,7 +53,47 @@ void Engine::drainGameThreadTasks()
         local.swap(gameTasks);
     }
     for (auto& fn : local) {
-        fn();
+        if (fn) {
+            fn();
+        }
+    }
+}
+
+void Engine::postPackageLoad(const std::string& package, std::function<void()> onLoaded) {
+    std::lock_guard<std::mutex> lock(loadTasksMutex);
+    loadTasks.push_back({
+        package,
+        std::move(onLoaded)
+    });
+}
+
+void Engine::drainPackageLoads() {
+    std::vector<PackageLoadTask> local;
+    {
+        std::lock_guard<std::mutex> lock(loadTasksMutex);
+        if (loadTasks.empty()) {
+            return;
+        }
+        local.swap(loadTasks);
+    }
+    for (auto& task: local) {
+        loadPackageType* lp = Application::instance().sdk().loadPackage();
+        if (!lp) {
+            Logger->debug("drainPackageLoads: loadPackageFn not initialized, dropping '" + task.package + "'");
+            continue;
+        }
+        std::wstring pkgW = toWString(task.package);
+        Logger->debug("drainPackageLoads: loading package '" + task.package + "'...");
+        UPackage* upkg = lp(nullptr, pkgW.data(), LOAD_NoWarn);
+        if (!upkg) {
+            Logger->debug("drainPackageLoads: package load FAILED '" + task.package + "'");
+            Logger->dump_backtrace();
+            continue;
+        }
+        Logger->debug("drainPackageLoads: package loaded " + FStringToUtf8(upkg->GetName()));
+        if (task.onLoaded) {
+            task.onLoaded();
+        }
     }
 }
 
