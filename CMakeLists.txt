@@ -143,4 +143,8 @@ if (MSVC)
     target_precompile_headers(SuperAdjustmentStudio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp")
 endif()
 
+target_compile_definitions(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:SAS_DEBUG>)
+target_compile_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/Zi /Od>)
+target_link_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/DEBUG>)
+
 install(TARGETS SuperAdjustmentStudio DESTINATION bin)

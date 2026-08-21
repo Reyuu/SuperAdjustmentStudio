@@ -69,6 +69,7 @@ void Application::initHooksThread() {
             engineInstance.initTickHook(hookManagerInstance, sdkInstance);
             mouseInstance.initMouseTrap(hookManagerInstance);
             mouseInstance.initDI8MouseHook(hookManagerInstance);
+            installCrashHandler();
             return;
         }
 
