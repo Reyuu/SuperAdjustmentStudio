@@ -1,0 +1,3 @@
+#define IDR_FA_FONT 101
+
+IDR_FA_FONT RCDATA "fontawesome-webfont.ttf"
