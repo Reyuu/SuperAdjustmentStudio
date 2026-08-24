@@ -18,8 +18,20 @@ void SDKContext::initSdkGlobals(ISharedProxyInterface* proxy) {
     SDK_INITIALIZE_OBJECT_TYPED(SFXName::GBioNamePools, SFXNameEntry const*, BUILTIN_SFXNAMEPOOLS_RIP);
     SDK_INITIALIZE_OBJECT_TYPED(SFXName::GInitMethod, SFXName::tInitMethod, BUILTIN_SFXNAMEINIT_PHOOK);
     SDK_INITIALIZE_OBJECT_TYPED(GWorld, UWorld*, BUILTIN_GWORLD_RIP);
+    // for some reason, it can be NOT typed???
+    if (!GError) {
+        GError = (void**)sdkInitializer->Resolve(BUILTIN_GWORLD_RIP);
+    }
+
+    SDK_INITIALIZE_OBJECT_TYPED(staticConstructorObjectPointer, staticContructorObjectType, BUILTIN_STATICCONSTRUCTOBJECT_PHOOK);
+    SDK_INITIALIZE_OBJECT_TYPED(worldSpawnActorPointer, worldSpawnActorType, BUILTIN_UWORLDSPAWNACTOR_PHOOK);
+    SDK_INITIALIZE_OBJECT_TYPED(loadPackagePointer, loadPackageType, BUILTIN_LOADPACKAGE_RVA);
+
     if (!processEventAddressPointer) {
         processEventAddressPointer = sdkInitializer->Resolve(BUILTIN_PROCESSEVENT_PHOOK);
+    }
+    if (!gameEngineTickAddressPointer) {
+        gameEngineTickAddressPointer = sdkInitializer->Resolve(BUILTIN_GAMEENGINETICK_RVA);
     }
 
     std::ostringstream ss;

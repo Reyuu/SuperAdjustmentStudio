@@ -20,4 +20,32 @@ inline std::shared_ptr<spdlog::logger> define_logger() {
 
 inline std::shared_ptr<spdlog::logger> Logger = define_logger();
 
+inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
+    static std::atomic<LONG> crashDumped{0};
+    if (crashDumped.exchange(1) != 0) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    std::thread watchdog([]() {
+        Sleep(3000);
+        TerminateProcess(GetCurrentProcess(), 1);
+    });
+    watchdog.detach();
+
+    try {
+        if (Logger) {
+            Logger->error("crash handler: dumping backtrace + stack");
+            Logger->dump_backtrace();
+            Logger->flush();
+        }
+    } catch (...) {}
+
+    // let the game's own unhandled-exception handler run afterwards (its dialog etc.)
+    return EXCEPTION_CONTINUE_SEARCH; 
+}
+
+inline void installCrashHandler() {
+    SetUnhandledExceptionFilter(&SASUnhandledExceptionFilter);
+}
+
 #endif // SAS_LOGGER_H

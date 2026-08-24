@@ -73,6 +73,7 @@ target_include_directories(kiero PUBLIC
 file(GLOB SAS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/*.rc
 )
 message(STATUS "Adding build target: SuperAdjustmentStudio")
 add_library(SuperAdjustmentStudio SHARED ${SAS_SOURCES})
@@ -82,6 +83,7 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/IconFontCppHeaders
 )
 
 # link dependencies
@@ -140,5 +142,9 @@ if (MSVC)
     # force to use the LESDK precompiled headers when MSVC is used
     target_precompile_headers(SuperAdjustmentStudio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp")
 endif()
+
+target_compile_definitions(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:SAS_DEBUG>)
+target_compile_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/Zi /Od>)
+target_link_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/DEBUG>)
 
 install(TARGETS SuperAdjustmentStudio DESTINATION bin)
