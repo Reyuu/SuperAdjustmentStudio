@@ -66,8 +66,10 @@ void Application::initHooksThread() {
         
         if (sdkInstance.initializer() && rendererInstance.installHooks(&Application::presentDetour, &Application::resizeBuffersDetour)) {
             gizmoInstance.initHooks(hookManagerInstance, sdkInstance);
+            engineInstance.initTickHook(hookManagerInstance, sdkInstance);
             mouseInstance.initMouseTrap(hookManagerInstance);
             mouseInstance.initDI8MouseHook(hookManagerInstance);
+            installCrashHandler();
             return;
         }
 

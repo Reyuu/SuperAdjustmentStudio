@@ -5,6 +5,11 @@
 #include "imgui.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx11.h"
+#include <windows.h>
+#include "IconsFontAwesome4.h"
+
+#define IDR_FA_FONT 101
+static void fontModuleAnchor() {}
 
 NativeRenderer* NativeRenderer::instancePtr = nullptr;
 
@@ -170,6 +175,30 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
     setupImGuiStyle();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->AddFontDefault();
+
+    HMODULE hMod = nullptr;
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        (LPCSTR)&fontModuleAnchor, &hMod)) {
+
+        HRSRC hRes = FindResourceA(hMod, MAKEINTRESOURCEA(IDR_FA_FONT), RT_RCDATA);
+        if (hRes) {
+            HGLOBAL hMem = LoadResource(hMod, hRes);
+            DWORD size = SizeofResource(hMod, hRes);
+            void* pData = LockResource(hMem);
+            if (pData && size > 0) {
+                ImFontConfig config;
+                config.MergeMode = true;
+                config.PixelSnapH = true;
+                config.FontDataOwnedByAtlas = false;
+                static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+                io.Fonts->AddFontFromMemoryTTF(pData, (int)size, 14.0f, &config, icon_ranges);
+            }
+        }
+    }
+
     ImGui_ImplWin32_Init(hGameWnd);
     if (!ImGui_ImplDX11_Init(device, context)) {
         Logger->debug("ImGui_ImplDX11_Init failed!");

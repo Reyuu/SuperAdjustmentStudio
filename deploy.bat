@@ -5,15 +5,29 @@ setlocal
 call env.bat
 
 if "%~1"=="" (
-    set "BUILD_DIR=%~dp0build\Release"
+    if exist "%~dp0.build_last_config" (
+        for /f "usebackq" %%c in ("%~dp0.build_last_config") do set "CONFIGURATION=%%c"
+    ) else (
+        set "CONFIGURATION=Release"
+    )
 ) else (
-    set "BUILD_DIR=%~1"
+    set "CONFIGURATION=%~1"
+)
+if /I not "%CONFIGURATION%"=="Debug" if /I not "%CONFIGURATION%"=="Release" (
+    echo Unknown configuration "%CONFIGURATION%", defaulting to Release.
+    set "CONFIGURATION=Release"
 )
 
 if "%~2"=="" (
+    set "BUILD_DIR=%~dp0build\%CONFIGURATION%"
+) else (
+    set "BUILD_DIR=%~2"
+)
+
+if "%~3"=="" (
     set "DEPLOY_DIR=%DEPLOY_DIR%"
 ) else (
-    set "DEPLOY_DIR=%~2"
+    set "DEPLOY_DIR=%~3"
 )
 
 echo Deploying from directory: %BUILD_DIR%
@@ -41,6 +55,15 @@ for /f "tokens=*" %%f in ('dir /b "%BUILD_DIR%\*.dll"') do (
 
 rem Copy .asi files from the build directory to the deployment directory
 copy "%BUILD_DIR%\*.asi" "%DEPLOY_DIR%"
+
+rem For Debug, also copy the PDB so the debugger can resolve symbols
+if /I "%CONFIGURATION%"=="Debug" (
+    copy "%BUILD_DIR%\SAS_SuperAdjustmentStudio.pdb" "%DEPLOY_DIR%"
+    if errorlevel 1 (
+        echo Failed to copy PDB file.
+        exit /b 1
+    )
+)
 
 rem make sure the copy commands succeeded
 if errorlevel 1 (
