@@ -324,8 +324,8 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY)
     }
 
     const ImGuiIO& io = ImGui::GetIO();
-    const float scaleX = io.DisplaySize.x > 0.0f ? (float)canvas->SizeX / io.DisplaySize.x : 1.0f;
-    const float scaleY = io.DisplaySize.y > 0.0f ? (float)canvas->SizeY / io.DisplaySize.y : 1.0f;
+    const float scaleX = (io.DisplaySize.x > 1.0f && io.DisplaySize.y > 1.0f) ? (float)canvas->SizeX / io.DisplaySize.x : 1.0f;
+    const float scaleY = (io.DisplaySize.x > 1.0f && io.DisplaySize.y > 1.0f) ? (float)canvas->SizeY / io.DisplaySize.y : 1.0f;
     FVector2D screenPos{mouseX * scaleX, mouseY * scaleY};
     FVector origin, dir;
     canvas ->DeProject(screenPos, &origin, &dir);
@@ -338,10 +338,10 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY)
     FVector hitLocation, hitNormal;
     FTraceHitInfo hitInfo;
     AActor* hit = nullptr;
-    if (hud->PlayerOwner) {
+    if (hud->PlayerOwner && isObjectStillLive(hud->PlayerOwner)) {
         hit = hud->PlayerOwner->Trace(end, origin, 1, FVector{0.0f, 0.0f, 0.0f}, 0, 0, &hitLocation, &hitNormal, &hitInfo);
     }
-    if (hit) {
+    if (hit && isObjectStillLive(hit)) {
         Application::instance().ui().selectActor(hit);
     }
 }

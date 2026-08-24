@@ -6,7 +6,7 @@
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx11.h"
 #include <windows.h>
-#include "IconsFontAwesome4.h"
+#include "IconsFontAwesome6.h"
 
 #define IDR_FA_FONT 101
 static void fontModuleAnchor() {}
@@ -177,7 +177,9 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
     setupImGuiStyle();
 
     ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontDefault();
+    ImFontConfig baseFontConfig;
+    baseFontConfig.SizePixels = 14.0f;
+    io.Fonts->AddFontDefault(&baseFontConfig);
 
     HMODULE hMod = nullptr;
     if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
