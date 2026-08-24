@@ -26,24 +26,11 @@ static void collectTreeSequenceNodes(UAnimNode* node, std::vector<UAnimNodeSeque
 }
 
 static void collectAllSequenceNodes(std::vector<UAnimNodeSequence*>& out) {
-    if (!UObject::GObjObjects) {
-        return;
-    }
-
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* o = UObject::GObjObjects->GetData()[i];
-        if (!o) {
-            continue;
-        }
-        if (!o->IsA(USkeletalMeshComponent::StaticClass())) {
-            continue;
-        }
-
-        USkeletalMeshComponent* c = (USkeletalMeshComponent*)o;
+    forEachOf<USkeletalMeshComponent>([&](USkeletalMeshComponent* c) {
         if (c->Animations) {
             collectTreeSequenceNodes(c->Animations, out);
         }
-    }
+    });
 }
 
 // freeze each sequence node play rate, since game's own pause does not stop skeletal animations... for some reason
@@ -146,18 +133,15 @@ void Animation::resetAnimation(const std::string& pawnName)
 
 //TODO: more robust way of searching for unlinked animations and linking them from other pckgs
 static bool linkAnimSetForSequence(USkeletalMeshComponent* mesh, const std::string& animName) {
-    if (!mesh || animName.empty() || !UObject::GObjObjects) {
+    if (!mesh || animName.empty()) {
         return false;
     }
 
     UAnimSet* found = nullptr;
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* obj = UObject::GObjObjects->GetData()[i];
-        if (!obj || !obj->IsA(UAnimSet::StaticClass())) {
-            continue;
+    forEachOf<UAnimSet>([&](UAnimSet* set) {
+        if (found) {
+            return;
         }
-
-        UAnimSet* set = (UAnimSet*)obj;
         for (int j = 0; j < (int)set->Sequences.Count(); ++j) {
             UAnimSequence* seq = set->Sequences.GetData()[j];
             if (!seq) {
@@ -166,13 +150,10 @@ static bool linkAnimSetForSequence(USkeletalMeshComponent* mesh, const std::stri
             const char* nm = seq->SequenceName.GetName();
             if (nm && animName == nm) {
                 found = set;
-                break;
+                return;
             }
         }
-        if (found) {
-            break;
-        }
-    }
+    });
     if (!found) {
         return false;
     }
