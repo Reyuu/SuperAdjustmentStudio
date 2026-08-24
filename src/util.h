@@ -26,4 +26,33 @@ std::string WStringToUtf8(const std::wstring& wStr);
 std::wstring toWString(const std::string& str);
 std::string toLowerStr(const std::string& str);
 
+// first live object of type T in GObjObjects
+template<class T>
+T* findFirstOf() {
+    if (!UObject::GObjObjects) {
+        return nullptr;
+    }
+    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
+        UObject* o = UObject::GObjObjects->GetData()[i];
+        if (o && o->IsA(T::StaticClass())) {
+            return static_cast<T*>(o);
+        }
+    }
+    return nullptr;
+}
+
+// run fn over every live object of type T in GObjObjects
+template<class T, class Fn>
+void forEachOf(Fn&& fn) {
+    if (!UObject::GObjObjects) {
+        return;
+    }
+    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
+        UObject* o = UObject::GObjObjects->GetData()[i];
+        if (o && o->IsA(T::StaticClass())) {
+            fn(static_cast<T*>(o));
+        }
+    }
+}
+
 #endif // SAS_UTIL_H

@@ -64,30 +64,17 @@ void UI::collectPawns() {
     std::string sel = (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) ? pawnNamesVector[pawnIndexInt] : "";
     pawnNamesVector.clear();
     pawnIndexInt = 0;
-    if (!UObject::GObjObjects) {
-        return;
-    }
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* obj = UObject::GObjObjects->GetData()[i];
-        if (!obj) {
-            continue;
-        }
-        if (advancedSelection) {
-            if (!obj->IsA(AActor::StaticClass())) {
-                continue;
-            }
-        } else {
-            if (!obj->IsA(APawn::StaticClass())) {
-                continue;
-            }
+    forEachOf<AActor>([&](AActor* obj) {
+        if (!advancedSelection && !obj->IsA(APawn::StaticClass())) {
+            return;
         }
 
         std::string nm = FStringToUtf8(obj->GetName());
         if (nm.rfind("Default__", 0) == 0) {
-            continue;
+            return;
         }
         pawnNamesVector.push_back(nm);
-    }
+    });
 
     //actors we spawned
     for (const std::string& sn : Application::instance().engine().spawnedNames()) {
@@ -159,29 +146,19 @@ void UI::collectClasses() {
         return;
     }
     // lmao
-    UClass* classClass = UClass::StaticClass();
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* obj = UObject::GObjObjects->GetData()[i];
-        if (!obj) {
-            continue;
-        }
-        if (obj->Class != classClass) {
-            continue;
-        }
-
-        UClass* cls = (UClass*)obj;
+    forEachOf<UClass>([&](UClass* cls) {
         if (!isActorClass(cls)) {
-            continue;
+            return;
         }
         if (cls->ClassFlags & CLASS_Abstract) {
             ++excludedAbstract;
-            continue;
+            return;
         }
 
         ClassEntry e;
-        e.fullName = FStringToUtf8(obj->GetFullName());
-        e.name = FStringToUtf8(obj->GetName());
-        UObject* outer = obj->Outer;
+        e.fullName = FStringToUtf8(cls->GetFullName());
+        e.name = FStringToUtf8(cls->GetName());
+        UObject* outer = cls->Outer;
         while (outer && outer->Outer) {
             outer = outer->Outer;
         }
@@ -192,7 +169,7 @@ void UI::collectClasses() {
             e.package = "(unknown)";
         }
         classes.push_back(e);
-    }
+    });
 
     // naive sort, first by package, then by name
     std::sort(classes.begin(), classes.end(), [](const ClassEntry& a, const ClassEntry& b) {
@@ -255,18 +232,12 @@ void UI::collectAnimations(const std::string& pawnName) {
     }
 
     //try to load other animation sets, that aren't linked to the mesh component
-    if (animationIncludeAll && UObject::GObjObjects) {
-        for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-            UObject* obj = UObject::GObjObjects->GetData()[i];
-            if (!obj || !obj->IsA(UAnimSet::StaticClass())) {
-                continue;
-            }
-
-            UAnimSet* set = (UAnimSet*)obj;
+    if (animationIncludeAll) {
+        forEachOf<UAnimSet>([&](UAnimSet* set) {
             for (int j = 0; j < (int)set->Sequences.Count(); ++j) {
                 addSeq(set->Sequences.GetData()[j]);
             }
-        }
+        });
     }
 }
 
