@@ -43,6 +43,7 @@ class Engine {
 
         AActor* spawnClass(const std::string& className, const Transform& t);
         std::string diagnoseClass(const std::string& className);
+        std::string diagnoseFunctionLayout();
         void removeActor(const std::string& name);
         void loadTransformFromPawn(const std::string& pawnName, Transform& t);
         void setTransform(const std::string& targetName, const Transform& t);

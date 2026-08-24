@@ -9,6 +9,7 @@
 #include "util.h"
 #include "game_window.h"
 #include "native_renderer.h"
+#include "ui_helpers/toast_notifications.h"
 
 struct ClassEntry {
     std::string package;
@@ -103,6 +104,7 @@ class UI {
 
         void refreshBoneList(const std::string& pawnName);
 
+        ToastNotificationManager toastManager;
 };
 
 #endif // SAS_UI_H

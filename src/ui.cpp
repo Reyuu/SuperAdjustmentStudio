@@ -5,6 +5,8 @@
 #include <sstream>
 #include "imgui.h"
 #include <LESDK/Includes.LE2.hpp>
+#include "IconsFontAwesome6.h"
+#include "ui_helpers/toast_notifications.h"
 
 #include "engine.h"
 #include "animation.h"
@@ -290,7 +292,7 @@ void UI::applyUIInputState(GameWindow& window) {
     }
 }
 
-
+// main function to render the overlay contents
 void UI::renderOverlayContents(NativeRenderer& renderer) {
     if (pawnNamesVector.empty()) {
         collectPawns();
@@ -331,6 +333,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     renderSpawnSection();
 
     ImGui::End();
+    toastManager.renderToastNotifications();
 }
 
 #pragma region //  CONTROLS
@@ -350,6 +353,10 @@ void UI::renderControlsSection() {
     // i have a theory, it doesn't work here, cause it should be run on PostRender, instead of Present...
     bool hideGameUI = Application::instance().engine().isGameUIHidden();
     if (ImGui::Checkbox("Hide all game UI", &hideGameUI)) {
+        if (hideGameUI) {
+            toastManager.addToastNotification("This feature does not work for now! You won't see any changes!",
+                                                ToastTypeInfo, 2.0);
+        }
         Application::instance().engine().isGameUIHidden() = hideGameUI;
         Application::instance().engine().applyHUDVisibility();
     }
@@ -398,7 +405,7 @@ void UI::renderControlsSection() {
 
 #pragma region //  SELECTION
 void UI::renderSelectionSection() {
-    if (!ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader("Selection")) {
         return;
     }
     ImGui::Indent();
@@ -438,7 +445,7 @@ void UI::renderSelectionTarget() {
     std::string& selectedPawn = pawnNamesVector[pawnIndexInt];
     bool isFoundInCollection = std::find(spawnedNames.begin(), spawnedNames.end(), selectedPawn) != spawnedNames.end();
     bool isSpawned = !pawnNamesVector.empty() && isFoundInCollection;
-    if (ImGui::SmallButton("Remove") && isSpawned) {
+    if (ImGui::SmallButton("Remove") && isSpawned && !advancedSelection) {
         Application::instance().engine().removeActor(selectedPawn);
     }
 }
@@ -464,6 +471,7 @@ void UI::renderSelectionTransform() {
             transformPawn = pawnNamesVector[pawnIndexInt];
             Application::instance().engine().loadTransformFromPawn(transformPawn, selectedTransform);
             transformToApply = false;
+            toastManager.addToastNotification("Reloaded transform from " + transformPawn, ToastTypeSuccess, 2.0);
         } 
     }
 
@@ -674,6 +682,7 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
             boneEdit = fresh;
             boneEdit.pos[0] = boneEdit.pos[1] = boneEdit.pos[2] = 0.0f;
             boneToApply = false;
+            toastManager.addToastNotification("Reloaded bone pose from " + sel.boneName, ToastTypeSuccess, 2.0);
         }
     }
     ImGui::SameLine();
@@ -751,6 +760,7 @@ void UI::renderSelectionOtherProps() {
             if (ImGui::Button("Reload properties")) {
                 props.propertyObject() = target;
                 props.collectProperties(target, props.properties());
+                toastManager.addToastNotification("Reloaded properties for " + FStringToUtf8(target->GetName()), ToastTypeSuccess, 2.0);
             }
 
             std::string pFilter = toLowerStr(props.propertySearch());
@@ -768,7 +778,7 @@ void UI::renderSelectionOtherProps() {
 }
 
 void UI::renderSpawnSection() {
-    if (!ImGui::CollapsingHeader("Spawn", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader("Spawn")) {
         return;
     }
     ImColor redColor = ImColor(1.0f, 0.4f, 0.4, 1.0f);
@@ -844,6 +854,7 @@ void UI::renderSpawnClassList() {
                 for (int i = 0; i < (int)pawnNamesVector.size(); ++i) {
                     if (pawnNamesVector[i] == nm) {
                         pawnIndexInt = i;
+                        toastManager.addToastNotification("Spawned " + selectedClassFullName + " as " + nm, ToastTypeSuccess, 2.0);
                         break;
                     }
                 }
@@ -851,6 +862,7 @@ void UI::renderSpawnClassList() {
         }
         ImGui::SameLine();
         if (ImGui::Button("Diagnose class")) {
+            toastManager.addToastNotification("Diagnosing " + selectedClassFullName + " (check log file)", ToastTypeInfo, 2.0);
             Logger->debug(Application::instance().engine().diagnoseClass(selectedClassFullName));
         }
     }
@@ -864,6 +876,7 @@ void UI::renderSpawnTransform() {
     if (ImGui::Button("Reload from object##spawn")) {
         if (!pawnNamesVector.empty()) {
             Application::instance().engine().loadTransformFromPawn(pawnNamesVector[pawnIndexInt], spawnTransform);
+            toastManager.addToastNotification("Reloaded transform from " + pawnNamesVector[pawnIndexInt], ToastTypeSuccess, 2.0);
         }
     }
     renderTransformEditor(spawnTransform, "spawn");
@@ -882,6 +895,7 @@ void UI::renderSpawnOtherProps() {
 
         if (ImGui::Button("Reload spawn props")) {
             props.bindSpawnProperties(selectedClassFullName, true);
+            toastManager.addToastNotification("Reloaded spawn properties for " + selectedClassFullName, ToastTypeSuccess, 2.0);
         }
 
         std::string spFilter = toLowerStr(props.spawnPropertiesSearch());
