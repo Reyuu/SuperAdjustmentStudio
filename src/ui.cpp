@@ -560,6 +560,7 @@ void UI::renderSelectionBones() {
     if (!ImGui::CollapsingHeader("Bones")) {
         return;
     }
+    ImGui::Indent();
 
     if (pawnNamesVector.empty()) {
         renderBonesReset();
