@@ -1,6 +1,12 @@
 name: Release build
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment containing Nexus Mods secrets
+        required: true
+        type: environment
 
 jobs:
   build:
@@ -28,6 +34,7 @@ jobs:
   release:
     needs: build
     runs-on: windows-latest
+    environment: ${{ inputs.environment }}
     permissions:
       contents: write
     concurrency:
