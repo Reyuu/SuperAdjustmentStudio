@@ -49,3 +49,47 @@ Good:
 ```c++
 void* veryImportantPointer = std::make_shared<void*>();
 ```
+
+## Switch statements
+
+Use braces whenever the statements inside the case are longer than a single line.
+
+Bad:
+```c++
+switch (t.type) {
+    case ToastTypeSuccess:
+        ImGui::TextColored(color, "%s Success", icon);
+        break;
+    case ToastTypeInfo:
+        ImGui::TextColored(color, "%s Info", icon);
+        break;
+    case ToastTypeWarning:
+        ImGui::TextColored(color, "%s Warning", icon);
+        break;
+    case ToastTypeError:
+        ImGui::TextColored(color, "%s Error", icon);
+        break;
+}
+```
+
+Good:
+```c++
+switch (t.type) {
+    case ToastTypeSuccess: {
+        ImGui::TextColored(color, "%s Success", icon);
+        break;
+    }
+    case ToastTypeInfo: {
+        ImGui::TextColored(color, "%s Info", icon);
+        break;
+    }
+    case ToastTypeWarning: {
+        ImGui::TextColored(color, "%s Warning", icon);
+        break;
+    }
+    case ToastTypeError: {
+        ImGui::TextColored(color, "%s Error", icon);
+        break;
+    }
+}
+```
