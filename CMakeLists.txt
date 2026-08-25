@@ -10,6 +10,42 @@ message(STATUS "Adding build target: thirdparty/LExSDKv2")
 # disabling LE1 and LE3 for now, might reintroduce after
 set(LESDK_WITH_LE1 OFF)
 set(LESDK_WITH_LE3 OFF)
+
+# Patch the generated SDK in the submodule working tree: parms structs the
+# generator packed tighter than the game's real layouts (ProcessEvent then
+# writes past them - /RTC stack corruption in Debug, wrong values in
+# Release), and the "FunctionFlags |= ~0x400" generator typo (should be
+# "&= ~0x400": clear FUNC_Native, run bytecode, restore after the call).
+# See patches/LExSDKv2/enumerate.py.
+set(LExSDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2")
+set(LExSDK_PATCH "${CMAKE_CURRENT_SOURCE_DIR}/patches/LExSDKv2/fix-sdk-layout.patch")
+execute_process(
+    COMMAND git -C "${LExSDK_DIR}" apply --check "${LExSDK_PATCH}"
+    RESULT_VARIABLE LExSDK_PATCH_FORWARD
+    OUTPUT_QUIET ERROR_QUIET
+)
+if (LExSDK_PATCH_FORWARD EQUAL 0)
+    execute_process(
+        COMMAND git -C "${LExSDK_DIR}" apply "${LExSDK_PATCH}"
+        RESULT_VARIABLE LExSDK_PATCH_APPLY
+    )
+    if (NOT LExSDK_PATCH_APPLY EQUAL 0)
+        message(FATAL_ERROR "Applying patches/LExSDKv2/fix-sdk-layout.patch failed.")
+    endif()
+    message(STATUS "Applied LExSDKv2 patch: fix-sdk-layout.patch")
+else()
+    execute_process(
+        COMMAND git -C "${LExSDK_DIR}" apply --check --reverse "${LExSDK_PATCH}"
+        RESULT_VARIABLE LExSDK_PATCH_REVERSE
+        OUTPUT_QUIET ERROR_QUIET
+    )
+    if (LExSDK_PATCH_REVERSE EQUAL 0)
+        message(STATUS "LExSDKv2 patch already applied")
+    else()
+        message(FATAL_ERROR "patches/LExSDKv2/fix-sdk-layout.patch neither applies nor is applied - the submodule changed. Regenerate: python patches/LExSDKv2/enumerate.py --apply && git -C thirdparty/LExSDKv2 diff --output=../../patches/LExSDKv2/fix-sdk-layout.patch")
+    endif()
+endif()
+
 add_subdirectory(thirdparty/LExSDKv2)
 
 message(STATUS "Adding build target: thirdparty/spdlog")
@@ -72,6 +108,7 @@ target_include_directories(kiero PUBLIC
 # SAS targets
 file(GLOB SAS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/**/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/*.rc
 )
@@ -80,6 +117,7 @@ add_library(SuperAdjustmentStudio SHARED ${SAS_SOURCES})
 
 target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui_helpers
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
