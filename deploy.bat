@@ -2,7 +2,7 @@
 REM deploy.bat [build_dir] [deploy_dir]
 
 setlocal
-call env.bat
+if not defined DEPLOY_DIR if exist "%~dp0env.bat" call "%~dp0env.bat"
 
 if "%~1"=="" (
     if exist "%~dp0.build_last_config" (

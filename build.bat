@@ -2,7 +2,7 @@
 REM build.bat [Debug|Release] [clean]
 
 setlocal enabledelayedexpansion
-call env.bat
+if exist "%~dp0env.bat" call "%~dp0env.bat"
 
 REM Clean if requested (either position)
 if /I "%~1"=="clean" set "DO_CLEAN=1"
