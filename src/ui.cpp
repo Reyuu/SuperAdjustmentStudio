@@ -5,6 +5,8 @@
 #include <sstream>
 #include "imgui.h"
 #include <LESDK/Includes.LE2.hpp>
+#include "IconsFontAwesome6.h"
+#include "ui_helpers/toast_notifications.h"
 
 #include "engine.h"
 #include "animation.h"
@@ -64,30 +66,17 @@ void UI::collectPawns() {
     std::string sel = (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) ? pawnNamesVector[pawnIndexInt] : "";
     pawnNamesVector.clear();
     pawnIndexInt = 0;
-    if (!UObject::GObjObjects) {
-        return;
-    }
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* obj = UObject::GObjObjects->GetData()[i];
-        if (!obj) {
-            continue;
-        }
-        if (advancedSelection) {
-            if (!obj->IsA(AActor::StaticClass())) {
-                continue;
-            }
-        } else {
-            if (!obj->IsA(APawn::StaticClass())) {
-                continue;
-            }
+    forEachOf<AActor>([&](AActor* obj) {
+        if (!advancedSelection && !obj->IsA(APawn::StaticClass())) {
+            return;
         }
 
         std::string nm = FStringToUtf8(obj->GetName());
         if (nm.rfind("Default__", 0) == 0) {
-            continue;
+            return;
         }
         pawnNamesVector.push_back(nm);
-    }
+    });
 
     //actors we spawned
     for (const std::string& sn : Application::instance().engine().spawnedNames()) {
@@ -159,29 +148,19 @@ void UI::collectClasses() {
         return;
     }
     // lmao
-    UClass* classClass = UClass::StaticClass();
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* obj = UObject::GObjObjects->GetData()[i];
-        if (!obj) {
-            continue;
-        }
-        if (obj->Class != classClass) {
-            continue;
-        }
-
-        UClass* cls = (UClass*)obj;
+    forEachOf<UClass>([&](UClass* cls) {
         if (!isActorClass(cls)) {
-            continue;
+            return;
         }
         if (cls->ClassFlags & CLASS_Abstract) {
             ++excludedAbstract;
-            continue;
+            return;
         }
 
         ClassEntry e;
-        e.fullName = FStringToUtf8(obj->GetFullName());
-        e.name = FStringToUtf8(obj->GetName());
-        UObject* outer = obj->Outer;
+        e.fullName = FStringToUtf8(cls->GetFullName());
+        e.name = FStringToUtf8(cls->GetName());
+        UObject* outer = cls->Outer;
         while (outer && outer->Outer) {
             outer = outer->Outer;
         }
@@ -192,7 +171,7 @@ void UI::collectClasses() {
             e.package = "(unknown)";
         }
         classes.push_back(e);
-    }
+    });
 
     // naive sort, first by package, then by name
     std::sort(classes.begin(), classes.end(), [](const ClassEntry& a, const ClassEntry& b) {
@@ -255,18 +234,12 @@ void UI::collectAnimations(const std::string& pawnName) {
     }
 
     //try to load other animation sets, that aren't linked to the mesh component
-    if (animationIncludeAll && UObject::GObjObjects) {
-        for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-            UObject* obj = UObject::GObjObjects->GetData()[i];
-            if (!obj || !obj->IsA(UAnimSet::StaticClass())) {
-                continue;
-            }
-
-            UAnimSet* set = (UAnimSet*)obj;
+    if (animationIncludeAll) {
+        forEachOf<UAnimSet>([&](UAnimSet* set) {
             for (int j = 0; j < (int)set->Sequences.Count(); ++j) {
                 addSeq(set->Sequences.GetData()[j]);
             }
-        }
+        });
     }
 }
 
@@ -276,17 +249,19 @@ bool UI::renderTransformEditor(Transform& t, const char* idPrefix)
 
     ImGui::PushID(idPrefix);
     ImGui::Text("Position");
-    edited |= axisWidgetLambda("X",  "px", &t.pos[0],  1.0f,  -100000.f, 100000.f, "%.1f");
-    edited |= axisWidgetLambda("Y",  "py", &t.pos[1],  1.0f,  -100000.f, 100000.f, "%.1f");
-    edited |= axisWidgetLambda("Z",  "pz", &t.pos[2],  1.0f,  -100000.f, 100000.f, "%.1f");
+    ImGui::PushItemWidth(-100);
+    edited |= axisWidgetLambda("X",  "##px", &t.pos[0],  1.0f,  -100000.f, 100000.f, "%.1f");
+    edited |= axisWidgetLambda("Y",  "##py", &t.pos[1],  1.0f,  -100000.f, 100000.f, "%.1f");
+    edited |= axisWidgetLambda("Z",  "##pz", &t.pos[2],  1.0f,  -100000.f, 100000.f, "%.1f");
     ImGui::Text("Rotation");
-    edited |= axisWidgetLambda("RX", "rx", &t.rot[0],  0.1f,  -180.f,    180.f,    "%.1f");
-    edited |= axisWidgetLambda("RY", "ry", &t.rot[1],  0.1f,  -180.f,    180.f,    "%.1f");
-    edited |= axisWidgetLambda("RZ", "rz", &t.rot[2],  0.1f,  -180.f,    180.f,    "%.1f");
+    edited |= axisWidgetLambda("RX", "##rx", &t.rot[0],  0.1f,  -180.f,    180.f,    "%.1f");
+    edited |= axisWidgetLambda("RY", "##ry", &t.rot[1],  0.1f,  -180.f,    180.f,    "%.1f");
+    edited |= axisWidgetLambda("RZ", "##rz", &t.rot[2],  0.1f,  -180.f,    180.f,    "%.1f");
     ImGui::Text("Scale");
-    edited |= axisWidgetLambda("X",  "sx", &t.scale[0], 0.01f, 0.001f,   100.f,    "%.3f");
-    edited |= axisWidgetLambda("Y",  "sy", &t.scale[1], 0.01f, 0.001f,   100.f,    "%.3f");
-    edited |= axisWidgetLambda("Z",  "sz", &t.scale[2], 0.01f, 0.001f,   100.f,    "%.3f");
+    edited |= axisWidgetLambda("X",  "##sx", &t.scale[0], 0.01f, 0.001f,   100.f,    "%.3f");
+    edited |= axisWidgetLambda("Y",  "##sy", &t.scale[1], 0.01f, 0.001f,   100.f,    "%.3f");
+    edited |= axisWidgetLambda("Z",  "##sz", &t.scale[2], 0.01f, 0.001f,   100.f,    "%.3f");
+    ImGui::PopItemWidth();
     ImGui::PopID();
     return edited;
 }
@@ -319,7 +294,7 @@ void UI::applyUIInputState(GameWindow& window) {
     }
 }
 
-
+// main function to render the overlay contents
 void UI::renderOverlayContents(NativeRenderer& renderer) {
     if (pawnNamesVector.empty()) {
         collectPawns();
@@ -339,7 +314,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     }
 
     bool uiOpen = showUIstate.load();
-    ImGui::Begin("SuperAdjustmentStudio", &uiOpen);
+    ImGui::Begin(ICON_FA_SLIDERS " SuperAdjustmentStudio", &uiOpen);
     ImVec2 windowPosition = ImGui::GetWindowPos();
     ImVec2 windowSize = ImGui::GetWindowSize();
     renderer.setUiRect({
@@ -360,6 +335,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     renderSpawnSection();
 
     ImGui::End();
+    toastManager.renderToastNotifications();
 }
 
 #pragma region //  CONTROLS
@@ -370,7 +346,10 @@ void UI::renderControlsSection() {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
-    if (ImGui::Checkbox("Pause animations", &pauseTime)) {
+    const char* icon;
+
+    icon = pauseTime ? ICON_FA_PAUSE : ICON_FA_PLAY;
+    if (ImGui::Checkbox((std::string(icon) + " Pause animations").c_str(), &pauseTime)) {
         Application::instance().engine().setPause(pauseTime);
         Application::instance().animation().pauseAnimations(pauseTime);
     }
@@ -378,16 +357,24 @@ void UI::renderControlsSection() {
     ImGui::TableNextColumn();
     // i have a theory, it doesn't work here, cause it should be run on PostRender, instead of Present...
     bool hideGameUI = Application::instance().engine().isGameUIHidden();
-    if (ImGui::Checkbox("Hide all game UI", &hideGameUI)) {
+    icon = hideGameUI ? ICON_FA_EYE_SLASH : ICON_FA_EYE;
+    if (ImGui::Checkbox((std::string(icon) + " Hide all game UI").c_str(), &hideGameUI)) {
+        if (hideGameUI) {
+            toastManager.addToastNotification("This feature does not work for now! You won't see any changes!",
+                                                ToastTypeInfo, 2.0);
+        }
         Application::instance().engine().isGameUIHidden() = hideGameUI;
         Application::instance().engine().applyHUDVisibility();
     }
 
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::Checkbox("Click to select", &Application::instance().gizmo().clickSelect());
+    icon = Application::instance().gizmo().clickSelect() ? ICON_FA_ARROW_POINTER : ICON_FA_HAND_POINTER;
+    ImGui::Checkbox((std::string(icon) + " Click to select").c_str(), &Application::instance().gizmo().clickSelect());
     ImGui::TableNextColumn();
-    if (ImGui::Checkbox("Advanced selection", &advancedSelection)) {
+
+    icon = advancedSelection ? ICON_FA_HAND : ICON_FA_HAND_BACK_FIST;
+    if (ImGui::Checkbox((std::string(icon) + " Advanced selection").c_str(), &advancedSelection)) {
         collectPawns();
     }
     
@@ -401,7 +388,8 @@ void UI::renderControlsSection() {
         }
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        if (ImGui::Checkbox("Float selected pawn (ignore collisions)", &floatEnabled)) {
+        icon = ICON_FA_PERSON_ARROW_UP_FROM_LINE;
+        if (ImGui::Checkbox((std::string(icon) + " Float selected pawn (ignore collisions)").c_str(), &floatEnabled)) {
             Application::instance().engine().setFloat(floatPawn, floatEnabled);
         }
     }
@@ -412,14 +400,18 @@ void UI::renderControlsSection() {
     ImGui::BeginTable("gizmos_table##gizmos_table", 2);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::Checkbox("Show orientation gizmo", &Application::instance().gizmo().showGizmo());
+    icon = ICON_FA_CUBE;
+    ImGui::Checkbox((std::string(icon) + " Show orientation gizmo").c_str(), &Application::instance().gizmo().showGizmo());
     ImGui::TableNextColumn();
-    ImGui::Checkbox("Draw gizmos always on top", &Application::instance().gizmo().debugAlwaysOnTop());
+    icon = ICON_FA_LAYER_GROUP;
+    ImGui::Checkbox((std::string(icon) + " Draw gizmos always on top").c_str(), &Application::instance().gizmo().debugAlwaysOnTop());
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::Checkbox("Draw tracer", &Application::instance().gizmo().drawTracer());
+    icon = ICON_FA_ARROWS_TO_DOT;
+    ImGui::Checkbox((std::string(icon) + " Draw tracer").c_str(), &Application::instance().gizmo().drawTracer());
     ImGui::TableNextColumn();
-    ImGui::Checkbox("Highlight selected", &Application::instance().gizmo().highlightSelected());
+    icon = ICON_FA_HIGHLIGHTER;
+    ImGui::Checkbox((std::string(icon) + " Highlight selected").c_str(), &Application::instance().gizmo().highlightSelected());
     ImGui::EndTable();
     ImGui::Separator();
 }
@@ -427,7 +419,7 @@ void UI::renderControlsSection() {
 
 #pragma region //  SELECTION
 void UI::renderSelectionSection() {
-    if (!ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader("Selection")) {
         return;
     }
     ImGui::Indent();
@@ -441,8 +433,9 @@ void UI::renderSelectionSection() {
 
 void UI::renderSelectionTarget() {
     const char* pawnPreview = pawnNamesVector.empty() ? "(no objects found)" : pawnNamesVector[pawnIndexInt].c_str();
-    ImGui::Text("Target");
+    ImGui::Text(ICON_FA_CROSSHAIRS " Target");
     ImGui::SameLine();
+    ImGui::PushItemWidth(-100);
     if (ImGui::BeginCombo("##object_selection", pawnPreview)) {
         for (int i = 0; i < (int)pawnNamesVector.size(); ++i) {
             // avoid collisions -> BioWare pretty often did not rename default object names
@@ -454,8 +447,10 @@ void UI::renderSelectionTarget() {
         }
         ImGui::EndCombo();
     }
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
 
-    if (ImGui::SmallButton("Refresh")) {
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##sel")) {
         collectPawns();
     }
     ImGui::SameLine();
@@ -467,14 +462,14 @@ void UI::renderSelectionTarget() {
     std::string& selectedPawn = pawnNamesVector[pawnIndexInt];
     bool isFoundInCollection = std::find(spawnedNames.begin(), spawnedNames.end(), selectedPawn) != spawnedNames.end();
     bool isSpawned = !pawnNamesVector.empty() && isFoundInCollection;
-    if (ImGui::SmallButton("Remove") && isSpawned) {
+    if (ImGui::Button(ICON_FA_TRASH "##sel") && isSpawned && !advancedSelection) {
         Application::instance().engine().removeActor(selectedPawn);
     }
 }
 
 // live! (250ms debounce)
 void UI::renderSelectionTransform() {
-    if (!ImGui::CollapsingHeader("Transform##sel")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT " Transform##sel")) {
         return;
     }
     ImGui::Indent();
@@ -488,11 +483,12 @@ void UI::renderSelectionTransform() {
         transformPawn.clear();
     }
 
-    if (ImGui::SmallButton("Reload from object##sel")) {
+    if (ImGui::Button(ICON_FA_ARROW_RIGHT_TO_BRACKET " Reload from object##sel")) {
         if (!pawnNamesVector.empty()) {
             transformPawn = pawnNamesVector[pawnIndexInt];
             Application::instance().engine().loadTransformFromPawn(transformPawn, selectedTransform);
             transformToApply = false;
+            toastManager.addToastNotification("Reloaded transform from " + transformPawn, ToastTypeSuccess, 2.0);
         } 
     }
 
@@ -510,7 +506,7 @@ void UI::renderSelectionTransform() {
 }
 
 void UI::renderSelectionAnimation() {
-    if (!ImGui::CollapsingHeader("Animation (pawns only!)")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_FILM " Animation (pawns only!)")) {
         return;
     }
     ImGui::Indent();
@@ -526,20 +522,12 @@ void UI::renderSelectionAnimation() {
         animationIndex = 0;
     }
 
-    ImGui::Text("Selected animation");
-    ImGui::SameLine();
-    ImGui::Text("%s", animationNames.empty() ? "(none)" : animationNames[animationIndex].c_str());
-    if (ImGui::Checkbox("Include all loaded animation sets", &animationIncludeAll)) {
-        animationIndex = 0;
-        if (!pawnNamesVector.empty()) {
-            collectAnimations(animationPawn);
-        }
-    }
-
     //TODO: Improve the search, it's VERY picky atm
-    ImGui::Text("Search");
+    ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
     ImGui::SameLine();
+    ImGui::PushItemWidth(-100);
     ImGui::InputText("##anim_search", animationSearch, sizeof(animationSearch));
+    ImGui::PopItemWidth();
     std::string aFilter = toLowerStr(animationSearch);
     if (ImGui::BeginChild("anim_list", ImVec2(0, 120), true)) {
         int aShown = 0;
@@ -559,28 +547,42 @@ void UI::renderSelectionAnimation() {
     }
     ImGui::EndChild();
 
+    ImGui::Text(ICON_FA_CROSSHAIRS " Selected animation: ");
+    ImGui::SameLine();
+    ImGui::Text("%s", animationNames.empty() ? "(none)" : animationNames[animationIndex].c_str());
+
+    ImGui::Separator();
     bool canPlay = !pawnNamesVector.empty() && !animationNames.empty();
-    if (ImGui::Button("Play (once)") && canPlay) {
+    if (ImGui::Button(ICON_FA_PLAY " Play") && canPlay) {
         Application::instance().animation().playAnimation(pawnNamesVector[pawnIndexInt], animationNames[animationIndex], false);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Play (loop)") && canPlay) {
+    if (ImGui::Button(ICON_FA_REPEAT " Play (loop)") && canPlay) {
         Application::instance().animation().playAnimation(pawnNamesVector[pawnIndexInt], animationNames[animationIndex], true);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Reset") && !pawnNamesVector.empty()) {
+    if (ImGui::Button(ICON_FA_ROTATE_RIGHT " Reset") && !pawnNamesVector.empty()) {
         Application::instance().animation().resetAnimation(pawnNamesVector[pawnIndexInt]);
     }
-ImGui::Unindent();
+
+    if (ImGui::Checkbox("Include all loaded animation sets", &animationIncludeAll)) {
+        animationIndex = 0;
+        if (!pawnNamesVector.empty()) {
+            collectAnimations(animationPawn);
+        }
+    }
+
+    ImGui::Unindent();
 }
 
 #pragma endregion
 
 #pragma region // BONES
 void UI::renderSelectionBones() {
-    if (!ImGui::CollapsingHeader("Bones")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_BONE " Bones")) {
         return;
     }
+    ImGui::Indent();
 
     if (pawnNamesVector.empty()) {
         renderBonesReset();
@@ -607,13 +609,19 @@ void UI::renderSelectionBones() {
 
     const char* meshTargets[2] = {"Body", "Head"};
     int oldTarget = meshTargetIndex;
-    if (ImGui::Combo("Target mesh##bones", &meshTargetIndex, meshTargets, maxTarget + 1)) {
+    ImGui::Text("Target mesh:");
+
+    ImGui::Text(ICON_FA_CROSSHAIRS);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-100);
+    if (ImGui::Combo("##bones", &meshTargetIndex, meshTargets, maxTarget + 1)) {
         if (meshTargetIndex != oldTarget) {
             boneListTried = false;
             Application::instance().bones().resetBonePose(bonePawn, (MeshTarget)meshTargetIndex);
             refreshBoneList(pawn);
         }
     }
+    ImGui::PopItemWidth();
 
     renderBonesDirectBones(pawn);
     ImGui::Unindent();
@@ -629,7 +637,11 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
         return;
     }
 
-    ImGui::InputText("Search##bonesdirect", boneSearch, sizeof(boneSearch));
+    ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-100);
+    ImGui::InputText("##bonesdirect", boneSearch, sizeof(boneSearch));
+    ImGui::PopItemWidth();
     std::string bFilter = toLowerStr(boneSearch);
     if (ImGui::BeginChild("bones_dir_list", ImVec2(0, 180), true)) {
         int bShown = 0;
@@ -672,16 +684,16 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
         ImGui::TextDisabled("(parent: %s)", sel.parentName.c_str());
     }
 
-    ImGui::Text("Position offset (local; added to anim position)");
-    bool bEdited = axisWidgetLambda("X", "##dir px", &boneEdit.pos[0], 0.5f, -10000.0f, 10000.0f, "%.2f");
-    bEdited |= axisWidgetLambda("Y", "##dir py", &boneEdit.pos[1], 0.5f, -10000.0f, 10000.0f, "%.2f");
-    bEdited |= axisWidgetLambda("Z", "##dir pz", &boneEdit.pos[2], 0.5f, -10000.0f, 10000.0f, "%.2f");
-    ImGui::Text("Rotation (degrees)");
-    bEdited |= axisWidgetLambda("RX", "##dir rx", &boneEdit.rot[0], 0.5f, -360.0f, 360.0f, "%.2f");
-    bEdited |= axisWidgetLambda("RY", "##dir ry", &boneEdit.rot[1], 0.5f, -360.0f, 360.0f, "%.2f");
-    bEdited |= axisWidgetLambda("RZ", "##dir rz", &boneEdit.rot[2], 0.5f, -360.0f, 360.0f, "%.2f");
-    ImGui::Text("Scale (uniform)"); // FBoneAtom has no per-axis scale
-    bEdited |= axisWidgetLambda("S", "##dir scale", &boneEdit.scale[0], 0.01f, 0.001f, 100.0f, "%.3f");
+    ImGui::Text("Position offset");
+    bool bEdited = axisWidgetLambda("X", "##dir_px", &boneEdit.pos[0], 0.5f, -10000.0f, 10000.0f, "%.2f");
+    bEdited |= axisWidgetLambda("Y", "##dir_py", &boneEdit.pos[1], 0.5f, -10000.0f, 10000.0f, "%.2f");
+    bEdited |= axisWidgetLambda("Z", "##dir_pz", &boneEdit.pos[2], 0.5f, -10000.0f, 10000.0f, "%.2f");
+    ImGui::Text("Rotation");
+    bEdited |= axisWidgetLambda("RX", "##dir_rx", &boneEdit.rot[0], 0.5f, -360.0f, 360.0f, "%.2f");
+    bEdited |= axisWidgetLambda("RY", "##dir_ry", &boneEdit.rot[1], 0.5f, -360.0f, 360.0f, "%.2f");
+    bEdited |= axisWidgetLambda("RZ", "##dir_rz", &boneEdit.rot[2], 0.5f, -360.0f, 360.0f, "%.2f");
+    ImGui::Text("Scale"); // FBoneAtom has no per-axis scale
+    bEdited |= axisWidgetLambda("S", "##dir_scale", &boneEdit.scale[0], 0.01f, 0.001f, 100.0f, "%.3f");
 
     // scale for direct bones is VERY weird, best to apply it for all axis
     // there's probably some method to the madness here.
@@ -697,20 +709,22 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
             Application::instance().bones().setBonePose(pawn, (MeshTarget)meshTargetIndex, boneEdit);
         });
     }
-    if (ImGui::Button("Reload from bone##bones")) {
+    ImGui::Separator();
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT " Reload from bone##bones")) {
         BonePoseInfo fresh;
         if (Application::instance().bones().getBoneTransform(pawn, (MeshTarget)meshTargetIndex, sel.index, fresh)) {
             boneEdit = fresh;
             boneEdit.pos[0] = boneEdit.pos[1] = boneEdit.pos[2] = 0.0f;
             boneToApply = false;
+            toastManager.addToastNotification("Reloaded bone pose from " + sel.boneName, ToastTypeSuccess, 2.0);
         }
     }
     ImGui::SameLine();
-    if (ImGui::Button("Reset pose##bones_dir")) {
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT " Reset pose##bones_dir")) {
         Application::instance().bones().resetBonePose(pawn, (MeshTarget)meshTargetIndex);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Absolute reset##bones")) {
+    if (ImGui::Button(ICON_FA_LAND_MINE_ON " Absolute reset##bones")) {
         Application::instance().bones().absoluteResetBones(pawn, (MeshTarget)meshTargetIndex);
     }
 }
@@ -729,7 +743,7 @@ void UI::renderBonesReset() {
 
 #pragma region // Other properties and Spawn
 void UI::renderSelectionOtherProps() {
-    if (!ImGui::CollapsingHeader("Other properties##sel")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_LIST " Other properties##sel")) {
         return;
     }
     ImGui::Indent();
@@ -763,11 +777,16 @@ void UI::renderSelectionOtherProps() {
                 props.propertyComponentIndex() = 0;
             }
             
-            if (ImGui::Combo("Target component##prop", &props.propertyComponentIndex(), cItems.data(), (int)cItems.size())) {
+            ImGui::Text("Target component");
+            ImGui::Text(ICON_FA_CROSSHAIRS);
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-100);
+            if (ImGui::Combo("##prop", &props.propertyComponentIndex(), cItems.data(), (int)cItems.size())) {
                 UObject* t = (props.propertyComponentIndex() == 0) ? (UObject*)propActor : (UObject*)components[props.propertyComponentIndex() - 1];
                 props.propertyObject() = t;
                 props.collectProperties(t, props.properties());
             }
+            ImGui::PopItemWidth();
 
             UObject* target = (props.propertyComponentIndex() == 0) ? (UObject*)propActor : (UObject*)components[props.propertyComponentIndex() - 1];
             if (target != props.propertyObject()) {
@@ -775,11 +794,16 @@ void UI::renderSelectionOtherProps() {
                 props.collectProperties(target, props.properties());
             }
 
-            ImGui::InputText("Search for property##props", props.propertySearch(), 128);
+            ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
+            ImGui::SameLine();
+            ImGui::PushItemWidth(-100);
+            ImGui::InputText("##props", props.propertySearch(), 128);
+            ImGui::PopItemWidth();
 
-            if (ImGui::Button("Reload properties")) {
+            if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT " Reload properties")) {
                 props.propertyObject() = target;
                 props.collectProperties(target, props.properties());
+                toastManager.addToastNotification("Reloaded properties for " + FStringToUtf8(target->GetName()), ToastTypeSuccess, 2.0);
             }
 
             std::string pFilter = toLowerStr(props.propertySearch());
@@ -797,14 +821,14 @@ void UI::renderSelectionOtherProps() {
 }
 
 void UI::renderSpawnSection() {
-    if (!ImGui::CollapsingHeader("Spawn", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader(ICON_FA_CUBES " Spawn")) {
         return;
     }
     ImColor redColor = ImColor(1.0f, 0.4f, 0.4, 1.0f);
+    ImColor orangeColor = ImColor(1.0f, 0.6f, 0.2f, 1.0f);
 
     ImGui::Indent();
-    ImGui::TextColored(redColor, \
-    "WARNING: Spawning an invalid actor (either with invalid or empty properties) can and will cause a crash");
+    ImGui::TextColored(orangeColor, ICON_FA_TRIANGLE_EXCLAMATION " WARNING: Spawning an invalid actor can and will cause a crash!");
     ImGui::Text("Selected class:");
     ImGui::SameLine();
     ImGui::Text("%s", selectedClassFullName.empty() ? "(none)" : selectedClassFullName.c_str());
@@ -820,11 +844,13 @@ void UI::renderSpawnSection() {
 }
 
 void UI::renderSpawnClassList() {
-    ImGui::Text("Search");
+    ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
     ImGui::SameLine();
+    ImGui::PushItemWidth(-100);
     ImGui::InputText("##class_search", classSearch, sizeof(classSearch));
+    ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button("Refresh classes")) {
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
         collectClasses();
     }
 
@@ -863,7 +889,7 @@ void UI::renderSpawnClassList() {
         // keep it bound
         Properties& props = Application::instance().properties();
         props.bindSpawnProperties(selectedClassFullName, false);
-        if (ImGui::Button("Spawn selected")) {
+        if (ImGui::Button(ICON_FA_PLUS " Spawn selected")) {
             AActor* spawned = Application::instance().engine().spawnClass(selectedClassFullName, spawnTransform);
             // auto-select spawned
             if (spawned) {
@@ -873,26 +899,29 @@ void UI::renderSpawnClassList() {
                 for (int i = 0; i < (int)pawnNamesVector.size(); ++i) {
                     if (pawnNamesVector[i] == nm) {
                         pawnIndexInt = i;
+                        toastManager.addToastNotification("Spawned " + selectedClassFullName + " as " + nm, ToastTypeSuccess, 2.0);
                         break;
                     }
                 }
             }
         }
         ImGui::SameLine();
-        if (ImGui::Button("Diagnose class")) {
+        if (ImGui::Button(ICON_FA_STETHOSCOPE " Diagnose class")) {
+            toastManager.addToastNotification("Diagnosing " + selectedClassFullName + " (check log file)", ToastTypeInfo, 2.0);
             Logger->debug(Application::instance().engine().diagnoseClass(selectedClassFullName));
         }
     }
 }
 
 void UI::renderSpawnTransform() {
-    if (!ImGui::CollapsingHeader("Transform##spawn")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT " Transform##spawn")) {
         return;
     }
     ImGui::Indent();
-    if (ImGui::Button("Reload from object##spawn")) {
+    if (ImGui::Button(ICON_FA_ARROW_RIGHT_TO_BRACKET " Reload from object##spawn")) {
         if (!pawnNamesVector.empty()) {
             Application::instance().engine().loadTransformFromPawn(pawnNamesVector[pawnIndexInt], spawnTransform);
+            toastManager.addToastNotification("Reloaded transform from " + pawnNamesVector[pawnIndexInt], ToastTypeSuccess, 2.0);
         }
     }
     renderTransformEditor(spawnTransform, "spawn");
@@ -900,17 +929,22 @@ void UI::renderSpawnTransform() {
 }
 
 void UI::renderSpawnOtherProps() {
-    if (!ImGui::CollapsingHeader("Other properties##spawn")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_LIST " Other properties##spawn")) {
         return;
     }
     ImGui::Indent();
     if (!selectedClassFullName.empty()) {
         Properties& props = Application::instance().properties();
         props.bindSpawnProperties(selectedClassFullName, false);
-        ImGui::InputText("Search spawn property", props.spawnPropertiesSearch(), 128);
-
-        if (ImGui::Button("Reload spawn props")) {
+        ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-100);
+        ImGui::InputText("##spawn_search", props.spawnPropertiesSearch(), 128);
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##spawn_reload_other")) {
             props.bindSpawnProperties(selectedClassFullName, true);
+            toastManager.addToastNotification("Reloaded spawn properties for " + selectedClassFullName, ToastTypeSuccess, 2.0);
         }
 
         std::string spFilter = toLowerStr(props.spawnPropertiesSearch());
@@ -920,7 +954,7 @@ void UI::renderSpawnOtherProps() {
             if (ImGui::BeginChild("spawn_props_list", ImVec2(0, 220), true)) {
                 props.renderPropertyTable(props.spawnPropertiesCDO(), nullptr, props.spawnProperties(), spFilter);
             }
-            ImGui::Text("%d properties (applied upon Spawn)", (int)props.spawnProperties().size());
+            ImGui::TextDisabled("%d properties (applied upon Spawn)", (int)props.spawnProperties().size());
             ImGui::EndChild();
         }
     }

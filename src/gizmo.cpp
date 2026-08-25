@@ -1,8 +1,6 @@
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "gizmo.h"
-#include <cmath>
-#include <numbers>
 #include <sstream>
 #include "hook_manager.h"
 #include "logger.h"
@@ -10,22 +8,21 @@
 #include "application.h"
 #include "util.h"
 
+#include <LESDK/Common/Math.hpp>
+
 #include "imgui.h"
 
 // X=forward, Y=right, Z=up
-//  rotator - 65536 -> 360deg
-//  UObject::GetAxes -> FRotationTranslationMatrix (UE3 Core/Inc/UnMath.h)
-//    row0 = (CP*CY, CP*SY, +SP)                            -> local X (forward)
-//    row1 = (SR*SP*CY - CR*SY, SR*SP*SY + CR*CY, -SR*CP)   -> local Y (right)
-//    row2 = (-(CR*SP*CY + SR*SY), CY*SR - CR*SP*SY, CR*CP) -> local Z (up)
 static void RotatorToBasis(const FRotator& r, float outF[3], float outR[3], float outU[3]) {
-    constexpr float kDegToRad = 2.0f * std::numbers::pi_v<float> / 65536.0f;
-    const float cp = std::cos(r.Pitch * kDegToRad), sp = std::sin(r.Pitch * kDegToRad);
-    const float cy = std::cos(r.Yaw * kDegToRad),   sy = std::sin(r.Yaw * kDegToRad);
-    const float cr = std::cos(r.Roll * kDegToRad),  sr = std::sin(r.Roll * kDegToRad);
-    outF[0] = cp * cy;                    outF[1] = cp * sy;                    outF[2] = sp;
-    outR[0] = sr * sp * cy - cr * sy;     outR[1] = sr * sp * sy + cr * cy;     outR[2] = -sr * cp;
-    outU[0] = -(cr * sp * cy + sr * sy);  outU[1] = cy * sr - cr * sp * sy;     outU[2] = cr * cp;
+    FMatrix m = MatrixCompose(
+        FVector{0, 0, 0}, FVector{1, 1, 1},
+        UnrealRotationUnitsToRadians(r.Pitch),
+        UnrealRotationUnitsToRadians(r.Yaw),
+        UnrealRotationUnitsToRadians(r.Roll)
+    );
+    outF[0] = m.XPlane.X; outF[1] = m.XPlane.Y; outF[2] = m.XPlane.Z;
+    outR[0] = m.YPlane.X; outR[1] = m.YPlane.Y; outR[2] = m.YPlane.Z;
+    outU[0] = m.ZPlane.X; outU[1] = m.ZPlane.Y; outU[2] = m.ZPlane.Z;
 }
 
 
@@ -88,8 +85,8 @@ static bool GetCameraView(ABioHUD* hud, FVector& loc, FVector& fwd) {
 }
 
 static bool ClipSegment(const FVector& camLoc, const FVector& camFwd, float nearDist, FVector& a, FVector& b) {
-    const float da = (a.X - camLoc.X) * camFwd.X + (a.Y - camLoc.Y) * camFwd.Y + (a.Z - camLoc.Z) * camFwd.Z - nearDist;
-    const float db = (b.X - camLoc.X) * camFwd.X + (b.Y - camLoc.Y) * camFwd.Y + (b.Z - camLoc.Z) * camFwd.Z - nearDist;
+    const float da = Dot(a - camLoc, camFwd) - nearDist;
+    const float db = Dot(b - camLoc, camFwd) - nearDist;
 
     if (da < 0.0f && db < 0.0f) {
         return false;
@@ -327,8 +324,8 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY)
     }
 
     const ImGuiIO& io = ImGui::GetIO();
-    const float scaleX = io.DisplaySize.x > 0.0f ? (float)canvas->SizeX / io.DisplaySize.x : 1.0f;
-    const float scaleY = io.DisplaySize.y > 0.0f ? (float)canvas->SizeY / io.DisplaySize.y : 1.0f;
+    const float scaleX = (io.DisplaySize.x > 1.0f && io.DisplaySize.y > 1.0f) ? (float)canvas->SizeX / io.DisplaySize.x : 1.0f;
+    const float scaleY = (io.DisplaySize.x > 1.0f && io.DisplaySize.y > 1.0f) ? (float)canvas->SizeY / io.DisplaySize.y : 1.0f;
     FVector2D screenPos{mouseX * scaleX, mouseY * scaleY};
     FVector origin, dir;
     canvas ->DeProject(screenPos, &origin, &dir);
@@ -341,10 +338,10 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY)
     FVector hitLocation, hitNormal;
     FTraceHitInfo hitInfo;
     AActor* hit = nullptr;
-    if (hud->PlayerOwner) {
+    if (hud->PlayerOwner && isObjectStillLive(hud->PlayerOwner)) {
         hit = hud->PlayerOwner->Trace(end, origin, 1, FVector{0.0f, 0.0f, 0.0f}, 0, 0, &hitLocation, &hitNormal, &hitInfo);
     }
-    if (hit) {
+    if (hit && isObjectStillLive(hit)) {
         Application::instance().ui().selectActor(hit);
     }
 }

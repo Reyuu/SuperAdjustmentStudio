@@ -97,42 +97,19 @@ void Engine::drainPackageLoads() {
     }
 }
 
-static UObject* findFirstObjectOfClass(UClass* cls) {
-    if (!UObject::GObjObjects) {
-        return nullptr;
-    }
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* o = UObject::GObjObjects->GetData()[i];
-        if (!o) {
-            continue;
-        }
-        if (o->IsA(cls)) {
-            return o;
-        }
-    }
-    return nullptr;
-}
-
 static APlayerController* findFirstPlayerController() {
-    return (APlayerController*)findFirstObjectOfClass(APlayerController::StaticClass());
+    return findFirstOf<APlayerController>();
 }
 
 AActor* Engine::findActorByName(const std::string& name)
 {
-    if (!UObject::GObjObjects) {
-        return nullptr;
-    }
     std::string needle = toLowerStr(name);
+    AActor* found = nullptr;
 
-    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        UObject* obj = UObject::GObjObjects->GetData()[i];
-        if (!obj) {
-            continue;
+    forEachOf<AActor>([&](AActor* obj) {
+        if (found) {
+            return;
         }
-        if (!obj->IsA(AActor::StaticClass())) {
-            continue;
-        }
-
         FString fn = obj->GetName();
         std::string s = FStringToUtf8(fn);
         std::string sLower = toLowerStr(s);
@@ -140,15 +117,15 @@ AActor* Engine::findActorByName(const std::string& name)
             // empty name -> any pawn, spawning needs an actor to spawn from
             // prefer player pawn, fallback to any BioPawn/Pawn
             if (obj->IsA(ASFXPawn_Player::StaticClass()) || obj->IsA(ABioPawn::StaticClass()) || obj->IsA(APawn::StaticClass())) {
-                return (AActor*)obj;
+                found = obj;
             }
-            continue;
+            return;
         }
         if (sLower.find(needle) != std::string::npos) {
-            return (AActor*)obj;
+            found = obj;
         }
-    }
-    return nullptr;
+    });
+    return found;
 }
 
 USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName)
@@ -172,7 +149,7 @@ void Engine::setPause(bool pause)
         return;
     }
     
-    UGameUISceneClient* client = (UGameUISceneClient*)findFirstObjectOfClass(UGameUISceneClient::StaticClass());
+    UGameUISceneClient* client = findFirstOf<UGameUISceneClient>();
     if (!client) {
         Logger->debug("setPause: UGameUISceneClient not found");
         return;
@@ -427,22 +404,11 @@ void Engine::setFloat(const std::string& targetName, bool enable)
     if (actor->IsA(APawn::StaticClass()) && ((APawn*)actor)->Mesh) {
         comps.push_back(((APawn*)actor)->Mesh);
     }
-    if (UObject::GObjObjects) {
-        for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-            UObject* o = UObject::GObjObjects->GetData()[i];
-            if (!o) {
-                continue;
-            }
-            if (!o->IsA(UPrimitiveComponent::StaticClass())) {
-                continue;
-            }
-            
-            UPrimitiveComponent* c = (UPrimitiveComponent*) o;
-            if (c->Outer == actor) {
-                comps.push_back(c);
-            }
+    forEachOf<UPrimitiveComponent>([&](UPrimitiveComponent* c) {
+        if (c->Outer == actor) {
+            comps.push_back(c);
         }
-    }
+    });
     for (UPrimitiveComponent* c : comps) {
         c->SetBlockRigidBody(enable ? 0 : 1);
     }
@@ -459,7 +425,7 @@ void Engine::setFloat(const std::string& targetName, bool enable)
 }
 
 void Engine::applyHUDVisibility() {
-    AHUD* hud = (AHUD*)findFirstObjectOfClass(ABioHUD::StaticClass());
+    AHUD* hud = findFirstOf<ABioHUD>();
     if (!hud) {
         return;
     }
