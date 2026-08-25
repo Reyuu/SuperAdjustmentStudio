@@ -231,5 +231,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+patches/LExSDKv2/*
+patches/LExSDKv2/fix-sdk-layout.patch
 fix-sdk-layout.patch
 *.patch
