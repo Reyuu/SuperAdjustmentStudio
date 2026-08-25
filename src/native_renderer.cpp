@@ -178,8 +178,12 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
 
     ImGuiIO& io = ImGui::GetIO();
     ImFontConfig baseFontConfig;
-    baseFontConfig.SizePixels = 14.0f;
+    baseFontConfig.SizePixels = 15.0f;
     io.Fonts->AddFontDefault(&baseFontConfig);
+
+    ImFontConfig trebuchetConfig;
+    trebuchetConfig.SizePixels = baseFontConfig.SizePixels + 2.0f;
+    io.FontDefault = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\trebuc.ttf", trebuchetConfig.SizePixels, &trebuchetConfig);
 
     HMODULE hMod = nullptr;
     if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -196,7 +200,7 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
                 config.PixelSnapH = true;
                 config.FontDataOwnedByAtlas = false;
                 static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-                io.Fonts->AddFontFromMemoryTTF(pData, (int)size, 14.0f, &config, icon_ranges);
+                io.Fonts->AddFontFromMemoryTTF(pData, (int)size, baseFontConfig.SizePixels, &config, icon_ranges);
             }
         }
     }
