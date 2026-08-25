@@ -1,0 +1,86 @@
+name: Release build
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Regenerate LExSDKv2 patch
+        shell: pwsh
+        run: python patches/LExSDKv2/enumerate.py --apply; git -C thirdparty/LExSDKv2 diff --output=../../patches/LExSDKv2/fix-sdk-layout.patch
+
+      - name: Build and deploy
+        shell: pwsh
+        run: .\build.bat Release clean; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; New-Item -ItemType Directory -Path "$env:RUNNER_TEMP\deploy"; .\deploy.bat Release "" "$env:RUNNER_TEMP\deploy"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; .\compile_commands.bat
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SuperAdjustmentStudio
+          path: ${{ runner.temp }}\deploy\*.asi
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: beta-release
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create beta tag
+        id: version
+        shell: pwsh
+        run: |
+          $latest = 0
+          git tag -l '0.*beta' | ForEach-Object {
+            if ($_ -match '^0\.(\d+)beta$') {
+              $latest = [Math]::Max($latest, [int]$Matches[1])
+            }
+          }
+          $tag = "0.$($latest + 1)beta"
+          git tag $tag
+          git push origin $tag
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: SuperAdjustmentStudio
+          path: release
+
+      - name: Package release
+        shell: pwsh
+        run: Compress-Archive -Path release\*.asi -DestinationPath "SuperAdjustmentStudio-${{ steps.version.outputs.tag }}.zip"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: SAS - ${{ steps.version.outputs.tag }}
+          body: |
+            This is release ${{ steps.version.outputs.tag }} of the SuperAdjustmentStudio.
+
+            **Full Changelog**: https://github.com/Reyuu/SuperAdjustmentStudio/commits/${{ steps.version.outputs.tag }}
+          files: SuperAdjustmentStudio-${{ steps.version.outputs.tag }}.zip
+
+      - name: Upload to Nexus Mods
+        uses: Nexus-Mods/upload-action@v1.0.0-beta.9
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          file_id: ${{ vars.NEXUS_FILE_ID }}
+          filename: SuperAdjustmentStudio-${{ steps.version.outputs.tag }}.zip
+          version: ${{ steps.version.outputs.tag }}
+          display_name: SAS - ${{ steps.version.outputs.tag }}
+          description: This is release ${{ steps.version.outputs.tag }} of the SuperAdjustmentStudio.
