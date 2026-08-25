@@ -62,11 +62,17 @@ If you're developing via `clangd` and `clangd-format` setup in VSCode:
 ```
 This will create a new file `compile_commands.json`. VS generator cannot export them for some reason.
 ### Compiling and deploying
-Initially run:
+Build the patch for the SDK and apply it:
+```
+python patches/LExSDKv2/enumerate.py --apply 
+git -C thirdparty/LExSDKv2 diff --output=../../patches/LExSDKv2/fix-sdk-layout.patch
+```
+
+Then check:
 ```
 cmake -S . -B build -G "Visual Studio 18 2026"
 ```
-To see if it configures properly.
+To see if it configures properly and if the patch was build correctly.
 
 To actually build it, use `build.bat`. It should find `cl.exe` and load apropripate variables by itself. For example:
 ```
@@ -75,7 +81,10 @@ build.bat Release clean
 
 To deploy the generated DLL, use `deploy.bat`. It runs `env.bat` and copies the dll as asi to the folder you specified.
 
-
+### Oneliner
+```
+.\build.bat Debug clean && .\deploy.bat && .\compile_commands.bat
+```
 ## Contributing
 ```
 //TODO: docs/contribute.md

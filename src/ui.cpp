@@ -313,8 +313,9 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
         collectClasses();
     }
 
-    bool uiOpen = showUIstate.load();
-    ImGui::Begin(ICON_FA_SLIDERS " SuperAdjustmentStudio", &uiOpen);
+    ImGui::SetNextWindowSize(ImVec2(650, 1250), ImGuiCond_FirstUseEver);
+
+    ImGui::Begin(ICON_FA_SLIDERS " SuperAdjustmentStudio " PLUGIN_VERSION, NULL);
     ImVec2 windowPosition = ImGui::GetWindowPos();
     ImVec2 windowSize = ImGui::GetWindowSize();
     renderer.setUiRect({
@@ -323,7 +324,6 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
         (LONG)(windowPosition.x + windowSize.x),
         (LONG)(windowPosition.y + windowSize.y)
     });
-    showUIstate.store(uiOpen);
 
     if (Application::instance().animation().animPauseActive()) {
         Application::instance().animation().keepAnimationsPaused();

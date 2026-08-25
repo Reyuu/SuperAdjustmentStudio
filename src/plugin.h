@@ -7,8 +7,8 @@
 #define LPLUGIN_NAME L"SuperAdjustmentStudio"
 #define PLUGIN_AUTHOR "Rey"
 #define LPLUGIN_AUTHOR L"Rey"
-#define PLUGIN_VERSION "0.1beta"
-#define LPLUGIN_VERSION L"0.1beta"
+#define PLUGIN_VERSION "0.2beta"
+#define LPLUGIN_VERSION L"0.2beta"
 
 #define SDK_TARGET_LE2
 
