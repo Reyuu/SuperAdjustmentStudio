@@ -500,8 +500,6 @@ void Properties::renderPropertyTable(UObject* readObject, UObject* writeObject, 
                     e.iValue = maxIdx;
                 }
                 changed = ImGui::SliderInt(label.c_str(), &e.iValue, 0, maxIdx, e.enumAvailableStrings[e.iValue].c_str());
-                ImGui::SameLine();
-                ImGui::TextDisabled("%s", e.detail.c_str());
                 break;
             }
             case PT_NAME:

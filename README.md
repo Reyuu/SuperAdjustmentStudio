@@ -88,6 +88,8 @@ This project uses libraries from:
 - [Rebzzel/kiero](https://github.com/Rebzzel/kiero)
 - [TsudaKageyu/minhook](https://github.com/TsudaKageyu/minhook)
 - [gabime/spdlog](https://github.com/gabime/spdlog)
+- [juliettef/IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders)
+- [FortAwesome/Font-Awesome](https://github.com/FortAwesome/Font-Awesome/releases#release-6.7.2)
 
 
 Code from:
@@ -101,6 +103,7 @@ If I used your code and did not credit you, please reach out, I'll be more than 
 ### Special thanks
 - to my friend Tris, who always listens to my technical yapping
 - Mass Effect Modding Discord
+- [d00t](https://github.com/llamathings), [Mgamerz](https://github.com/Mgamerz) and [Cersei](https://github.com/SirCxyrtyx) - for helping me with my understanding of LExSDK
 
 ## Other things
 **I do NOT allow this mod to be reposted just for the translation to be added.** The translation handling will be implemented in the future version, when it does - I'll be more than happy to entertain pull requests with created translations.
