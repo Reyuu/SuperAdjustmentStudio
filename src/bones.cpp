@@ -1,4 +1,4 @@
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+﻿#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 #include "bones.h"
 
 #include <cmath>
