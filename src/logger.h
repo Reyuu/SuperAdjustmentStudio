@@ -2,6 +2,9 @@
 #define SAS_LOGGER_H
 
 #include <string>
+#include <atomic>
+#include <thread>
+#include <sstream>
 #include "plugin.h"
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
@@ -34,6 +37,36 @@ inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
 
     try {
         if (Logger) {
+            if (info && info->ExceptionRecord) {
+                EXCEPTION_RECORD* rec = info->ExceptionRecord;
+                std::ostringstream es;
+                es << "crash handler: code=0x" << std::hex << rec->ExceptionCode
+                   << " addr=" << rec->ExceptionAddress
+                   << " nparams=" << std::dec << rec->NumberParameters;
+                if (rec->ExceptionCode == 0xC0000005 && rec->NumberParameters >= 2) {
+                    es << " access=" << (rec->ExceptionInformation[0] ? "write" : "read")
+                       << " at=0x" << std::hex << rec->ExceptionInformation[1];
+                }
+                Logger->error(es.str());
+                if (info->ContextRecord) {
+                    std::ostringstream cs;
+                    HMODULE mod = nullptr;
+                    char modName[MAX_PATH] = {};
+                    DWORD ripOffset = 0;
+                    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                           reinterpret_cast<LPCSTR>(static_cast<DWORD_PTR>(info->ContextRecord->Rip)), &mod)) {
+                        ripOffset = static_cast<DWORD>(info->ContextRecord->Rip - reinterpret_cast<DWORD_PTR>(mod));
+                        GetModuleFileNameA(mod, modName, MAX_PATH);
+                    }
+                    cs << "crash handler: rip=" << (void*)info->ContextRecord->Rip
+                       << " module=" << modName << "+0x" << std::hex << ripOffset
+                       << " rsp=" << (void*)info->ContextRecord->Rsp
+                       << " rax=" << (void*)info->ContextRecord->Rax
+                       << " rcx=" << (void*)info->ContextRecord->Rcx
+                       << " rdx=" << (void*)info->ContextRecord->Rdx;
+                    Logger->error(cs.str());
+                }
+            }
             Logger->error("crash handler: dumping backtrace + stack");
             Logger->dump_backtrace();
             Logger->flush();

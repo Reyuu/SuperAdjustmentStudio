@@ -6,7 +6,7 @@
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx11.h"
 #include <windows.h>
-#include "IconsFontAwesome4.h"
+#include "IconsFontAwesome6.h"
 
 #define IDR_FA_FONT 101
 static void fontModuleAnchor() {}
@@ -177,7 +177,13 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
     setupImGuiStyle();
 
     ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontDefault();
+    ImFontConfig baseFontConfig;
+    baseFontConfig.SizePixels = 15.0f;
+    io.Fonts->AddFontDefault(&baseFontConfig);
+
+    ImFontConfig trebuchetConfig;
+    trebuchetConfig.SizePixels = baseFontConfig.SizePixels + 2.0f;
+    io.FontDefault = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\trebuc.ttf", trebuchetConfig.SizePixels, &trebuchetConfig);
 
     HMODULE hMod = nullptr;
     if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -194,7 +200,7 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
                 config.PixelSnapH = true;
                 config.FontDataOwnedByAtlas = false;
                 static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-                io.Fonts->AddFontFromMemoryTTF(pData, (int)size, 14.0f, &config, icon_ranges);
+                io.Fonts->AddFontFromMemoryTTF(pData, (int)size, baseFontConfig.SizePixels, &config, icon_ranges);
             }
         }
     }

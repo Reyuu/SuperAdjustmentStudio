@@ -13,32 +13,6 @@ if (!variable) { \
 }
 
 // we need to resolve the native functions, because for some reason LESDK's way does not work
-// UE3: Core/Inc/UnObjBas.h
-using staticContructorObjectType = UObject*(
-    UClass*, 
-    UObject*, 
-    SFXName, 
-    QWORD, // DWORD for 32bit, QWORD for 64bit
-    UObject*, 
-    void*, 
-    UObject*, 
-    void*
-);
-// UE3: Engine/Inc/UnWorld.h
-using worldSpawnActorType = AActor*(
-    UWorld*,
-    UClass*,
-    SFXName,
-    const FVector&,
-    const FRotator&,
-    AActor*,
-    UBOOL,
-    UBOOL,
-    AActor*,
-    APawn*,
-    UBOOL,
-    ULevel*
-);
 // UE3: Core/Inc/UnPkg.h and LESDK
 using loadPackageType = UPackage*(
     UPackage*,
@@ -64,12 +38,6 @@ class SDKContext {
         LESDK::Initializer* initializer() const {
             return sdkInitializer;
         }
-        staticContructorObjectType* staticConstructorObject() const {
-            return staticConstructorObjectPointer;
-        }
-        worldSpawnActorType* worldSpawnActor() const {
-            return worldSpawnActorPointer;
-        }
         loadPackageType* loadPackage() const {
             return loadPackagePointer;
         }
@@ -79,8 +47,6 @@ class SDKContext {
         LESDK::Initializer* sdkInitializer = nullptr;
         void* processEventAddressPointer = nullptr;
         void* gameEngineTickAddressPointer = nullptr;
-        staticContructorObjectType* staticConstructorObjectPointer = nullptr;
-        worldSpawnActorType* worldSpawnActorPointer = nullptr;
         loadPackageType* loadPackagePointer = nullptr;
 };
 

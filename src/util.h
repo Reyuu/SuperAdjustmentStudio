@@ -5,7 +5,7 @@
 
 #include <string>
 #include <LESDK/Includes.LE2.hpp>
-
+#include "imgui.h"
 
 //UE3 -> transform in degrees for rotation and per-axis scale. Converted to whatever is usable at the engine.
 struct Transform {
@@ -25,5 +25,53 @@ std::string FStringToUtf8(const FString& fStr);
 std::string WStringToUtf8(const std::wstring& wStr);
 std::wstring toWString(const std::string& str);
 std::string toLowerStr(const std::string& str);
+
+// first live object of type T in GObjObjects
+template<class T>
+T* findFirstOf() {
+    if (!UObject::GObjObjects) {
+        return nullptr;
+    }
+    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
+        UObject* o = UObject::GObjObjects->GetData()[i];
+        if (o && o->IsA(T::StaticClass())) {
+            return static_cast<T*>(o);
+        }
+    }
+    return nullptr;
+}
+
+// run fn over every live object of type T in GObjObjects
+template<class T, class Fn>
+void forEachOf(Fn&& fn) {
+    if (!UObject::GObjObjects) {
+        return;
+    }
+    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
+        UObject* o = UObject::GObjObjects->GetData()[i];
+        if (o && o->IsA(T::StaticClass())) {
+            fn(static_cast<T*>(o));
+        }
+    }
+}
+
+static ImVec4 hexToImVec4(const std::string& hex) {
+    //remove leading '#' if present
+    std::string hexStr = hex;
+    if (!hexStr.empty() && hexStr[0] == '#') {
+        hexStr = hexStr.substr(1);
+    }
+    
+    if (hex.size() != 6 && hex.size() != 8) {
+        return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+    unsigned int r = 255, g = 255, b = 255, a = 255;
+    if (hex.size() == 6) {
+        sscanf_s(hex.c_str(), "%02x%02x%02x", &r, &g, &b);
+    } else {
+        sscanf_s(hex.c_str(), "%02x%02x%02x%02x", &r, &g, &b, &a);
+    }
+    return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
+}
 
 #endif // SAS_UTIL_H

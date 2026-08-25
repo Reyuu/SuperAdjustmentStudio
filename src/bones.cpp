@@ -1,4 +1,4 @@
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+﻿#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 #include "bones.h"
 
 #include <cmath>
@@ -22,34 +22,13 @@ static UAnimTree* findAnimTree(USkeletalMeshComponent* mesh) {
     if (mesh->Animations && mesh->Animations->IsA(UAnimTree::StaticClass())) {
         return (UAnimTree*)mesh->Animations;
     }
-    if (UObject::GObjObjects) {
-        for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-            UObject* o = UObject::GObjObjects->GetData()[i];
-            if (!o) {
-                continue;
-            }
-            if (!o->IsA(UAnimTree::StaticClass())) {
-                return (UAnimTree*)mesh->Animations;
-            }
-            if (UObject::GObjObjects) {
-                for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-                    UObject* o = UObject::GObjObjects->GetData()[i];
-                    if (!o) {
-                        continue;
-                    }
-                    if (!o->IsA(UAnimTree::StaticClass())) {
-                        continue;
-                    }
-
-                    UAnimTree* t = (UAnimTree*)o;
-                    if (t->Outer == mesh) {
-                        return t;
-                    }
-                }
-            }
+    UAnimTree* found = nullptr;
+    forEachOf<UAnimTree>([&](UAnimTree* t) {
+        if (!found && t->Outer == mesh) {
+            found = t;
         }
-    }
-    return nullptr;
+    });
+    return found;
 }
 
 #pragma endregion

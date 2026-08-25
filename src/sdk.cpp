@@ -23,8 +23,6 @@ void SDKContext::initSdkGlobals(ISharedProxyInterface* proxy) {
         GError = (void**)sdkInitializer->Resolve(BUILTIN_GWORLD_RIP);
     }
 
-    SDK_INITIALIZE_OBJECT_TYPED(staticConstructorObjectPointer, staticContructorObjectType, BUILTIN_STATICCONSTRUCTOBJECT_PHOOK);
-    SDK_INITIALIZE_OBJECT_TYPED(worldSpawnActorPointer, worldSpawnActorType, BUILTIN_UWORLDSPAWNACTOR_PHOOK);
     SDK_INITIALIZE_OBJECT_TYPED(loadPackagePointer, loadPackageType, BUILTIN_LOADPACKAGE_RVA);
 
     if (!processEventAddressPointer) {
