@@ -1,11 +1,10 @@
 #include "hook_manager.h"
 
-
-void HookManager::setSdkContext(SDKContext* sdk){
+void HookManager::setSdkContext(SDKContext* sdk) {
     sdkInstance = sdk;
 }
 
-void* HookManager::install(const char* name, void* target, void* detour){
+void* HookManager::install(const char* name, void* target, void* detour) {
     if (!sdkInstance || !sdkInstance->isInitialized() || !name || !target || !detour) {
         return nullptr;
     }
@@ -18,7 +17,7 @@ void* HookManager::install(const char* name, void* target, void* detour){
     return orig;
 }
 
-void HookManager::uninstallAll(){
+void HookManager::uninstallAll() {
     if (!sdkInstance || !sdkInstance->isInitialized()) {
         return;
     }

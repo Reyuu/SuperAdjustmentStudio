@@ -48,6 +48,7 @@ Press `F10` to show the SAS overlay. `Right-click` outside the overlay to move y
 ## Development
 ### Prerequisites
 - MSVC Visual Studio 18 2026
+- Python 3.14+
 ### Setup
 ```
 git clone <this repo>
@@ -88,6 +89,11 @@ To deploy the generated DLL, use `deploy.bat`. It runs `env.bat` and copies the 
 ## Contributing
 ```
 //TODO: docs/contribute.md
+```
+
+Make sure you have the hooks directory set:
+```
+git config core.hooksPath .githooks
 ```
 
 ## Attributions

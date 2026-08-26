@@ -33,7 +33,7 @@ std::string WStringToUtf8(const std::wstring& wStr) {
 
     std::string out(n, L'\0');
     DWORD err = 0;
-    if (!LESDK::EncodeUtf8FromWide(wStr.c_str(), (UINT)wStr.size(), &out[0], n, &err)) { 
+    if (!LESDK::EncodeUtf8FromWide(wStr.c_str(), (UINT)wStr.size(), &out[0], n, &err)) {
         return {};
     }
     return out;

@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <sstream>
 
+#include "application.h"
 #include "logger.h"
 #include "util.h"
-#include "application.h"
 
 static void collectTreeSequenceNodes(UAnimNode* node, std::vector<UAnimNodeSequence*>& out) {
     if (!node) {
@@ -39,7 +39,7 @@ void Animation::pauseAnimations(bool pause) {
         if (animPauseActiveState) {
             return;
         }
-        
+
         pausedAnimNodes.clear();
         pausedAnimRates.clear();
         std::vector<UAnimNodeSequence*> nodes;
@@ -81,18 +81,17 @@ void Animation::keepAnimationsPaused() {
     }
 }
 
-void Animation::resetAnimation(const std::string& pawnName)
-{
+void Animation::resetAnimation(const std::string& pawnName) {
     USkeletalMeshComponent* mesh = Application::instance().engine().findPawnMesh(pawnName);
     if (!mesh) {
         Logger->debug("resetAnimation: skeletal mesh component not found on target");
         return;
     }
 
-    if (customAnimSlot) {
+    if (customAnimSlot && isLiveObject(customAnimSlot)) {
         customAnimSlot->StopCustomAnim(0.2f);
-        customAnimSlot = nullptr;
     }
+    customAnimSlot = nullptr;
 
     if (mesh->Animations) {
         mesh->StopAnim();
@@ -108,10 +107,15 @@ void Animation::resetAnimation(const std::string& pawnName)
     }
 
     // restore
+    if (playedNode && !isLiveObject(playedNode)) {
+        playedNode = nullptr;
+        playedNodeOrigSeq = nullptr;
+    }
     if (playedNode) {
         bool stillInTree = std::find(nodes.begin(), nodes.end(), playedNode) != nodes.end();
         if (!stillInTree) {
             playedNode = nullptr;
+            playedNodeOrigSeq = nullptr;
         }
     }
     if (playedNode) {
@@ -123,6 +127,7 @@ void Animation::resetAnimation(const std::string& pawnName)
             playedNode->AnimSeq = seq;
             playedNode->PlayAnim(1, 1.0f, 0.0f);
             playedNode = nullptr;
+            playedNodeOrigSeq = nullptr;
         }
     }
 
@@ -131,7 +136,7 @@ void Animation::resetAnimation(const std::string& pawnName)
     Logger->debug(ss.str());
 }
 
-//TODO: more robust way of searching for unlinked animations and linking them from other pckgs
+// TODO: more robust way of searching for unlinked animations and linking them from other pckgs
 static bool linkAnimSetForSequence(USkeletalMeshComponent* mesh, const std::string& animName) {
     if (!mesh || animName.empty()) {
         return false;
@@ -166,8 +171,7 @@ static bool linkAnimSetForSequence(USkeletalMeshComponent* mesh, const std::stri
     mesh->AnimSets.Add(found);
 
     std::ostringstream ss;
-    ss  << "playAnimation: linked set '" << FStringToUtf8(found->GetName())
-        << "' to resolve '" << animName << "'";
+    ss << "playAnimation: linked set '" << FStringToUtf8(found->GetName()) << "' to resolve '" << animName << "'";
     Logger->debug(ss.str());
     return true;
 }
@@ -177,7 +181,7 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
         Logger->debug("playAnimation: empty anim name");
         return;
     }
-    
+
     AActor* actor = Application::instance().engine().findActorByName(pawnName);
     if (!actor) {
         Logger->debug("playAnimation: target pawn not found");
@@ -207,8 +211,7 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
     }
     if (slots.Count() == 0) {
         std::ostringstream ss;
-        ss  << "playAnimation: '" << animName << "' on '" << pawnName
-            << "' failed (no body-stance slots in tree; " << nodes.size() << " seq nodes)";
+        ss << "playAnimation: '" << animName << "' on '" << pawnName << "' failed (no body-stance slots in tree; " << nodes.size() << " seq nodes)";
         Logger->debug(ss.str());
         return;
     }
@@ -230,11 +233,10 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
     mesh->StopAnim();
     float pos = pawn->PawnPlayCustomAnim(slot, sfxAnim, 1.0f, 0.1f, 0.2f, bLoop ? 1 : 0, 1, 0.0f);
     customAnimSlot = slot;
-    
+
     std::ostringstream ss;
-    ss  << "playAnimation: '" << animName << "' on '" << pawnName
-        << "' via PawnPlayCustomAnim slot='"
-        << (slot->NodeName.GetName() ? slot->NodeName.GetName() : "?")
-        << "' (slots=" << slots.Count() << ", seqNodes=" << nodes.size() << ", pos=" << pos << ")";
+    ss << "playAnimation: '" << animName << "' on '" << pawnName << "' via PawnPlayCustomAnim slot='"
+       << (slot->NodeName.GetName() ? slot->NodeName.GetName() : "?") << "' (slots=" << slots.Count() << ", seqNodes=" << nodes.size() << ", pos=" << pos
+       << ")";
     Logger->debug(ss.str());
 }

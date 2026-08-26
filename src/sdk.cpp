@@ -33,11 +33,7 @@ void SDKContext::initSdkGlobals(ISharedProxyInterface* proxy) {
     }
 
     std::ostringstream ss;
-    ss  << " GObjObjects=0x" << (void*)UObject::GObjObjects
-        << " GMalloc=0x" << (void*)GMalloc
-        << " GBioNamePools=0x" << (void*)SFXName::GBioNamePools
-        << " GInitMethod=0x" << (void*)SFXName::GInitMethod
-        << " GWorld=0x" << (void*)GWorld
-        << " ProcessEvent=0x" << processEventAddressPointer;
+    ss << " GObjObjects=0x" << (void*)UObject::GObjObjects << " GMalloc=0x" << (void*)GMalloc << " GBioNamePools=0x" << (void*)SFXName::GBioNamePools
+       << " GInitMethod=0x" << (void*)SFXName::GInitMethod << " GWorld=0x" << (void*)GWorld << " ProcessEvent=0x" << processEventAddressPointer;
     Logger->debug(ss.str());
 }

@@ -1,9 +1,9 @@
 #pragma once
-#include "imgui.h"
+#include "../util.h"
 #include "IconsFontAwesome6.h"
+#include "imgui.h"
 #include <string>
 #include <vector>
-#include "../util.h"
 
 typedef enum ToastTypeNotification {
     ToastTypeSuccess,
@@ -13,7 +13,6 @@ typedef enum ToastTypeNotification {
 } ToastTypeNotification;
 
 struct ToastNotification {
-    private:
     public:
         std::string message;
         ToastTypeNotification type;
@@ -56,6 +55,7 @@ class ToastNotificationManager {
     public:
         void addToastNotification(const std::string& message, ToastTypeNotification type, double duration);
         void renderToastNotifications();
+
     private:
         std::vector<ToastNotification> notifications;
         std::vector<ToastNotification> toastNotifications;
@@ -64,5 +64,6 @@ class ToastNotificationManager {
         int toastNotificationPadding = 10;
         int toastNotificationWidth = 400;
         int toastNotificationHeight = 50;
-        ImGuiWindowFlags toastNotificationWindowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+        ImGuiWindowFlags toastNotificationWindowFlags =
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 };

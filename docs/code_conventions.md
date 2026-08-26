@@ -1,3 +1,19 @@
+## File management
+| Extension | File type        | Comment |
+| --------- | ---------------- | ------- |
+| `.h`      | headers          |         |
+| `.cpp`    | source           |         |
+| `.rc`     | resource headers |         |
+
+| Directory         | Comment                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `src/`            | Source directory, try to keep a flat structure.                                       |
+| `src/ui_helpers/` | UI helpers that could and will eventually moved to a separate library                 |
+| `thirdparty/`     | All of the submodules and third-party libraries.                                      |
+| `assets/`         | Assets for the README.md and other user facing documents.                             |
+| `docs/`           | Documentation about the project.                                                      |
+| `build/`          | Build artifacts, generated only after building the project. Should NEVER be comitted. |
+
 ## Indentation
 Use K&R style indentation style.
 

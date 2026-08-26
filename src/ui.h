@@ -6,15 +6,16 @@
 #include <vector>
 
 #include "bones.h"
-#include "util.h"
 #include "game_window.h"
 #include "native_renderer.h"
 #include "ui_helpers/toast_notifications.h"
+#include "util.h"
 
 struct ClassEntry {
-    std::string package;
-    std::string name;
-    std::string fullName;
+    public:
+        std::string package;
+        std::string name;
+        std::string fullName;
 };
 
 class UI {
@@ -40,7 +41,9 @@ class UI {
         bool renderTransformEditor(Transform& t, const char* idPrefix);
         void applyUIInputState(GameWindow& window);
         void renderOverlayContents(NativeRenderer& renderer);
-        
+
+        ToastNotificationManager toastManager;
+
     private:
         void renderControlsSection();
         void renderSelectionSection();
@@ -103,8 +106,6 @@ class UI {
         bool boneListTried = false;
 
         void refreshBoneList(const std::string& pawnName);
-
-        ToastNotificationManager toastManager;
 };
 
 #endif // SAS_UI_H

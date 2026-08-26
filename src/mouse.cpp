@@ -3,17 +3,16 @@
 
 #include "mouse.h"
 
+#include <Unknwn.h> // LPUNKNOWN
 #include <cstring>
 #include <sstream>
-#include <Unknwn.h> // LPUNKNOWN
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 
+#include "application.h"
 #include "hook_manager.h"
 #include "logger.h"
-#include "application.h"
-
 
 #pragma region // WinApi mouse trap
 static BOOL WINAPI hkGetCursorPos(LPPOINT lpPoint) {
@@ -25,36 +24,40 @@ static BOOL WINAPI hkGetCursorInfo(PCURSORINFO pci) {
 }
 
 BOOL Mouse::hookGetCursorPos(LPPOINT lpPoint) {
-    if (cursorPassthroughState) {
-        return origGetCursorPos(lpPoint);
-    }
-    if (Application::instance().ui().showUI().load()) {
-        if (lpPoint) {
-            *lpPoint = frozenCursorPosition;
-            return TRUE;
+    SAS_HOOK_TRY {
+        if (cursorPassthroughState) {
+            return origGetCursorPos(lpPoint);
         }
-        return FALSE;
-    }
-    return origGetCursorPos(lpPoint);
+        if (Application::instance().ui().showUI().load()) {
+            if (lpPoint) {
+                *lpPoint = frozenCursorPosition;
+                return TRUE;
+            }
+            return FALSE;
+        }
+        return origGetCursorPos(lpPoint);
+    } SAS_HOOK_CATCH_RET(origGetCursorPos ? origGetCursorPos(lpPoint) : FALSE)
 }
 
 BOOL Mouse::hookGetCursorInfo(PCURSORINFO pci) {
-    if (cursorPassthroughState) {
-        return origGetCursorInfo(pci);
-    }
-    if (Application::instance().ui().showUI().load()) {
-        if (pci) {
-            pci->cbSize = sizeof(CURSORINFO);
-            pci->flags = CURSOR_SHOWING;
-            pci->hCursor = nullptr;
-            pci->ptScreenPos = frozenCursorPosition;
+    SAS_HOOK_TRY {
+        if (cursorPassthroughState) {
+            return origGetCursorInfo(pci);
         }
-        return TRUE;
-    }
-    return origGetCursorInfo(pci);
+        if (Application::instance().ui().showUI().load()) {
+            if (pci) {
+                pci->cbSize = sizeof(CURSORINFO);
+                pci->flags = CURSOR_SHOWING;
+                pci->hCursor = nullptr;
+                pci->ptScreenPos = frozenCursorPosition;
+            }
+            return TRUE;
+        }
+        return origGetCursorInfo(pci);
+    } SAS_HOOK_CATCH_RET(origGetCursorInfo ? origGetCursorInfo(pci) : FALSE)
 }
 
-//winapi mouse trap, probably overkill but w/e
+// winapi mouse trap, probably overkill but w/e
 void Mouse::initMouseTrap(HookManager& hooks) {
     HMODULE h = LoadLibraryA("user32.dll");
     if (!h) {
@@ -62,7 +65,7 @@ void Mouse::initMouseTrap(HookManager& hooks) {
         return;
     }
 
-    //GetCursorPos
+    // GetCursorPos
     if (FARPROC p = GetProcAddress(h, "GetCursorPos")) {
         origGetCursorPos = (GetCursorPosFn)hooks.install("GetCursorPos", p, &hkGetCursorPos);
         if (origGetCursorPos) {
@@ -74,7 +77,7 @@ void Mouse::initMouseTrap(HookManager& hooks) {
         Logger->debug("WinApi mouse trap: could not find GetCursorPos");
     }
 
-    //GetCursorInfo
+    // GetCursorInfo
     if (FARPROC p = GetProcAddress(h, "GetCursorInfo")) {
         origGetCursorInfo = (GetCursorInfoFn)hooks.install("GetCursorInfo", p, &hkGetCursorInfo);
         if (origGetCursorInfo) {
@@ -135,33 +138,39 @@ static HRESULT STDMETHODCALLTYPE hkD8GetDeviceDataA(void* This, DWORD cbObjectDa
 }
 
 HRESULT Mouse::hookD8GetDeviceState(void* This, DWORD cbData, LPVOID lpvData, bool isW) {
-    if (d8FreezeIfUI(cbData, lpvData, isW ? "W" : "A")) {
-        return 0;
-    }
-    D8GetDeviceStateFn orig = isW ? origD8GetDeviceStateW : origD8GetDeviceStateA;
-    return orig(This, cbData, lpvData);
+    SAS_HOOK_TRY {
+        if (d8FreezeIfUI(cbData, lpvData, isW ? "W" : "A")) {
+            return 0;
+        }
+        D8GetDeviceStateFn orig = isW ? origD8GetDeviceStateW : origD8GetDeviceStateA;
+        return orig(This, cbData, lpvData);
+    } SAS_HOOK_CATCH_RET((isW && origD8GetDeviceStateW) ? origD8GetDeviceStateW(This, cbData, lpvData)
+                                                      : (origD8GetDeviceStateA ? origD8GetDeviceStateA(This, cbData, lpvData) : E_FAIL))
 }
 
-HRESULT Mouse::hookD8GetDeviceData(void *This, DWORD cbObjectData, void *rgdod, DWORD *pdwInOut, DWORD dwFlags, bool isW) {
-    if (Application::instance().ui().showUI().load() && !Application::instance().engine().isCameraDragActive().load()) {
-        Application::instance().engine().freezeLook(true);
-        if (pdwInOut) {
-            *pdwInOut = 0;
+HRESULT Mouse::hookD8GetDeviceData(void* This, DWORD cbObjectData, void* rgdod, DWORD* pdwInOut, DWORD dwFlags, bool isW) {
+    SAS_HOOK_TRY {
+        if (Application::instance().ui().showUI().load() && !Application::instance().engine().isCameraDragActive().load()) {
+            Application::instance().engine().freezeLook(true);
+            if (pdwInOut) {
+                *pdwInOut = 0;
+            }
         }
-    }
 
-    bool& logged = isW ? di8DataLoggedW : di8DataLoggedA;
-    if (!logged && rgdod && pdwInOut && *pdwInOut > 0) {
-        const DWORD* h = (const DWORD*)rgdod;
-        if (h[1] != 0) {
-            std::ostringstream ss;
-            ss << "DI8 mouse trap: game polls " << (isW ? "W" : "A") << " GetDeviceData (ofs=" << h[0] << " delta=" << (int)h[1] << ")";
-            Logger->debug(ss.str());
-            logged = true;
+        bool& logged = isW ? di8DataLoggedW : di8DataLoggedA;
+        if (!logged && rgdod && pdwInOut && *pdwInOut > 0) {
+            const DWORD* h = (const DWORD*)rgdod;
+            if (h[1] != 0) {
+                std::ostringstream ss;
+                ss << "DI8 mouse trap: game polls " << (isW ? "W" : "A") << " GetDeviceData (ofs=" << h[0] << " delta=" << (int)h[1] << ")";
+                Logger->debug(ss.str());
+                logged = true;
+            }
         }
-    }
-    D8GetDeviceDataFn orig = isW ? origD8GetDeviceDataW : origD8GetDeviceDataA;
-    return orig(This, cbObjectData, rgdod, pdwInOut, dwFlags);
+        D8GetDeviceDataFn orig = isW ? origD8GetDeviceDataW : origD8GetDeviceDataA;
+        return orig(This, cbObjectData, rgdod, pdwInOut, dwFlags);
+    } SAS_HOOK_CATCH_RET((isW && origD8GetDeviceDataW) ? origD8GetDeviceDataW(This, cbObjectData, rgdod, pdwInOut, dwFlags)
+                                                     : (origD8GetDeviceDataA ? origD8GetDeviceDataA(This, cbObjectData, rgdod, pdwInOut, dwFlags) : E_FAIL))
 }
 
 // insanity begins here
@@ -201,37 +210,41 @@ static HRESULT STDMETHODCALLTYPE hkD8CreateDevice(void* This, REFGUID rguid, voi
 }
 
 HRESULT Mouse::hookD8CreateDevice(void* This, REFGUID rguid, void** out, void* punkOuter) {
-    HRESULT hr = origD8CreateDevice ? origD8CreateDevice(This, rguid, out, punkOuter) : E_FAIL;
-    if (SUCCEEDED(hr) && out && *out && IsEqualGUID(rguid, GUID_SysMouse)) {
-        Logger->debug("DI8 mouse trap: Game created a mouse device. Hooking its poll methods.");
-        auto it = d8VariantByInterface.find(This);
-        bool isW = it != d8VariantByInterface.end() ? it->second : (d8CreateVariant == 0);
-        installD8DeviceHooks(*out, isW);
-    }
-    return hr;
+    SAS_HOOK_TRY {
+        HRESULT hr = origD8CreateDevice ? origD8CreateDevice(This, rguid, out, punkOuter) : E_FAIL;
+        if (SUCCEEDED(hr) && out && *out && IsEqualGUID(rguid, GUID_SysMouse)) {
+            Logger->debug("DI8 mouse trap: Game created a mouse device. Hooking its poll methods.");
+            auto it = d8VariantByInterface.find(This);
+            bool isW = it != d8VariantByInterface.end() ? it->second : (d8CreateVariant == 0);
+            installD8DeviceHooks(*out, isW);
+        }
+        return hr;
+    } SAS_HOOK_CATCH_RET(origD8CreateDevice ? origD8CreateDevice(This, rguid, out, punkOuter) : E_FAIL)
 }
 
 static HRESULT STDMETHODCALLTYPE hkDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut, LPUNKNOWN punkOuter) {
     return Application::instance().mouse().hookDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
 }
 
-HRESULT Mouse::hookDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, const IID &riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter) {
-    HRESULT hr = origD8Create ? origD8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter) : E_FAIL;
-    if (SUCCEEDED(hr) && ppvOut && *ppvOut) {
-        d8CreateVariant = IsEqualGUID(riidltf, IID_IDirectInput8W) ? 0 : 1;
-        d8VariantByInterface[*ppvOut] = d8CreateVariant == 0;
-        void** vtable = d8Vtbl(*ppvOut);
-        void* createDev = vtable[3];
-        if (!origD8CreateDevice) {
-            origD8CreateDevice = (D8CreateDeviceFn)hookManager->install("D8CreateDevice", createDev, &hkD8CreateDevice);
+HRESULT Mouse::hookDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, const IID& riidltf, LPVOID* ppvOut, LPUNKNOWN punkOuter) {
+    SAS_HOOK_TRY {
+        HRESULT hr = origD8Create ? origD8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter) : E_FAIL;
+        if (SUCCEEDED(hr) && ppvOut && *ppvOut) {
+            d8CreateVariant = IsEqualGUID(riidltf, IID_IDirectInput8W) ? 0 : 1;
+            d8VariantByInterface[*ppvOut] = d8CreateVariant == 0;
+            void** vtable = d8Vtbl(*ppvOut);
+            void* createDev = vtable[3];
             if (!origD8CreateDevice) {
-                Logger->debug("DI8 mouse trap: CreateDevice hook failed!");
+                origD8CreateDevice = (D8CreateDeviceFn)hookManager->install("D8CreateDevice", createDev, &hkD8CreateDevice);
+                if (!origD8CreateDevice) {
+                    Logger->debug("DI8 mouse trap: CreateDevice hook failed!");
+                }
+            } else {
+                Logger->debug("DI8 mouse trap: game DirectInput8Create intercepted, CreateDevice hooked.");
             }
-        } else {
-            Logger->debug("DI8 mouse trap: game DirectInput8Create intercepted, CreateDevice hooked.");
         }
-    }
-    return hr;
+        return hr;
+    } SAS_HOOK_CATCH_RET(origD8Create ? origD8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter) : E_FAIL)
 }
 
 void Mouse::initDI8MouseHook(HookManager& hooks) {
@@ -256,7 +269,7 @@ void Mouse::initDI8MouseHook(HookManager& hooks) {
     }
 
     // try creating out own instances too, in case of proxy dll
-    const GUID* variants[2] = { &IID_IDirectInput8W, &IID_IDirectInput8A};
+    const GUID* variants[2] = {&IID_IDirectInput8W, &IID_IDirectInput8A};
     const D8GetDeviceStateFn hkState[2] = {&hkD8GetDeviceStateW, &hkD8GetDeviceStateA};
     const D8GetDeviceDataFn hkData[2] = {&hkD8GetDeviceDataW, &hkD8GetDeviceDataA};
     D8GetDeviceStateFn* origState[2] = {&origD8GetDeviceStateW, &origD8GetDeviceStateA};
@@ -309,7 +322,8 @@ void Mouse::initDI8MouseHook(HookManager& hooks) {
         }
 
         std::ostringstream ss;
-        ss << "DI8 mouse trap: " << (v == 0 ? "W" : "A") << " variant " << (ok ? "hooked" : "hook FAILED") << " (state=0x" << std::hex << vtable[9] << " data=0x" << vtable[10] << std::dec << ")";
+        ss << "DI8 mouse trap: " << (v == 0 ? "W" : "A") << " variant " << (ok ? "hooked" : "hook FAILED") << " (state=0x" << std::hex << vtable[9]
+           << " data=0x" << vtable[10] << std::dec << ")";
         Logger->debug(ss.str());
     }
     if (hookedVariants == 0) {

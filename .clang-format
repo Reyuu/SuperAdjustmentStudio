@@ -1,0 +1,39 @@
+BasedOnStyle: LLVM
+Language: Cpp
+IndentWidth: 4
+ColumnLimit: 160
+
+# Indentation & Braces
+BreakBeforeBraces: Attach
+InsertBraces: true
+IndentAccessModifiers: true
+IfMacros:
+    - SAS_HOOK_TRY
+StatementMacros:
+    - SAS_HOOK_CATCH_VOID
+    - SAS_HOOK_CATCH_RET
+StatementAttributeLikeMacros:
+    - SAS_HOOK_CATCH_VOID
+    - SAS_HOOK_CATCH_RET
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortLambdasOnASingleLine: None
+
+# Alignment
+AlignAfterOpenBracket: Align
+AlignOperands: Align
+AlignTrailingComments: true
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignEscapedNewlines: Left
+AlignArrayOfStructures: Left
+
+# Pointers
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# Switch Statements
+IndentCaseLabels: true

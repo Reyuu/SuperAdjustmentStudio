@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+root=$(git rev-parse --show-toplevel)
+py "$root/tools/format.py" --staged
+git diff --cached --name-only --diff-filter=ACMR | while IFS= read -r f; do git add "$f"; done

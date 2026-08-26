@@ -1,11 +1,11 @@
 #ifndef SAS_BONES_H
 #define SAS_BONES_H
 
+#include <LESDK/Includes.LE2.hpp>
 #include <atomic>
 #include <mutex>
 #include <string>
 #include <vector>
-#include <LESDK/Includes.LE2.hpp>
 
 enum MeshTarget : int {
     MESH_BODY = 0,
@@ -13,13 +13,14 @@ enum MeshTarget : int {
 };
 
 struct BonePoseInfo {
-    std::string boneName;
-    int index = -1;
-    int parentIndex = -1;
-    std::string parentName;
-    float pos[3] = {0, 0, 0};
-    float rot[3] = {0, 0, 0};
-    float scale[3] = {1, 1, 1};
+    public:
+        std::string boneName;
+        int index = -1;
+        int parentIndex = -1;
+        std::string parentName;
+        float pos[3] = {0, 0, 0};
+        float rot[3] = {0, 0, 0};
+        float scale[3] = {1, 1, 1};
 };
 
 class Bones {
@@ -36,19 +37,20 @@ class Bones {
         void resetBonePose(const std::string& pawnName, MeshTarget target);
         void absoluteResetBones(const std::string& pawnName, MeshTarget target);
         void keepBonePoses();
-        
+
     private:
         struct BonePoseState {
-            std::mutex mtx;
-            std::vector<BonePoseInfo> posed;
-            std::string pawn;
-            MeshTarget target = MESH_BODY;
-            std::vector<FBoneAtom> savedAtoms;
-            std::vector<int> savedIndices;
-            std::vector<int> pendingSnapshots;
-            bool savedUseSavedPose = false;
-            int boneCount = 0;
-            bool toApply = false;
+            public:
+                std::mutex mtx;
+                std::vector<BonePoseInfo> posed;
+                std::string pawn;
+                MeshTarget target = MESH_BODY;
+                std::vector<FBoneAtom> savedAtoms;
+                std::vector<int> savedIndices;
+                std::vector<int> pendingSnapshots;
+                bool savedUseSavedPose = false;
+                int boneCount = 0;
+                bool toApply = false;
         };
 
         BonePoseState bonePose;
@@ -58,4 +60,4 @@ class Bones {
         void releaseAllBonesFromPose(std::string pawn, MeshTarget target);
 };
 
-#endif //SAS_BONES_H
+#endif // SAS_BONES_H
