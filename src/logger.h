@@ -1,14 +1,14 @@
 #ifndef SAS_LOGGER_H
 #define SAS_LOGGER_H
 
-#include <string>
-#include <atomic>
-#include <thread>
-#include <sstream>
-#include <exception>
 #include "plugin.h"
-#include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/spdlog.h"
+#include <atomic>
+#include <exception>
+#include <sstream>
+#include <string>
+#include <thread>
 
 inline std::shared_ptr<spdlog::logger> define_logger() {
     spdlog::set_level(spdlog::level::debug);
@@ -41,12 +41,10 @@ inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
             if (info && info->ExceptionRecord) {
                 EXCEPTION_RECORD* rec = info->ExceptionRecord;
                 std::ostringstream es;
-                es << "crash handler: code=0x" << std::hex << rec->ExceptionCode
-                   << " addr=" << rec->ExceptionAddress
-                   << " nparams=" << std::dec << rec->NumberParameters;
+                es << "crash handler: code=0x" << std::hex << rec->ExceptionCode << " addr=" << rec->ExceptionAddress << " nparams=" << std::dec
+                   << rec->NumberParameters;
                 if (rec->ExceptionCode == 0xC0000005 && rec->NumberParameters >= 2) {
-                    es << " access=" << (rec->ExceptionInformation[0] ? "write" : "read")
-                       << " at=0x" << std::hex << rec->ExceptionInformation[1];
+                    es << " access=" << (rec->ExceptionInformation[0] ? "write" : "read") << " at=0x" << std::hex << rec->ExceptionInformation[1];
                 }
                 Logger->error(es.str());
                 if (info->ContextRecord) {
@@ -59,11 +57,8 @@ inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
                         ripOffset = static_cast<DWORD>(info->ContextRecord->Rip - reinterpret_cast<DWORD_PTR>(mod));
                         GetModuleFileNameA(mod, modName, MAX_PATH);
                     }
-                    cs << "crash handler: rip=" << (void*)info->ContextRecord->Rip
-                       << " module=" << modName << "+0x" << std::hex << ripOffset
-                       << " rsp=" << (void*)info->ContextRecord->Rsp
-                       << " rax=" << (void*)info->ContextRecord->Rax
-                       << " rcx=" << (void*)info->ContextRecord->Rcx
+                    cs << "crash handler: rip=" << (void*)info->ContextRecord->Rip << " module=" << modName << "+0x" << std::hex << ripOffset
+                       << " rsp=" << (void*)info->ContextRecord->Rsp << " rax=" << (void*)info->ContextRecord->Rax << " rcx=" << (void*)info->ContextRecord->Rcx
                        << " rdx=" << (void*)info->ContextRecord->Rdx;
                     Logger->error(cs.str());
                 }
@@ -72,10 +67,11 @@ inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
             Logger->dump_backtrace();
             Logger->flush();
         }
-    } catch (...) {}
+    } catch (...) {
+    }
 
     // let the game's own unhandled-exception handler run afterwards (its dialog etc.)
-    return EXCEPTION_CONTINUE_SEARCH; 
+    return EXCEPTION_CONTINUE_SEARCH;
 }
 
 inline void installCrashHandler() {
@@ -84,50 +80,50 @@ inline void installCrashHandler() {
 
 #define SAS_HOOK_TRY try
 
-#define SAS_HOOK_CATCH_VOID                                                \
-    catch (const std::exception& e) {                                      \
-        try {                                                             \
-            if (Logger) {                                                 \
-                Logger->error("SAS hook exception: {}", e.what());       \
-                Logger->dump_backtrace();                                  \
-                Logger->flush();                                           \
-            }                                                            \
-        } catch (...) {                                                   \
-        }                                                                \
-    }                                                                      \
-    catch (...) {                                                          \
-        try {                                                             \
-            if (Logger) {                                                 \
+#define SAS_HOOK_CATCH_VOID                                             \
+    catch (const std::exception& e) {                                   \
+        try {                                                           \
+            if (Logger) {                                               \
+                Logger->error("SAS hook exception: {}", e.what());      \
+                Logger->dump_backtrace();                               \
+                Logger->flush();                                        \
+            }                                                           \
+        } catch (...) {                                                 \
+        }                                                               \
+    }                                                                   \
+    catch (...) {                                                       \
+        try {                                                           \
+            if (Logger) {                                               \
                 Logger->error("SAS hook exception: unknown (non-std)"); \
-                Logger->dump_backtrace();                                  \
-                Logger->flush();                                           \
-            }                                                            \
-        } catch (...) {                                                   \
-        }                                                                \
+                Logger->dump_backtrace();                               \
+                Logger->flush();                                        \
+            }                                                           \
+        } catch (...) {                                                 \
+        }                                                               \
     }
 
-#define SAS_HOOK_CATCH_RET(fallback)                                       \
-    catch (const std::exception& e) {                                      \
-        try {                                                             \
-            if (Logger) {                                                 \
-                Logger->error("SAS hook exception: {}", e.what());       \
-                Logger->dump_backtrace();                                  \
-                Logger->flush();                                           \
-            }                                                            \
-        } catch (...) {                                                   \
-        }                                                                \
-        return (fallback);                                                 \
-    }                                                                      \
-    catch (...) {                                                          \
-        try {                                                             \
-            if (Logger) {                                                 \
+#define SAS_HOOK_CATCH_RET(fallback)                                    \
+    catch (const std::exception& e) {                                   \
+        try {                                                           \
+            if (Logger) {                                               \
+                Logger->error("SAS hook exception: {}", e.what());      \
+                Logger->dump_backtrace();                               \
+                Logger->flush();                                        \
+            }                                                           \
+        } catch (...) {                                                 \
+        }                                                               \
+        return (fallback);                                              \
+    }                                                                   \
+    catch (...) {                                                       \
+        try {                                                           \
+            if (Logger) {                                               \
                 Logger->error("SAS hook exception: unknown (non-std)"); \
-                Logger->dump_backtrace();                                  \
-                Logger->flush();                                           \
-            }                                                            \
-        } catch (...) {                                                   \
-        }                                                                \
-        return (fallback);                                                 \
+                Logger->dump_backtrace();                               \
+                Logger->flush();                                        \
+            }                                                           \
+        } catch (...) {                                                 \
+        }                                                               \
+        return (fallback);                                              \
     }
 
 #endif // SAS_LOGGER_H

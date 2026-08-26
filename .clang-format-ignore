@@ -1,0 +1,14 @@
+.cache/
+.cache/*
+.github/
+.github/*
+.vscode/
+.vscode/*
+assets/
+assets/*
+docs/
+docs/*
+patches/
+patches/*
+thirdparty/
+thirdparty/*

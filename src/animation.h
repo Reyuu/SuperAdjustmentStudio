@@ -1,9 +1,9 @@
 #ifndef SAS_ANIMATION_H
 #define SAS_ANIMATION_H
 
+#include <LESDK/Includes.LE2.hpp>
 #include <string>
 #include <vector>
-#include <LESDK/Includes.LE2.hpp>
 
 class Animation {
     public:

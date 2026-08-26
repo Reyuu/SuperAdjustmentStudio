@@ -3,20 +3,20 @@
 
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
-#include <atomic>
-#include <thread>
-#include "logger.h"
-#include "sdk.h"
-#include "hook_manager.h"
+#include "animation.h"
+#include "bones.h"
+#include "engine.h"
 #include "game_window.h"
+#include "gizmo.h"
+#include "hook_manager.h"
+#include "logger.h"
+#include "mouse.h"
 #include "native_renderer.h"
 #include "props.h"
-#include "mouse.h"
+#include "sdk.h"
 #include "ui.h"
-#include "engine.h"
-#include "gizmo.h"
-#include "bones.h"
-#include "animation.h"
+#include <atomic>
+#include <thread>
 
 class ISharedProxyInterface;
 class Application {
@@ -39,19 +39,19 @@ class Application {
             return gameWindowInstance;
         }
 
-        NativeRenderer& renderer(){
+        NativeRenderer& renderer() {
             return rendererInstance;
         }
 
         Properties& properties() {
             return propertiesInstance;
         }
-        
+
         Mouse& mouse() {
             return mouseInstance;
         }
-        
-        UI& ui(){
+
+        UI& ui() {
             return uiInstance;
         }
 
@@ -72,9 +72,11 @@ class Application {
         }
         bool attach(ISharedProxyInterface* proxy);
         void detach();
+
     private:
         static HRESULT STDMETHODCALLTYPE presentDetour(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
-        static HRESULT STDMETHODCALLTYPE resizeBuffersDetour(IDXGISwapChain* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
+        static HRESULT STDMETHODCALLTYPE resizeBuffersDetour(IDXGISwapChain* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
+                                                             UINT SwapChainFlags);
         static LRESULT CALLBACK wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
         static Application* appInstance;

@@ -4,8 +4,9 @@
 #include <sstream>
 
 struct SubclassAllArgs {
-    GameWindow* window;
-    WNDPROC handler;
+    public:
+        GameWindow* window;
+        WNDPROC handler;
 };
 
 WNDPROC GameWindow::subclass(HWND hwnd, WNDPROC handler) {

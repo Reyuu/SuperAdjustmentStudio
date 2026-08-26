@@ -1,10 +1,10 @@
 #ifndef SAS_MOUSE_H
 #define SAS_MOUSE_H
 
-#include <windows.h>
+#include "hook_manager.h"
 #include <Unknwn.h> // LPUNKNOWN
 #include <unordered_map>
-#include "hook_manager.h"
+#include <windows.h>
 
 // Useful: https://www.youtube.com/watch?v=oh9i7hPQZT8
 
@@ -24,7 +24,7 @@ class Mouse {
         POINT& frozenCursor() {
             return frozenCursorPosition;
         }
-        
+
         void initMouseTrap(HookManager& hooks);
         void initDI8MouseHook(HookManager& hooks);
 

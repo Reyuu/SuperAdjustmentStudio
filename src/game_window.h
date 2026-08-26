@@ -2,9 +2,9 @@
 #define SAS_GAME_WINDOW_H
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
-#include <windows.h>
 #include <utility>
 #include <vector>
+#include <windows.h>
 
 class GameWindow {
     public:
@@ -27,10 +27,10 @@ class GameWindow {
         WNDPROC subclass(HWND hwnd, WNDPROC handler);
         void subclassAllProcessWindows(WNDPROC handler);
         void restoreAll();
+
     private:
         std::vector<std::pair<HWND, WNDPROC>> subclassedWindowsVector;
         HWND primaryGameWindow = NULL;
 };
-
 
 #endif // SAS_GAME_WINDOW_H

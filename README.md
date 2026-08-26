@@ -48,6 +48,7 @@ Press `F10` to show the SAS overlay. `Right-click` outside the overlay to move y
 ## Development
 ### Prerequisites
 - MSVC Visual Studio 18 2026
+- Python 3.14+
 ### Setup
 ```
 git clone <this repo>

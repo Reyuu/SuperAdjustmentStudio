@@ -7,9 +7,9 @@
 #include <mutex>
 #include <sstream>
 
+#include "application.h"
 #include "logger.h"
 #include "util.h"
-#include "application.h"
 
 #include <LESDK/Common/Math.hpp>
 
@@ -29,11 +29,7 @@ static void hkGameEngineTick(void* self, float dt) {
 void Engine::initTickHook(HookManager& hookManager, SDKContext& sdk) {
     void* tickAddress = sdk.gameEngineTickAddress();
     if (tickAddress && sdk.initializer()) {
-        origGameEngineTick = (gameEngineTickType*)hookManager.install(
-            "GameEngineTick", 
-            tickAddress, 
-            &hkGameEngineTick
-        );
+        origGameEngineTick = (gameEngineTickType*)hookManager.install("GameEngineTick", tickAddress, &hkGameEngineTick);
     }
 }
 
@@ -63,10 +59,7 @@ void Engine::drainGameThreadTasks() {
 
 void Engine::postPackageLoad(const std::string& package, std::function<void()> onLoaded) {
     std::lock_guard<std::mutex> lock(loadTasksMutex);
-    loadTasks.push_back({
-        package,
-        std::move(onLoaded)
-    });
+    loadTasks.push_back({package, std::move(onLoaded)});
 }
 
 void Engine::drainPackageLoads() {
@@ -78,7 +71,7 @@ void Engine::drainPackageLoads() {
         }
         local.swap(loadTasks);
     }
-    for (auto& task: local) {
+    for (auto& task : local) {
         loadPackageType* lp = Application::instance().sdk().loadPackage();
         if (!lp) {
             Logger->debug("drainPackageLoads: loadPackageFn not initialized, dropping '" + task.package + "'");
@@ -103,8 +96,7 @@ static APlayerController* findFirstPlayerController() {
     return findFirstOf<APlayerController>();
 }
 
-AActor* Engine::findActorByName(const std::string& name)
-{
+AActor* Engine::findActorByName(const std::string& name) {
     std::string needle = toLowerStr(name);
     AActor* found = nullptr;
 
@@ -130,8 +122,7 @@ AActor* Engine::findActorByName(const std::string& name)
     return found;
 }
 
-USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName)
-{
+USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName) {
     AActor* actor = Engine::findActorByName(pawnName);
     if (!actor) {
         return nullptr;
@@ -143,14 +134,12 @@ USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName)
     return ((APawn*)actor)->Mesh;
 }
 
-
-void Engine::setPause(bool pause)
-{
+void Engine::setPause(bool pause) {
     if (!UObject::GObjObjects) {
         Logger->debug("setPause: no GObjObjects");
         return;
     }
-    
+
     UGameUISceneClient* client = findFirstOf<UGameUISceneClient>();
     if (!client) {
         Logger->debug("setPause: UGameUISceneClient not found");
@@ -158,13 +147,12 @@ void Engine::setPause(bool pause)
     }
     client->eventPauseGame(pause ? 1 : 0, 0);
 
-    std::ostringstream ss; ss << "setPause: called PauseGame(" << (pause?"true":"false") << ")";
+    std::ostringstream ss;
+    ss << "setPause: called PauseGame(" << (pause ? "true" : "false") << ")";
     Logger->debug(ss.str());
 }
 
-
-AActor* Engine::spawnClass(const std::string& className, const Transform& t)
-{
+AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     if (className.empty()) {
         Logger->debug("spawnClass: empty class name");
         Application::instance().ui().toastManager.addToastNotification("Spawn failed: empty class name", ToastTypeError, 3.0);
@@ -203,8 +191,8 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t)
     loc.Z = t.pos[2];
     FRotator rot;
     rot.Pitch = DegreesToUnrealRotationUnits(t.rot[0]);
-    rot.Yaw   = DegreesToUnrealRotationUnits(t.rot[1]);
-    rot.Roll  = DegreesToUnrealRotationUnits(t.rot[2]);
+    rot.Yaw = DegreesToUnrealRotationUnits(t.rot[1]);
+    rot.Roll = DegreesToUnrealRotationUnits(t.rot[2]);
 
     AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, NULL, 1, 0);
     if (!spawned) {
@@ -220,8 +208,7 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t)
     }
 
     std::ostringstream ss;
-    ss  << "spawnClass: spawned '" << className << "' as '" << nm
-        << "' at (" << t.pos[0] << "," << t.pos[1] << "," << t.pos[2] << ")";
+    ss << "spawnClass: spawned '" << className << "' as '" << nm << "' at (" << t.pos[0] << "," << t.pos[1] << "," << t.pos[2] << ")";
     Logger->debug(ss.str());
     return spawned;
 }
@@ -257,14 +244,13 @@ std::string Engine::diagnoseClass(const std::string& className) {
     if (!caller) {
         ss << "  Spawn caller: NONE -> nothing to Spawn() from\n";
     } else {
-        ss << "  Spawn caller: " << FStringToUtf8(caller->GetName())
-           << " (outer=" << (caller->Outer ? FStringToUtf8(caller->Outer->GetName()) : "(none)") << ")\n";
+        ss << "  Spawn caller: " << FStringToUtf8(caller->GetName()) << " (outer=" << (caller->Outer ? FStringToUtf8(caller->Outer->GetName()) : "(none)")
+           << ")\n";
     }
     return ss.str();
 }
 
-void Engine::removeActor(const std::string& name)
-{
+void Engine::removeActor(const std::string& name) {
     if (name.empty()) {
         Logger->debug("removeActor: empty name");
         return;
@@ -276,7 +262,7 @@ void Engine::removeActor(const std::string& name)
         return;
     }
 
-    //TODO: make this emit a notification (toast) via TyomaVader/ImGuiNotify
+    // TODO: make this emit a notification (toast) via TyomaVader/ImGuiNotify
     if (actor->IsA(APawn::StaticClass())) {
         Logger->debug("removeActor: refusing to delete pawn '" + name + "'");
         return;
@@ -305,8 +291,7 @@ void Engine::removeActor(const std::string& name)
     Application::instance().ui().collectPawns();
 }
 
-void Engine::loadTransformFromPawn(const std::string& pawnName, Transform& t)
-{
+void Engine::loadTransformFromPawn(const std::string& pawnName, Transform& t) {
     AActor* actor = findActorByName(pawnName);
     if (!actor) {
         return;
@@ -322,8 +307,7 @@ void Engine::loadTransformFromPawn(const std::string& pawnName, Transform& t)
     t.scale[2] = actor->DrawScale3D.Z;
 }
 
-void Engine::setTransform(const std::string& targetName, const Transform& t)
-{
+void Engine::setTransform(const std::string& targetName, const Transform& t) {
     AActor* actor = Engine::findActorByName(targetName);
     if (!actor) {
         Logger->debug("setTransform: target not found");
@@ -336,8 +320,8 @@ void Engine::setTransform(const std::string& targetName, const Transform& t)
     loc.Z = t.pos[2];
     FRotator rot;
     rot.Pitch = DegreesToUnrealRotationUnits(t.rot[0]);
-    rot.Yaw   = DegreesToUnrealRotationUnits(t.rot[1]);
-    rot.Roll  = DegreesToUnrealRotationUnits(t.rot[2]);
+    rot.Yaw = DegreesToUnrealRotationUnits(t.rot[1]);
+    rot.Roll = DegreesToUnrealRotationUnits(t.rot[2]);
 
     unsigned char oldPhys = actor->Physics;
     if (oldPhys != 0) {
@@ -368,15 +352,14 @@ void Engine::setTransform(const std::string& targetName, const Transform& t)
     }
 
     std::ostringstream ss;
-    ss  << "Game_SetTransform: target='" << FStringToUtf8(actor->GetName()) << "' locOk=" << locOk
-        << " loc=(" << actor->Location.X << "," << actor->Location.Y << "," << actor->Location.Z << ")"
-        << " phys=" << (int)oldPhys << " scaleOk=" << (scaleOk ? "true" : "false");
+    ss << "Game_SetTransform: target='" << FStringToUtf8(actor->GetName()) << "' locOk=" << locOk << " loc=(" << actor->Location.X << "," << actor->Location.Y
+       << "," << actor->Location.Z << ")"
+       << " phys=" << (int)oldPhys << " scaleOk=" << (scaleOk ? "true" : "false");
     Logger->debug(ss.str());
 }
 
 // suspend collision for floating
-void Engine::setFloat(const std::string& targetName, bool enable)
-{
+void Engine::setFloat(const std::string& targetName, bool enable) {
     AActor* actor = findActorByName(targetName);
     if (!actor) {
         Logger->debug("setFloat: target not found");
@@ -421,13 +404,9 @@ void Engine::setFloat(const std::string& targetName, bool enable)
     }
 
     std::ostringstream ss;
-    ss  << "setFloat: '" << targetName << "' enable=" << (enable ? "true" : "false")
-        << " oldPhys=" << (int)floatOldPhysics
-        << " collide=" << (int)actor->bCollideActors
-        << " world=" << (int)actor->bCollideWorld
-        << " blockActors=" << (int)actor->bBlockActors
-        << " blockRigid=" << (int)actor->BlockRigidBody
-        << " comps=" << comps.size();
+    ss << "setFloat: '" << targetName << "' enable=" << (enable ? "true" : "false") << " oldPhys=" << (int)floatOldPhysics
+       << " collide=" << (int)actor->bCollideActors << " world=" << (int)actor->bCollideWorld << " blockActors=" << (int)actor->bBlockActors
+       << " blockRigid=" << (int)actor->BlockRigidBody << " comps=" << comps.size();
     Logger->debug(ss.str());
 }
 
@@ -451,7 +430,7 @@ void Engine::applyHUDVisibility() {
 
 void Engine::freezeLook(bool freeze) {
     APlayerController* pc = findFirstPlayerController();
-    if (!pc) { 
+    if (!pc) {
         return;
     }
     if (freeze) {
@@ -464,8 +443,13 @@ void Engine::freezeLook(bool freeze) {
         pc->bIgnoreMoveInput = true;
         if (pc->PlayerInput) {
             UPlayerInput* pi = pc->PlayerInput;
-            pi->aMouseX = 0.0f; pi->aMouseY = 0.0f; pi->aForward = 0.0f;
-            pi->aTurn = 0.0f; pi->aStrafe = 0.0f; pi->aUp = 0.0f; pi->aLookUp = 0.0f;
+            pi->aMouseX = 0.0f;
+            pi->aMouseY = 0.0f;
+            pi->aForward = 0.0f;
+            pi->aTurn = 0.0f;
+            pi->aStrafe = 0.0f;
+            pi->aUp = 0.0f;
+            pi->aLookUp = 0.0f;
             pi->SmoothedMouse[0] = 0.0f;
             pi->SmoothedMouse[1] = 0.0f;
         }
@@ -475,7 +459,3 @@ void Engine::freezeLook(bool freeze) {
         lookFrozen = false;
     }
 }
-
-
-
-

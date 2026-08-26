@@ -6,15 +6,16 @@
 #include <vector>
 
 #include "bones.h"
-#include "util.h"
 #include "game_window.h"
 #include "native_renderer.h"
 #include "ui_helpers/toast_notifications.h"
+#include "util.h"
 
 struct ClassEntry {
-    std::string package;
-    std::string name;
-    std::string fullName;
+    public:
+        std::string package;
+        std::string name;
+        std::string fullName;
 };
 
 class UI {
@@ -42,7 +43,7 @@ class UI {
         void renderOverlayContents(NativeRenderer& renderer);
 
         ToastNotificationManager toastManager;
-        
+
     private:
         void renderControlsSection();
         void renderSelectionSection();

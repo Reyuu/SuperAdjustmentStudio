@@ -1,17 +1,17 @@
 #ifndef SAS_GIZMO_H
 #define SAS_GIZMO_H
 
-#include <string>
-#include <vector>
-#include "util.h"
 #include "hook_manager.h"
 #include "sdk.h"
+#include "util.h"
+#include <string>
+#include <vector>
 
 #include <LESDK/Includes.LE2.hpp>
 
 #define GET_MEMBER_SLOT_POINTER(cls, parent, request) (BYTE*)parent + offsetof(cls, request);
 
-typedef void(*ProcessEventFn)(UObject* Context, UFunction* Function, void* Parms, void* Result);
+typedef void (*ProcessEventFn)(UObject* Context, UFunction* Function, void* Parms, void* Result);
 
 class Gizmo {
     public:
@@ -58,4 +58,4 @@ class Gizmo {
         void checkClickSelect(ABioHUD* hud);
 };
 
-#endif //SAS_GIZMO_H
+#endif // SAS_GIZMO_H

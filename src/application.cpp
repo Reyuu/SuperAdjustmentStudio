@@ -1,11 +1,11 @@
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "application.h"
+#include "backends/imgui_impl_dx11.h"
+#include "backends/imgui_impl_win32.h"
+#include "imgui.h"
 #include <sstream>
 #include <windowsx.h>
-#include "imgui.h"
-#include "backends/imgui_impl_win32.h"
-#include "backends/imgui_impl_dx11.h"
 
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -30,7 +30,7 @@ bool Application::attach(ISharedProxyInterface* proxy) {
     return true;
 }
 
-void Application::detach() { 
+void Application::detach() {
     Logger->debug("SPI detach - removing hooks");
     didRequestExit.store(true);
     if (initThread.joinable()) {
@@ -57,13 +57,13 @@ void Application::uninstallAllHooks() {
 
 void Application::initHooksThread() {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    
+
     const int maxAttempts = 8;
     for (int attempt = 0; attempt < maxAttempts && !didRequestExit.load(); ++attempt) {
         if (!UObject::GObjObjects || !GMalloc || !GWorld || !sdkInstance.processEventAddress()) {
             sdkInstance.initSdkGlobals(sdkInstance.proxy());
         }
-        
+
         if (sdkInstance.initializer() && rendererInstance.installHooks(&Application::presentDetour, &Application::resizeBuffersDetour)) {
             gizmoInstance.initHooks(hookManagerInstance, sdkInstance);
             engineInstance.initTickHook(hookManagerInstance, sdkInstance);
@@ -81,9 +81,7 @@ void Application::initHooksThread() {
     Logger->debug("initHooksThread: giving up");
 }
 
-
-HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
-{
+HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags) {
     Application& app = instance();
     if (app.didRequestExit.load()) {
         return app.rendererInstance.origPresent() ? app.rendererInstance.origPresent()(pSwapChain, SyncInterval, Flags) : S_OK;
@@ -143,18 +141,22 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
     return app.rendererInstance.origPresent() ? app.rendererInstance.origPresent()(pSwapChain, SyncInterval, Flags) : S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
-{
+HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
+                                                           UINT SwapChainFlags) {
     Application& app = instance();
     if (app.didRequestExit.load()) {
-        return app.rendererInstance.origResizeBuffers() ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags) : S_OK;
+        return app.rendererInstance.origResizeBuffers()
+                   ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags)
+                   : S_OK;
     }
 
     SAS_HOOK_TRY {
         app.rendererInstance.releaseRenderTargetView();
     } SAS_HOOK_CATCH_VOID
 
-    return app.rendererInstance.origResizeBuffers() ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags) : S_OK;
+    return app.rendererInstance.origResizeBuffers()
+               ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags)
+               : S_OK;
 }
 
 LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -212,8 +214,8 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     return MA_NOACTIVATE;
                 }
                 case WM_SETCURSOR:
-                SetCursor(LoadCursor(NULL, IDC_ARROW));
-                return TRUE;
+                    SetCursor(LoadCursor(NULL, IDC_ARROW));
+                    return TRUE;
             }
         }
         for (const auto& e : app.gameWindowInstance.subclassedWindows()) {

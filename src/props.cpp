@@ -28,31 +28,36 @@ void Properties::readValue(UObject* obj, PropertyEntry& e) {
     BYTE* p = (BYTE*)obj + e.offset;
 
     switch (e.type) {
-        case PT_FLOAT:
+        case PT_FLOAT: {
             e.fValue = *(float*)p;
             break;
-        case PT_INT:
+        }
+        case PT_INT: {
             e.iValue = *(int*)p;
             break;
-        case PT_BYTE:
+        }
+        case PT_BYTE: {
             e.iValue = *p;
             break;
-        case PT_MASK:
+        }
+        case PT_MASK: {
             e.maskValue = *(DWORD*)p;
             break;
-        case PT_BOOL:
+        }
+        case PT_BOOL: {
             // bools in UE3 are packed bitmasks
-            if (e.maskValue){
+            if (e.maskValue) {
                 e.bValue = (*(DWORD*)p & e.maskValue) != 0;
             } else {
                 e.bValue = *p != 0;
             }
             break;
+        }
         case PT_ENUM: {
             UEnum* en = (UEnum*)e.enumObj;
             e.iValue = *p;
             e.detail.clear();
-            //UEnum does not allow negatives
+            // UEnum does not allow negatives
             if (en && e.iValue >= 0 && e.iValue < (int)en->Names.Count()) {
                 const char* nm = en->Names.GetData()[e.iValue].GetName();
                 if (nm) {
@@ -62,20 +67,19 @@ void Properties::readValue(UObject* obj, PropertyEntry& e) {
             break;
         }
         case PT_NAME: {
-                if (!e.editing) {
-                    const char* nm = ((SFXName*)p)->GetName();
-                    strncpy(e.buffer, nm ? nm : "", sizeof(e.buffer) - 1);
-                    e.buffer[sizeof(e.buffer) - 1] = 0;
-                }
-                break;
-            }
-        case PT_STRING:
             if (!e.editing) {
-                std::string s = FStringToUtf8(*(FString*)p);
-                strncpy(e.buffer, s.c_str(), sizeof(e.buffer) - 1);
-                e.buffer[sizeof(e.buffer) - 1] = 0;
+                const char* nm = ((SFXName*)p)->GetName();
+                strncpy_s(e.buffer, sizeof(e.buffer), nm ? nm : "", _TRUNCATE);
             }
             break;
+        }
+        case PT_STRING: {
+            if (!e.editing) {
+                std::string s = FStringToUtf8(*(FString*)p);
+                strncpy_s(e.buffer, sizeof(e.buffer), s.c_str(), _TRUNCATE);
+            }
+            break;
+        }
         case PT_OBJECT: {
             UObject* obj = *(UObject**)p;
             e.detail = obj ? FStringToUtf8(obj->GetFullName()) : "(none)";
@@ -121,12 +125,15 @@ void Properties::readValue(UObject* obj, PropertyEntry& e) {
             e.fVector[2] = values[2];
             e.fVector[3] = values[3];
         }
-        case PT_STRUCT:
+        case PT_STRUCT: {
             break;
-        case PT_OTHER:
+        }
+        case PT_OTHER: {
             break;
-        default:
+        }
+        default: {
             break;
+        }
     }
 }
 
@@ -134,13 +141,15 @@ void Properties::writeValue(UObject* obj, PropertyEntry& e) {
     BYTE* p = (BYTE*)obj + e.offset;
 
     switch (e.type) {
-        case PT_FLOAT:
+        case PT_FLOAT: {
             *(float*)p = e.fValue;
             break;
-        case PT_INT:
+        }
+        case PT_INT: {
             *(int*)p = e.iValue;
             break;
-        case PT_BOOL:
+        }
+        case PT_BOOL: {
             if (e.maskValue) {
                 if (e.bValue) {
                     // logical or
@@ -153,10 +162,12 @@ void Properties::writeValue(UObject* obj, PropertyEntry& e) {
                 *p = e.bValue ? 1 : 0;
             }
             break;
-        case PT_BYTE:
-        case PT_ENUM: {
-            *p = (BYTE)e.iValue;
-            break;
+        }
+        case PT_BYTE: {
+            case PT_ENUM: {
+                *p = (BYTE)e.iValue;
+                break;
+            }
         }
         case PT_NAME: {
             SFXName n(e.buffer, 0);
@@ -211,12 +222,17 @@ void Properties::writeValue(UObject* obj, PropertyEntry& e) {
             values[3] = e.fVector[3];
             break;
         }
-        case PT_OBJECT:
-        case PT_STRUCT:
-        case PT_ARRAY:
-        case PT_OTHER:
-        default:
-            break;
+        case PT_OBJECT: {
+        case PT_STRUCT: {
+            case PT_ARRAY: {
+                case PT_OTHER: {
+                    default: {
+                        break;
+        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -353,9 +369,7 @@ void Properties::collectProperties(UObject* obj, std::vector<PropertyEntry>& out
 
             if (prop->IsA(UBioMask4Property::StaticClass())) {
                 e.type = PT_MASK;
-            } else if ( prop->IsA(UClassProperty::StaticClass()) ||
-                        prop->IsA(UComponentProperty::StaticClass()) ||
-                        prop->IsA(UObjectProperty::StaticClass())) {
+            } else if (prop->IsA(UClassProperty::StaticClass()) || prop->IsA(UComponentProperty::StaticClass()) || prop->IsA(UObjectProperty::StaticClass())) {
                 e.type = PT_OBJECT;
                 e.readonly = true;
             } else if (prop->IsA(UStructProperty::StaticClass())) {
@@ -382,12 +396,12 @@ void Properties::collectProperties(UObject* obj, std::vector<PropertyEntry>& out
             } else if (prop->IsA(UArrayProperty::StaticClass())) {
                 e.type = PT_ARRAY;
                 e.readonly = true;
-                UProperty* inner = ((UArrayProperty*) prop)->Inner;
+                UProperty* inner = ((UArrayProperty*)prop)->Inner;
                 e.detail = "array of " + (inner ? classShortName(inner) : std::string("?")) + " (live count)";
             } else {
                 e.readonly = true;
                 e.detail = classShortName(prop);
-                //TODO: handle other Properties if possible (low prio)
+                // TODO: handle other Properties if possible (low prio)
             }
             out.push_back(e);
         }
@@ -464,7 +478,7 @@ void Properties::renderPropertyTable(UObject* readObject, UObject* writeObject, 
         }
 
         std::string label = e.name + "##p" + std::to_string(i);
-        if(!e.toApply) {
+        if (!e.toApply) {
             readValue(readObject, e);
         }
 
@@ -502,14 +516,15 @@ void Properties::renderPropertyTable(UObject* readObject, UObject* writeObject, 
                 changed = ImGui::SliderInt(label.c_str(), &e.iValue, 0, maxIdx, e.enumAvailableStrings[e.iValue].c_str());
                 break;
             }
-            case PT_NAME:
-            case PT_STRING: {
-                ImGui::InputText(label.c_str(), e.buffer, sizeof(e.buffer));
-                e.editing = ImGui::IsItemActive();
-                if (ImGui::IsItemDeactivatedAfterEdit()) {
-                    changed = true;
+            case PT_NAME: {
+                case PT_STRING: {
+                    ImGui::InputText(label.c_str(), e.buffer, sizeof(e.buffer));
+                    e.editing = ImGui::IsItemActive();
+                    if (ImGui::IsItemDeactivatedAfterEdit()) {
+                        changed = true;
+                    }
+                    break;
                 }
-                break;
             }
             case PT_MASK: {
                 // 0b00000000
@@ -529,22 +544,27 @@ void Properties::renderPropertyTable(UObject* readObject, UObject* writeObject, 
                 changed = ImGui::DragFloat3(label.c_str(), e.fVector, 0.1f, -180.0f, 180.0f, "%.1f");
                 break;
             }
-            case PT_COLOR:
-            case PT_LINEAR_COLOR: {
-                changed = ImGui::ColorEdit4(label.c_str(), e.fVector, ImGuiColorEditFlags_AlphaBar);
-                break;
+            case PT_COLOR: {
+                case PT_LINEAR_COLOR: {
+                    changed = ImGui::ColorEdit4(label.c_str(), e.fVector, ImGuiColorEditFlags_AlphaBar);
+                    break;
+                }
             }
-            case PT_OBJECT:
-            case PT_STRUCT:
-            case PT_ARRAY:
-            case PT_OTHER:
-            default: {
-                ImGui::TextDisabled("%s: %s", e.name.c_str(), e.detail.c_str());
-                break;
+            case PT_OBJECT: {
+                case PT_STRUCT: {
+                    case PT_ARRAY: {
+                        case PT_OTHER: {
+                            default: {
+                                ImGui::TextDisabled("%s: %s", e.name.c_str(), e.detail.c_str());
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
         if (changed) {
-            if(writeObject) {
+            if (writeObject) {
                 writeValue(writeObject, e);
                 if (e.type == PT_ENUM) {
                     readValue(readObject, e); // enum value refresh

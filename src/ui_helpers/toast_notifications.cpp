@@ -1,8 +1,7 @@
 #include "toast_notifications.h"
-#include <string>
 #include <algorithm>
+#include <string>
 #include <vector>
-
 
 void ToastNotificationManager::addToastNotification(const std::string& message, ToastTypeNotification type, double duration) {
     ToastNotification t;
@@ -87,7 +86,9 @@ void ToastNotificationManager::renderToastNotifications() {
         yOffset += t.height + toastNotificationSpacing;
     }
 
-    toastNotifications.erase(std::remove_if(toastNotifications.begin(), toastNotifications.end(), [](const ToastNotification& t) {
-        return ImGui::GetTime() - t.startTime > t.duration;
-    }), toastNotifications.end());
+    toastNotifications.erase(std::remove_if(toastNotifications.begin(), toastNotifications.end(),
+                                            [](const ToastNotification& t) {
+                                                return ImGui::GetTime() - t.startTime > t.duration;
+                                            }),
+                             toastNotifications.end());
 }

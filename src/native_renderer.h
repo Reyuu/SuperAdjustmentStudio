@@ -5,14 +5,13 @@
 #define SAS_NATIVE_RENDERER_H
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
-#include <windows.h>
+#include <atomic>
 #include <d3d11.h>
 #include <dxgi.h>
-#include <atomic>
+#include <windows.h>
 
 typedef HRESULT(STDMETHODCALLTYPE* PresentFn)(IDXGISwapChain*, UINT SyncInterval, UINT Flags);
-typedef HRESULT(STDMETHODCALLTYPE* ResizeBuffersFn)(IDXGISwapChain*, UINT BufferCount, UINT Width, UINT Height, \
-                                                    DXGI_FORMAT NewFormat, UINT SwapChainFlags);
+typedef HRESULT(STDMETHODCALLTYPE* ResizeBuffersFn)(IDXGISwapChain*, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
 
 // https://github.com/eugen15/directx-present-hook
 // thirdparty\imgui\examples\example_win32_directx11\main.cpp
@@ -23,7 +22,7 @@ class NativeRenderer {
             return *instancePtr;
         }
 
-        //setters
+        // setters
         void setDevice(ID3D11Device* device) {
             pd3dDevice = device;
         }
@@ -37,7 +36,7 @@ class NativeRenderer {
             uiRectData = rect;
         }
 
-        //getters
+        // getters
         ID3D11Device* device() const {
             return pd3dDevice;
         }
@@ -57,15 +56,15 @@ class NativeRenderer {
             return areHooksInstalledBool;
         }
 
-        PresentFn origPresent() const { 
+        PresentFn origPresent() const {
             return origPresentPointer;
         }
         ResizeBuffersFn origResizeBuffers() const {
             return origResizeBuffersPointer;
         }
 
-        //functionality
-        //  imgui context + win32/dx11 backend initialization from the live swapchain.
+        // functionality
+        //   imgui context + win32/dx11 backend initialization from the live swapchain.
         bool initImGuiInGame(IDXGISwapChain* pSwapChain);
         //  resolve the D3D11 swapchain vtable via kiero and detour Present/ResizeBuffers.
         bool installHooks(PresentFn presentDetour, ResizeBuffersFn resizeBuffersDetour);
@@ -79,13 +78,14 @@ class NativeRenderer {
         void beginRender();
         //  release all and clear imgui flag
         void shutdown();
+
     private:
         static NativeRenderer* instancePtr;
 
         ID3D11Device* pd3dDevice = nullptr;
         ID3D11DeviceContext* pd3dContext = nullptr;
         ID3D11RenderTargetView* pRenderTargetView = nullptr;
-        RECT uiRectData = {0,0,0,0};
+        RECT uiRectData = {0, 0, 0, 0};
         std::atomic<bool> isImGuiInitializedBool{false};
         bool areHooksInstalledBool = false;
 

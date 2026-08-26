@@ -1,12 +1,12 @@
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
+#include "application.h"
 #include "gizmo.h"
-#include <sstream>
 #include "hook_manager.h"
 #include "logger.h"
 #include "sdk.h"
-#include "application.h"
 #include "util.h"
+#include <sstream>
 
 #include <LESDK/Common/Math.hpp>
 
@@ -14,17 +14,18 @@
 
 // X=forward, Y=right, Z=up
 static void RotatorToBasis(const FRotator& r, float outF[3], float outR[3], float outU[3]) {
-    FMatrix m = MatrixCompose(
-        FVector{0, 0, 0}, FVector{1, 1, 1},
-        UnrealRotationUnitsToRadians(r.Pitch),
-        UnrealRotationUnitsToRadians(r.Yaw),
-        UnrealRotationUnitsToRadians(r.Roll)
-    );
-    outF[0] = m.XPlane.X; outF[1] = m.XPlane.Y; outF[2] = m.XPlane.Z;
-    outR[0] = m.YPlane.X; outR[1] = m.YPlane.Y; outR[2] = m.YPlane.Z;
-    outU[0] = m.ZPlane.X; outU[1] = m.ZPlane.Y; outU[2] = m.ZPlane.Z;
+    FMatrix m = MatrixCompose(FVector{0, 0, 0}, FVector{1, 1, 1}, UnrealRotationUnitsToRadians(r.Pitch), UnrealRotationUnitsToRadians(r.Yaw),
+                              UnrealRotationUnitsToRadians(r.Roll));
+    outF[0] = m.XPlane.X;
+    outF[1] = m.XPlane.Y;
+    outF[2] = m.XPlane.Z;
+    outR[0] = m.YPlane.X;
+    outR[1] = m.YPlane.Y;
+    outR[2] = m.YPlane.Z;
+    outU[0] = m.ZPlane.X;
+    outU[1] = m.ZPlane.Y;
+    outU[2] = m.ZPlane.Z;
 }
-
 
 // in-engine drawing
 static void DrawWorldGizmo(ULineBatchComponent* lineBatcher, AActor* actor) {
@@ -38,20 +39,20 @@ static void DrawWorldGizmo(ULineBatchComponent* lineBatcher, AActor* actor) {
     const float thickness = 2.5f;
     const float* axes[3] = {ax, ay, az};
     const FLinearColor colors[3] = {
-        {1, 0, 0, 1}, //RED
+        {1, 0, 0, 1}, // RED
         {0, 1, 0, 1}, // GREEN
-        {0, 0, 1, 1}  //BLUE
+        {0, 0, 1, 1}  // BLUE
     };
     // get options table
     void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
     auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
-    for (int i = 0; i < 3; ++i){
-        FVector end{ origin.X + axes[i][0] * len, origin.Y + axes[i][1] * len, origin.Z + axes[i][2] * len };
+    for (int i = 0; i < 3; ++i) {
+        FVector end{origin.X + axes[i][0] * len, origin.Y + axes[i][1] * len, origin.Z + axes[i][2] * len};
         DrawLine(self, origin, end, colors[i], 1, thickness);
     }
 
     // stupid hack
-    FVector endX{ origin.X + ax[0] * len, origin.Y + ax[1] * len, origin.Z + ax[2] * len };
+    FVector endX{origin.X + ax[0] * len, origin.Y + ax[1] * len, origin.Z + ax[2] * len};
     DrawLine(self, origin, endX, colors[0], 1, 0);
 }
 
@@ -78,9 +79,7 @@ static bool GetCameraView(ABioHUD* hud, FVector& loc, FVector& fwd) {
     float r[3];
     float u[3];
     RotatorToBasis(rot, f, r, u);
-    fwd = {
-        f[0], f[1], f[2]
-    };
+    fwd = {f[0], f[1], f[2]};
     return fwd.X != 0.0f || fwd.Y != 0.0f || fwd.Z != 0.0f;
 }
 
@@ -147,13 +146,13 @@ static void DrawWorldGizmoOnTop(ABioHUD* hud, AActor* actor) {
     const float len = 80.0f;
     const float* axes[3] = {ax, ay, az};
     const FColor colors[3] = {
-        {0, 0, 255, 255}, //RED
-        {0, 255, 0, 255}, // GREEN
-        {255, 0, 0, 255}  //BLUE
+        {0,   0,   255, 255}, // RED
+        {0,   255, 0,   255}, // GREEN
+        {255, 0,   0,   255}  // BLUE
     };
 
     for (int i = 0; i < 3; i++) {
-        FVector end{ origin.X + axes[i][0] * len, origin.Y + axes[i][1] * len, origin.Z + axes[i][2] * len };
+        FVector end{origin.X + axes[i][0] * len, origin.Y + axes[i][1] * len, origin.Z + axes[i][2] * len};
         DrawWorldLineOnTop(hud, origin, end, colors[i]);
     }
 }
@@ -174,25 +173,40 @@ static void DrawTracerOnTop(ABioHUD* hud, const FVector& from, const FVector& to
 // |  /    | |
 // |_______|/
 
-template <typename T>
-static void ForEachBoxEdge(const FVector& mn, const FVector& mx, T&& draw) {
+template <typename T> static void ForEachBoxEdge(const FVector& mn, const FVector& mx, T&& draw) {
     const FVector c[8] = {
-        { mn.X, mn.Y, mn.Z }, { mx.X, mn.Y, mn.Z }, { mn.X, mx.Y, mn.Z }, { mx.X, mx.Y, mn.Z },
-        { mn.X, mn.Y, mx.Z }, { mx.X, mn.Y, mx.Z }, { mn.X, mx.Y, mx.Z }, { mx.X, mx.Y, mx.Z },
+        {mn.X, mn.Y, mn.Z},
+        {mx.X, mn.Y, mn.Z},
+        {mn.X, mx.Y, mn.Z},
+        {mx.X, mx.Y, mn.Z},
+        {mn.X, mn.Y, mx.Z},
+        {mx.X, mn.Y, mx.Z},
+        {mn.X, mx.Y, mx.Z},
+        {mx.X, mx.Y, mx.Z},
     };
     static const int edges[12][2] = {
-        { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 },
-        { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 },
-        { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },
+        {0, 1},
+        {1, 3},
+        {3, 2},
+        {2, 0},
+        {4, 5},
+        {5, 7},
+        {7, 6},
+        {6, 4},
+        {0, 4},
+        {1, 5},
+        {2, 6},
+        {3, 7},
     };
-    for (int i = 0; i < 12; ++i)
+    for (int i = 0; i < 12; ++i) {
         draw(c[edges[i][0]], c[edges[i][1]]);
+    }
 }
 
 static void DrawWorldBox(ULineBatchComponent* lineBatcher, const FBox& box) {
     void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
     auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
-    const FLinearColor color{ 1.0f, 0.5f, 0.0, 1.0f}; // orange
+    const FLinearColor color{1.0f, 0.5f, 0.0, 1.0f}; // orange
     ForEachBoxEdge(box.Min, box.Max, [&](const FVector& a, const FVector& b) {
         DrawLine(self, a, b, color, 1, 1.0f);
     });
@@ -200,7 +214,7 @@ static void DrawWorldBox(ULineBatchComponent* lineBatcher, const FBox& box) {
 }
 
 static void DrawWorldBoxOnTop(ABioHUD* hud, const FBox& box) {
-    const FColor color {0, 128, 255, 255}; // orange
+    const FColor color{0, 128, 255, 255}; // orange
     ForEachBoxEdge(box.Min, box.Max, [&](const FVector& a, const FVector& b) {
         DrawWorldLineOnTop(hud, a, b, color);
     });
@@ -213,25 +227,15 @@ static bool GetActorBoundsBox(AActor* actor, FBox& out) {
     }
 
     actor->GetComponentsBoundingBox(&out);
-    const bool isInvalidAABB = out.Max.X <= out.Min.X ||
-                            out.Max.Y <= out.Min.Y ||
-                            out.Max.Z <= out.Min.Z;
+    const bool isInvalidAABB = out.Max.X <= out.Min.X || out.Max.Y <= out.Min.Y || out.Max.Z <= out.Min.Z;
     if (!out.IsValid || isInvalidAABB) {
         const FVector& s = actor->DrawScale3D;
         const float hX = 50.0f * (s.X > 0.01f ? s.X : 1.0f);
         const float hY = 50.0f * (s.Y > 0.01f ? s.Y : 1.0f);
         const float hZ = 50.0f * (s.Z > 0.01f ? s.Z : 1.0f);
 
-        out.Min = {
-            actor->Location.X - hX,
-            actor->Location.Y - hY,
-            actor->Location.Z - hZ
-        };
-        out.Max = {
-            actor->Location.X + hX,
-            actor->Location.Y + hY,
-            actor->Location.Z + hZ
-        };
+        out.Min = {actor->Location.X - hX, actor->Location.Y - hY, actor->Location.Z - hZ};
+        out.Max = {actor->Location.X + hX, actor->Location.Y + hY, actor->Location.Z + hZ};
         out.IsValid = 1;
     }
     return out.IsValid != 0;
@@ -247,7 +251,7 @@ static bool isObjectStillLive(UObject* obj) {
         return false;
     }
     for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
-        if (UObject::GObjObjects->GetData()[i] == obj){
+        if (UObject::GObjObjects->GetData()[i] == obj) {
             return true;
         }
     }
@@ -315,9 +319,7 @@ void Gizmo::setTarget(AActor* actor) {
     }
 }
 
-
-void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY)
-{
+void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY) {
     UCanvas* canvas = hud ? hud->Canvas : nullptr;
     if (!canvas) {
         return;
@@ -328,7 +330,7 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY)
     const float scaleY = (io.DisplaySize.x > 1.0f && io.DisplaySize.y > 1.0f) ? (float)canvas->SizeY / io.DisplaySize.y : 1.0f;
     FVector2D screenPos{mouseX * scaleX, mouseY * scaleY};
     FVector origin, dir;
-    canvas ->DeProject(screenPos, &origin, &dir);
+    canvas->DeProject(screenPos, &origin, &dir);
     if (dir.X == 0.0f && dir.Y == 0.0f && dir.Z == 0.0f) {
         return; // the ray is invalid
     }
@@ -346,9 +348,7 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY)
     }
 }
 
-
-void Gizmo::checkClickSelect(ABioHUD* hud)
-{
+void Gizmo::checkClickSelect(ABioHUD* hud) {
     const bool down = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0; // mask test -> 0b1000000000000000 -> 0x8000
     if (down && !leftMouseButtonPreviouslyDown) {
         if (!ImGui::GetIO().WantCaptureMouse) {
@@ -361,17 +361,14 @@ void Gizmo::checkClickSelect(ABioHUD* hud)
 
 // event processing makes me want to commit sudoku
 
-void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, void* Result)
-{
+void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, void* Result) {
     ABioHUD* hud = nullptr;
     AActor* actor = nullptr;
     FBox box;
     bool drawOnTop = false;
 
     SAS_HOOK_TRY {
-        if (       Context \
-                && Context->IsA(ABioHUD::StaticClass()) \
-                && Function->GetName().Equals(L"PostRender")) {
+        if (Context && Context->IsA(ABioHUD::StaticClass()) && Function->GetName().Equals(L"PostRender")) {
 
             hud = static_cast<ABioHUD*>(Context);
             hud->FlushPersistentDebugLines();

@@ -7,18 +7,19 @@
 #include <string>
 #include <vector>
 
-#include "util.h"
 #include "hook_manager.h"
 #include "sdk.h"
+#include "util.h"
 #include <LESDK/Includes.LE2.hpp>
 
 struct PackageLoadTask {
-    std::string package;
-    std::function<void()> onLoaded;
+    public:
+        std::string package;
+        std::function<void()> onLoaded;
 };
 
 class Engine {
-    
+
     public:
         bool& isGameUIHidden() {
             return isGameUIHiddenState;
@@ -61,7 +62,7 @@ class Engine {
         std::vector<PackageLoadTask> loadTasks;
 
         bool isGameUIHiddenState = false;
-        std::atomic<bool> isCameraDragActiveState{false };
+        std::atomic<bool> isCameraDragActiveState{false};
         std::vector<std::string> spawnedNamesVector;
 
         // engine-level look freeze

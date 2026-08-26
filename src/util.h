@@ -3,23 +3,28 @@
 
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
-#include <string>
-#include <LESDK/Includes.LE2.hpp>
 #include "imgui.h"
+#include <LESDK/Includes.LE2.hpp>
+#include <string>
 
-//UE3 -> transform in degrees for rotation and per-axis scale. Converted to whatever is usable at the engine.
+// UE3 -> transform in degrees for rotation and per-axis scale. Converted to whatever is usable at the engine.
 struct Transform {
-    float pos[3] = {0.0f, 0.0f, 0.0f};
-    float rot[3] = {0.0f, 0.0f, 0.0f};
-    float scale[3] = {1.0f, 1.0f, 1.0f};
+    public:
+        float pos[3] = {0.0f, 0.0f, 0.0f};
+        float rot[3] = {0.0f, 0.0f, 0.0f};
+        float scale[3] = {1.0f, 1.0f, 1.0f};
 };
 
-// UE3 EClassFlags (verified against LE2 class flag dumps; these are the real values).
-static constexpr DWORD CLASS_Abstract    = 0x00000001;
-static constexpr DWORD CLASS_NotPlaceable = 0x00000200;
-static constexpr DWORD CLASS_Placeable   = 0x00400000;
-static constexpr DWORD CLASS_Hidden      = 0x04000000;
-static constexpr DWORD CLASS_Deprecated  = 0x00020000;
+// UE3 EClassFlags (verified against LE2 class flag dumps; these are the real values for LE2 engine build).
+// Note: Standard UE3 enum values (e.g. UT3) differ from BioWare's LE2 engine build bit assignments.
+enum EClassFlags : DWORD {
+    CLASS_None = 0x00000000,
+    CLASS_Abstract = 0x00000001,
+    CLASS_NotPlaceable = 0x00000200,
+    CLASS_Deprecated = 0x00020000,
+    CLASS_Placeable = 0x00400000,
+    CLASS_Hidden = 0x04000000,
+};
 
 std::string FStringToUtf8(const FString& fStr);
 std::string WStringToUtf8(const std::wstring& wStr);
@@ -27,8 +32,7 @@ std::wstring toWString(const std::string& str);
 std::string toLowerStr(const std::string& str);
 
 // first live object of type T in GObjObjects
-template<class T>
-T* findFirstOf() {
+template <class T> T* findFirstOf() {
     if (!UObject::GObjObjects) {
         return nullptr;
     }
@@ -42,8 +46,7 @@ T* findFirstOf() {
 }
 
 // run fn over every live object of type T in GObjObjects
-template<class T, class Fn>
-void forEachOf(Fn&& fn) {
+template <class T, class Fn> void forEachOf(Fn&& fn) {
     if (!UObject::GObjObjects) {
         return;
     }
@@ -56,12 +59,12 @@ void forEachOf(Fn&& fn) {
 }
 
 static ImVec4 hexToImVec4(const std::string& hex) {
-    //remove leading '#' if present
+    // remove leading '#' if present
     std::string hexStr = hex;
     if (!hexStr.empty() && hexStr[0] == '#') {
         hexStr = hexStr.substr(1);
     }
-    
+
     if (hex.size() != 6 && hex.size() != 8) {
         return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
     }

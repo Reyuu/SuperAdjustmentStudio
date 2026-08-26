@@ -1,25 +1,26 @@
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
+#include "IconsFontAwesome6.h"
+#include "imgui.h"
 #include "ui.h"
+#include "ui_helpers/toast_notifications.h"
+#include <LESDK/Includes.LE2.hpp>
 #include <algorithm>
 #include <sstream>
-#include "imgui.h"
-#include <LESDK/Includes.LE2.hpp>
-#include "IconsFontAwesome6.h"
-#include "ui_helpers/toast_notifications.h"
 
-#include "engine.h"
 #include "animation.h"
+#include "application.h"
 #include "bones.h"
+#include "engine.h"
+#include "game_window.h"
 #include "gizmo.h"
 #include "logger.h"
 #include "mouse.h"
-#include "props.h"
 #include "native_renderer.h"
-#include "game_window.h"
-#include "application.h"
+#include "props.h"
 
-//TODO: translations (save needed strings to .po, header only utility, save as std::map?, set global language, gettext("english"))
+// TODO: translations (save needed strings to .po, header only utility, save as std::map?, set global language,
+// gettext("english"))
 
 static auto axisWidgetLambda = [](const char* label, const char* id, float* value, float step, float lo, float hi, const char* format) {
     ImGui::Text(label); // warning does not matter here
@@ -27,20 +28,23 @@ static auto axisWidgetLambda = [](const char* label, const char* id, float* valu
     return ImGui::DragFloat(id, value, step, lo, hi, format);
 };
 
-static const auto applyDebounced = [](  bool& toApply, float& lastEdit, float& lastApply, auto apply, \
-                                                        float burstWindow = 0.35f, float burstInterval = 0.25f, float idleInterval = 0.05f) {
-    if (!toApply) return;
+static const auto applyDebounced = [](bool& toApply, float& lastEdit, float& lastApply, auto apply, float burstWindow = 0.35f, float burstInterval = 0.25f,
+                                      float idleInterval = 0.05f) {
+    if (!toApply) {
+        return;
+    }
     const float now = ImGui::GetTime();
     const bool inBurst = (now - lastEdit) < burstWindow;
     if (now - lastApply >= (inBurst ? burstInterval : idleInterval)) {
         apply();
         lastApply = now;
-        if (!inBurst) toApply = false;
+        if (!inBurst) {
+            toApply = false;
+        }
     }
 };
 
-void UI::refreshBoneList(const std::string& pawnName)
-{
+void UI::refreshBoneList(const std::string& pawnName) {
     bones.clear();
     boneIndex = 0;
     Application::instance().bones().listBones(pawnName, (MeshTarget)meshTargetIndex, bones);
@@ -78,7 +82,7 @@ void UI::collectPawns() {
         pawnNamesVector.push_back(nm);
     });
 
-    //actors we spawned
+    // actors we spawned
     for (const std::string& sn : Application::instance().engine().spawnedNames()) {
         if (std::find(pawnNamesVector.begin(), pawnNamesVector.end(), sn) != pawnNamesVector.end()) {
             continue;
@@ -87,8 +91,8 @@ void UI::collectPawns() {
             pawnNamesVector.push_back(sn);
         }
     }
-    
-    //object pinned by click-to-select
+
+    // object pinned by click-to-select
     for (const std::string& pn : pinnedNamesVector) {
         if (std::find(pawnNamesVector.begin(), pawnNamesVector.end(), pn) != pawnNamesVector.end()) {
             continue;
@@ -211,12 +215,12 @@ void UI::collectAnimations(const std::string& pawnName) {
         if (!seq) {
             return;
         }
-        
+
         const char* nm = seq->SequenceName.GetName();
         if (!nm || !*nm) {
             return;
         }
-        
+
         std::string s(nm);
         if (std::find(animationNames.begin(), animationNames.end(), s) == animationNames.end()) {
             animationNames.push_back(s);
@@ -233,7 +237,7 @@ void UI::collectAnimations(const std::string& pawnName) {
         }
     }
 
-    //try to load other animation sets, that aren't linked to the mesh component
+    // try to load other animation sets, that aren't linked to the mesh component
     if (animationIncludeAll) {
         forEachOf<UAnimSet>([&](UAnimSet* set) {
             for (int j = 0; j < (int)set->Sequences.Count(); ++j) {
@@ -243,24 +247,23 @@ void UI::collectAnimations(const std::string& pawnName) {
     }
 }
 
-bool UI::renderTransformEditor(Transform& t, const char* idPrefix)
-{
+bool UI::renderTransformEditor(Transform& t, const char* idPrefix) {
     bool edited = false;
 
     ImGui::PushID(idPrefix);
     ImGui::Text("Position");
     ImGui::PushItemWidth(-100);
-    edited |= axisWidgetLambda("X",  "##px", &t.pos[0],  1.0f,  -100000.f, 100000.f, "%.1f");
-    edited |= axisWidgetLambda("Y",  "##py", &t.pos[1],  1.0f,  -100000.f, 100000.f, "%.1f");
-    edited |= axisWidgetLambda("Z",  "##pz", &t.pos[2],  1.0f,  -100000.f, 100000.f, "%.1f");
+    edited |= axisWidgetLambda("X", "##px", &t.pos[0], 1.0f, -100000.f, 100000.f, "%.1f");
+    edited |= axisWidgetLambda("Y", "##py", &t.pos[1], 1.0f, -100000.f, 100000.f, "%.1f");
+    edited |= axisWidgetLambda("Z", "##pz", &t.pos[2], 1.0f, -100000.f, 100000.f, "%.1f");
     ImGui::Text("Rotation");
-    edited |= axisWidgetLambda("RX", "##rx", &t.rot[0],  0.1f,  -180.f,    180.f,    "%.1f");
-    edited |= axisWidgetLambda("RY", "##ry", &t.rot[1],  0.1f,  -180.f,    180.f,    "%.1f");
-    edited |= axisWidgetLambda("RZ", "##rz", &t.rot[2],  0.1f,  -180.f,    180.f,    "%.1f");
+    edited |= axisWidgetLambda("RX", "##rx", &t.rot[0], 0.1f, -180.f, 180.f, "%.1f");
+    edited |= axisWidgetLambda("RY", "##ry", &t.rot[1], 0.1f, -180.f, 180.f, "%.1f");
+    edited |= axisWidgetLambda("RZ", "##rz", &t.rot[2], 0.1f, -180.f, 180.f, "%.1f");
     ImGui::Text("Scale");
-    edited |= axisWidgetLambda("X",  "##sx", &t.scale[0], 0.01f, 0.001f,   100.f,    "%.3f");
-    edited |= axisWidgetLambda("Y",  "##sy", &t.scale[1], 0.01f, 0.001f,   100.f,    "%.3f");
-    edited |= axisWidgetLambda("Z",  "##sz", &t.scale[2], 0.01f, 0.001f,   100.f,    "%.3f");
+    edited |= axisWidgetLambda("X", "##sx", &t.scale[0], 0.01f, 0.001f, 100.f, "%.3f");
+    edited |= axisWidgetLambda("Y", "##sy", &t.scale[1], 0.01f, 0.001f, 100.f, "%.3f");
+    edited |= axisWidgetLambda("Z", "##sz", &t.scale[2], 0.01f, 0.001f, 100.f, "%.3f");
     ImGui::PopItemWidth();
     ImGui::PopID();
     return edited;
@@ -269,7 +272,8 @@ bool UI::renderTransformEditor(Transform& t, const char* idPrefix)
 void UI::applyUIInputState(GameWindow& window) {
     const bool show = showUIstate.load();
     // only show system cursor while overlay is shown
-    while (show ? (ShowCursor(TRUE) < 0) : (ShowCursor(FALSE) >= 0)) {}
+    while (show ? (ShowCursor(TRUE) < 0) : (ShowCursor(FALSE) >= 0)) {
+    }
 
     Application::instance().engine().freezeLook(show);
     if (show) {
@@ -318,12 +322,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     ImGui::Begin(ICON_FA_SLIDERS " SuperAdjustmentStudio " PLUGIN_VERSION, NULL);
     ImVec2 windowPosition = ImGui::GetWindowPos();
     ImVec2 windowSize = ImGui::GetWindowSize();
-    renderer.setUiRect({
-        (LONG)windowPosition.x,
-        (LONG)windowPosition.y,
-        (LONG)(windowPosition.x + windowSize.x),
-        (LONG)(windowPosition.y + windowSize.y)
-    });
+    renderer.setUiRect({(LONG)windowPosition.x, (LONG)windowPosition.y, (LONG)(windowPosition.x + windowSize.x), (LONG)(windowPosition.y + windowSize.y)});
 
     if (Application::instance().animation().animPauseActive()) {
         Application::instance().animation().keepAnimationsPaused();
@@ -360,8 +359,7 @@ void UI::renderControlsSection() {
     icon = hideGameUI ? ICON_FA_EYE_SLASH : ICON_FA_EYE;
     if (ImGui::Checkbox((std::string(icon) + " Hide all game UI").c_str(), &hideGameUI)) {
         if (hideGameUI) {
-            toastManager.addToastNotification("This feature does not work for now! You won't see any changes!",
-                                                ToastTypeInfo, 2.0);
+            toastManager.addToastNotification("This feature does not work for now! You won't see any changes!", ToastTypeInfo, 2.0);
         }
         Application::instance().engine().isGameUIHidden() = hideGameUI;
         Application::instance().engine().applyHUDVisibility();
@@ -377,7 +375,7 @@ void UI::renderControlsSection() {
     if (ImGui::Checkbox((std::string(icon) + " Advanced selection").c_str(), &advancedSelection)) {
         collectPawns();
     }
-    
+
     // so it only makes sense to apply it when:
     // - the collection is not empty
     // - we actually have a pawn selected
@@ -457,7 +455,7 @@ void UI::renderSelectionTarget() {
 
     // might change this
     // only removes a pawn that we spawned, since removing for example Player pawn would be...
-    // disastrous 
+    // disastrous
     auto& spawnedNames = Application::instance().engine().spawnedNames();
     std::string& selectedPawn = pawnNamesVector[pawnIndexInt];
     bool isFoundInCollection = std::find(spawnedNames.begin(), spawnedNames.end(), selectedPawn) != spawnedNames.end();
@@ -489,7 +487,7 @@ void UI::renderSelectionTransform() {
             Application::instance().engine().loadTransformFromPawn(transformPawn, selectedTransform);
             transformToApply = false;
             toastManager.addToastNotification("Reloaded transform from " + transformPawn, ToastTypeSuccess, 2.0);
-        } 
+        }
     }
 
     bool tfEdited = renderTransformEditor(selectedTransform, "sel");
@@ -510,7 +508,7 @@ void UI::renderSelectionAnimation() {
         return;
     }
     ImGui::Indent();
-    
+
     if (!pawnNamesVector.empty()) {
         if (animationPawn != pawnNamesVector[pawnIndexInt]) {
             animationPawn = pawnNamesVector[pawnIndexInt];
@@ -522,7 +520,7 @@ void UI::renderSelectionAnimation() {
         animationIndex = 0;
     }
 
-    //TODO: Improve the search, it's VERY picky atm
+    // TODO: Improve the search, it's VERY picky atm
     ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
     ImGui::SameLine();
     ImGui::PushItemWidth(-100);
@@ -676,7 +674,7 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
     }
     ImGui::EndChild();
     ImGui::Separator();
-    
+
     const BonePoseInfo& sel = bones[boneIndex];
     ImGui::Text("Selected bone: %s", sel.boneName.c_str());
     if (!sel.parentName.empty()) {
@@ -776,7 +774,7 @@ void UI::renderSelectionOtherProps() {
             if (props.propertyComponentIndex() >= (int)cItems.size()) {
                 props.propertyComponentIndex() = 0;
             }
-            
+
             ImGui::Text("Target component");
             ImGui::Text(ICON_FA_CROSSHAIRS);
             ImGui::SameLine();

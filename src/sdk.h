@@ -7,18 +7,14 @@
 #include <LESDK/Includes.LE2.hpp>
 #include <LESDK/Init.hpp>
 
-#define SDK_INITIALIZE_OBJECT_TYPED(variable, resolveType, address) \
-if (!variable) { \
-    variable = sdkInitializer->ResolveTyped<resolveType>(address); \
-}
+#define SDK_INITIALIZE_OBJECT_TYPED(variable, resolveType, address)    \
+    if (!variable) {                                                   \
+        variable = sdkInitializer->ResolveTyped<resolveType>(address); \
+    }
 
 // we need to resolve the native functions, because for some reason LESDK's way does not work
 // UE3: Core/Inc/UnPkg.h and LESDK
-using loadPackageType = UPackage*(
-    UPackage*,
-    wchar_t*,
-    ELoadFlags
-);
+using loadPackageType = UPackage*(UPackage*, wchar_t*, ELoadFlags);
 
 class SDKContext {
     public:
@@ -41,7 +37,7 @@ class SDKContext {
         loadPackageType* loadPackage() const {
             return loadPackagePointer;
         }
-    
+
     private:
         ISharedProxyInterface* spiProxy = nullptr;
         LESDK::Initializer* sdkInitializer = nullptr;

@@ -1,10 +1,10 @@
 #ifndef SAS_HOOK_MANAGER_H
 #define SAS_HOOK_MANAGER_H
 
+#include "sdk.h"
 #include <atomic>
 #include <set>
 #include <string>
-#include "sdk.h"
 
 class HookManager {
     public:
@@ -14,11 +14,11 @@ class HookManager {
         bool areHooksInstalled() const {
             return areHooksInstalledState;
         }
-    private:
-    SDKContext* sdkInstance = nullptr;
-    std::set<std::string> hookNames;
-    std::atomic<bool> areHooksInstalledState{false};
 
+    private:
+        SDKContext* sdkInstance = nullptr;
+        std::set<std::string> hookNames;
+        std::atomic<bool> areHooksInstalledState{false};
 };
 
 #endif //  SAS_HOOK_MANAGER_H

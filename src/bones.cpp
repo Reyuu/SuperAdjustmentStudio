@@ -1,14 +1,14 @@
-﻿#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
-#include "bones.h"
+﻿#include "bones.h"
+#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include <cmath>
-#include <numbers>
 #include <cstring>
+#include <numbers>
 #include <sstream>
 
+#include "application.h"
 #include "logger.h"
 #include "util.h"
-#include "application.h"
 
 #include <LESDK/Common/Math.hpp>
 
@@ -51,12 +51,10 @@ USkeletalMeshComponent* Bones::findPawnMeshForTarget(const std::string& pawnName
     return ((APawn*)actor)->Mesh;
 }
 
-
 #pragma region // Direct bone posing
 
-void Bones::restoreBonePoseMesh(std::string pawn, MeshTarget target, std::vector<FBoneAtom> atoms, \
-                                std::vector<int> indicies, bool useSavedPose) {
-    
+void Bones::restoreBonePoseMesh(std::string pawn, MeshTarget target, std::vector<FBoneAtom> atoms, std::vector<int> indicies, bool useSavedPose) {
+
     USkeletalMeshComponent* mesh = findPawnMeshForTarget(pawn, target);
     if (mesh && mesh->SkeletalMesh) {
         FBoneAtom* la = mesh->LocalAtoms.GetData();
@@ -73,8 +71,7 @@ void Bones::restoreBonePoseMesh(std::string pawn, MeshTarget target, std::vector
     }
 
     std::ostringstream ss;
-    ss  << "ResetBonePose: '" << pawn << "' mesh=" << (target == MESH_HEAD ? "head" : "body")
-        << " restored=" << atoms.size() << " atoms";
+    ss << "ResetBonePose: '" << pawn << "' mesh=" << (target == MESH_HEAD ? "head" : "body") << " restored=" << atoms.size() << " atoms";
     Logger->debug(ss.str());
 }
 
@@ -89,8 +86,7 @@ void Bones::releaseAllBonesFromPose(std::string pawn, MeshTarget target) {
     }
 
     std::ostringstream ss;
-    ss  << "absoluteReset: '" << pawn << "' mesh=" << (target == MESH_HEAD ? "head" : "body")
-        << " released";
+    ss << "absoluteReset: '" << pawn << "' mesh=" << (target == MESH_HEAD ? "head" : "body") << " released";
     Logger->debug(ss.str());
 }
 
@@ -123,7 +119,7 @@ void Bones::keepBonePoses() {
     if (!mesh || !mesh->SkeletalMesh) {
         return;
     }
-    
+
     int n = (int)mesh->SkeletalMesh->RefSkeleton.Count();
     if (boneCount > 0 && n != boneCount) {
         Logger->debug("keepBonePoses: skeleton swapped; dropping pose");
@@ -173,14 +169,11 @@ void Bones::keepBonePoses() {
             continue;
         }
         FBoneAtom& a = sp[p.index];
-        a.Rotation = mesh->QuatFromRotator(mesh->MakeRotator(
-            DegreesToUnrealRotationUnits(p.rot[0]),
-            DegreesToUnrealRotationUnits(p.rot[1]),
-            DegreesToUnrealRotationUnits(p.rot[2])
-        ));
+        a.Rotation = mesh->QuatFromRotator(
+            mesh->MakeRotator(DegreesToUnrealRotationUnits(p.rot[0]), DegreesToUnrealRotationUnits(p.rot[1]), DegreesToUnrealRotationUnits(p.rot[2])));
 
         FVector base = la[p.index].Translation;
-        for(int k = 0; k < baseIndices.size(); ++k) {
+        for (int k = 0; k < baseIndices.size(); ++k) {
             if (baseIndices[k] == p.index) {
                 base = baseAtoms[k].Translation;
                 break;
@@ -218,7 +211,7 @@ void Bones::listBones(const std::string& pawnName, MeshTarget target, std::vecto
         Logger->debug("listBones: mesh has no SkeletalMesh");
         return;
     }
-    
+
     TArray<int>& ref = mesh->SkeletalMesh->RefSkeleton;
     int n = (int)ref.Count();
     TArray<SFXName> names;
@@ -228,10 +221,8 @@ void Bones::listBones(const std::string& pawnName, MeshTarget target, std::vecto
     }
 
     std::ostringstream ss;
-    ss  << "listBones: '" << pawnName << "' mesh=" << (target == MESH_HEAD ? "head" : "body")
-        << " bones=" << n << " ref=" << ref.Count()
-        << " spaceBases=" << mesh->SpaceBases.Count()
-        << " localAtoms=" << mesh->LocalAtoms.Count();
+    ss << "listBones: '" << pawnName << "' mesh=" << (target == MESH_HEAD ? "head" : "body") << " bones=" << n << " ref=" << ref.Count()
+       << " spaceBases=" << mesh->SpaceBases.Count() << " localAtoms=" << mesh->LocalAtoms.Count();
     Logger->debug(ss.str());
 
     for (int i = 0; i < n; ++i) {
@@ -248,8 +239,7 @@ void Bones::listBones(const std::string& pawnName, MeshTarget target, std::vecto
     }
 }
 
-bool Bones::getBoneTransform(const std::string& pawnName, MeshTarget target, int index, BonePoseInfo& out)
-{
+bool Bones::getBoneTransform(const std::string& pawnName, MeshTarget target, int index, BonePoseInfo& out) {
     USkeletalMeshComponent* mesh = findPawnMeshForTarget(pawnName, target);
     if (!mesh) {
         Logger->debug("getBoneTransform: target mesh not found");
@@ -262,8 +252,7 @@ bool Bones::getBoneTransform(const std::string& pawnName, MeshTarget target, int
 
     TArray<int>& ref = mesh->SkeletalMesh->RefSkeleton;
     if (index < 0 || index >= (int)ref.Count()) {
-        Logger->debug(std::string("getBoneTransform: index out of range ")
-                    + "(" + std::to_string(index) + "out of " + std::to_string((int)ref.Count()) + ")");
+        Logger->debug(std::string("getBoneTransform: index out of range ") + "(" + std::to_string(index) + "out of " + std::to_string((int)ref.Count()) + ")");
         return false;
     }
 
@@ -295,8 +284,7 @@ bool Bones::getBoneTransform(const std::string& pawnName, MeshTarget target, int
     return true;
 }
 
-void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const BonePoseInfo& pose)
-{
+void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const BonePoseInfo& pose) {
     std::string oldPawn;
     MeshTarget oldTarget = MESH_BODY;
     std::vector<FBoneAtom> oldAtoms;
@@ -349,8 +337,7 @@ void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const Bo
     }
 }
 
-void Bones::resetBonePose(const std::string& pawnName, MeshTarget target)
-{
+void Bones::resetBonePose(const std::string& pawnName, MeshTarget target) {
     std::vector<FBoneAtom> atoms;
     std::vector<int> indices;
     bool useSavedPose = false;
@@ -377,14 +364,12 @@ void Bones::resetBonePose(const std::string& pawnName, MeshTarget target)
         });
     } else {
         std::ostringstream ss;
-        ss  << "resetBonePose: '" << pawnName << "' mesh=" << (target == MESH_HEAD ? "head" : "body")
-            << " (nothing to restore)";
+        ss << "resetBonePose: '" << pawnName << "' mesh=" << (target == MESH_HEAD ? "head" : "body") << " (nothing to restore)";
         Logger->debug(ss.str());
     }
 }
 
-void Bones::absoluteResetBones(const std::string& pawnName, MeshTarget target)
-{
+void Bones::absoluteResetBones(const std::string& pawnName, MeshTarget target) {
     {
         std::lock_guard<std::mutex> lock(bonePose.mtx);
         bonePose.posed.clear();
@@ -400,4 +385,3 @@ void Bones::absoluteResetBones(const std::string& pawnName, MeshTarget target)
     });
 }
 #pragma endregion
-

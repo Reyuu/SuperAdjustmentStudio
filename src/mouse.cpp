@@ -3,17 +3,16 @@
 
 #include "mouse.h"
 
+#include <Unknwn.h> // LPUNKNOWN
 #include <cstring>
 #include <sstream>
-#include <Unknwn.h> // LPUNKNOWN
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 
+#include "application.h"
 #include "hook_manager.h"
 #include "logger.h"
-#include "application.h"
-
 
 #pragma region // WinApi mouse trap
 static BOOL WINAPI hkGetCursorPos(LPPOINT lpPoint) {
@@ -58,7 +57,7 @@ BOOL Mouse::hookGetCursorInfo(PCURSORINFO pci) {
     } SAS_HOOK_CATCH_RET(origGetCursorInfo ? origGetCursorInfo(pci) : FALSE)
 }
 
-//winapi mouse trap, probably overkill but w/e
+// winapi mouse trap, probably overkill but w/e
 void Mouse::initMouseTrap(HookManager& hooks) {
     HMODULE h = LoadLibraryA("user32.dll");
     if (!h) {
@@ -66,7 +65,7 @@ void Mouse::initMouseTrap(HookManager& hooks) {
         return;
     }
 
-    //GetCursorPos
+    // GetCursorPos
     if (FARPROC p = GetProcAddress(h, "GetCursorPos")) {
         origGetCursorPos = (GetCursorPosFn)hooks.install("GetCursorPos", p, &hkGetCursorPos);
         if (origGetCursorPos) {
@@ -78,7 +77,7 @@ void Mouse::initMouseTrap(HookManager& hooks) {
         Logger->debug("WinApi mouse trap: could not find GetCursorPos");
     }
 
-    //GetCursorInfo
+    // GetCursorInfo
     if (FARPROC p = GetProcAddress(h, "GetCursorInfo")) {
         origGetCursorInfo = (GetCursorInfoFn)hooks.install("GetCursorInfo", p, &hkGetCursorInfo);
         if (origGetCursorInfo) {
@@ -146,10 +145,10 @@ HRESULT Mouse::hookD8GetDeviceState(void* This, DWORD cbData, LPVOID lpvData, bo
         D8GetDeviceStateFn orig = isW ? origD8GetDeviceStateW : origD8GetDeviceStateA;
         return orig(This, cbData, lpvData);
     } SAS_HOOK_CATCH_RET((isW && origD8GetDeviceStateW) ? origD8GetDeviceStateW(This, cbData, lpvData)
-                              : (origD8GetDeviceStateA ? origD8GetDeviceStateA(This, cbData, lpvData) : E_FAIL))
+                                                      : (origD8GetDeviceStateA ? origD8GetDeviceStateA(This, cbData, lpvData) : E_FAIL))
 }
 
-HRESULT Mouse::hookD8GetDeviceData(void *This, DWORD cbObjectData, void *rgdod, DWORD *pdwInOut, DWORD dwFlags, bool isW) {
+HRESULT Mouse::hookD8GetDeviceData(void* This, DWORD cbObjectData, void* rgdod, DWORD* pdwInOut, DWORD dwFlags, bool isW) {
     SAS_HOOK_TRY {
         if (Application::instance().ui().showUI().load() && !Application::instance().engine().isCameraDragActive().load()) {
             Application::instance().engine().freezeLook(true);
@@ -171,7 +170,7 @@ HRESULT Mouse::hookD8GetDeviceData(void *This, DWORD cbObjectData, void *rgdod, 
         D8GetDeviceDataFn orig = isW ? origD8GetDeviceDataW : origD8GetDeviceDataA;
         return orig(This, cbObjectData, rgdod, pdwInOut, dwFlags);
     } SAS_HOOK_CATCH_RET((isW && origD8GetDeviceDataW) ? origD8GetDeviceDataW(This, cbObjectData, rgdod, pdwInOut, dwFlags)
-                              : (origD8GetDeviceDataA ? origD8GetDeviceDataA(This, cbObjectData, rgdod, pdwInOut, dwFlags) : E_FAIL))
+                                                     : (origD8GetDeviceDataA ? origD8GetDeviceDataA(This, cbObjectData, rgdod, pdwInOut, dwFlags) : E_FAIL))
 }
 
 // insanity begins here
@@ -227,7 +226,7 @@ static HRESULT STDMETHODCALLTYPE hkDirectInput8Create(HINSTANCE hinst, DWORD dwV
     return Application::instance().mouse().hookDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
 }
 
-HRESULT Mouse::hookDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, const IID &riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter) {
+HRESULT Mouse::hookDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, const IID& riidltf, LPVOID* ppvOut, LPUNKNOWN punkOuter) {
     SAS_HOOK_TRY {
         HRESULT hr = origD8Create ? origD8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter) : E_FAIL;
         if (SUCCEEDED(hr) && ppvOut && *ppvOut) {
@@ -270,7 +269,7 @@ void Mouse::initDI8MouseHook(HookManager& hooks) {
     }
 
     // try creating out own instances too, in case of proxy dll
-    const GUID* variants[2] = { &IID_IDirectInput8W, &IID_IDirectInput8A};
+    const GUID* variants[2] = {&IID_IDirectInput8W, &IID_IDirectInput8A};
     const D8GetDeviceStateFn hkState[2] = {&hkD8GetDeviceStateW, &hkD8GetDeviceStateA};
     const D8GetDeviceDataFn hkData[2] = {&hkD8GetDeviceDataW, &hkD8GetDeviceDataA};
     D8GetDeviceStateFn* origState[2] = {&origD8GetDeviceStateW, &origD8GetDeviceStateA};
@@ -323,7 +322,8 @@ void Mouse::initDI8MouseHook(HookManager& hooks) {
         }
 
         std::ostringstream ss;
-        ss << "DI8 mouse trap: " << (v == 0 ? "W" : "A") << " variant " << (ok ? "hooked" : "hook FAILED") << " (state=0x" << std::hex << vtable[9] << " data=0x" << vtable[10] << std::dec << ")";
+        ss << "DI8 mouse trap: " << (v == 0 ? "W" : "A") << " variant " << (ok ? "hooked" : "hook FAILED") << " (state=0x" << std::hex << vtable[9]
+           << " data=0x" << vtable[10] << std::dec << ")";
         Logger->debug(ss.str());
     }
     if (hookedVariants == 0) {
