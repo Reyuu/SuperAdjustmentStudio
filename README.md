@@ -91,6 +91,11 @@ To deploy the generated DLL, use `deploy.bat`. It runs `env.bat` and copies the 
 //TODO: docs/contribute.md
 ```
 
+Make sure you have the hooks directory is set:
+```
+git config core.hooksPath .githooks
+```
+
 ## Attributions
 This project uses libraries from:
 - [llamathings/LExSDKv2](https://github.com/llamathings/LExSDKv2)

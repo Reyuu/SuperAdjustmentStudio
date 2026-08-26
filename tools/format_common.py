@@ -97,3 +97,27 @@ def tracked_source_files(root: Path, ignore_patterns: list[str]) -> tuple[list[P
             continue
         files.append(root / path)
     return files, skipped
+
+
+def staged_source_files(root: Path, ignore_patterns: list[str]) -> tuple[list[Path], int]:
+    try:
+        listed = subprocess.check_output(
+            ["git", "-C", str(root), "diff", "--cached",
+             "--name-only", "--diff-filter=ACMR"],
+            text=True,
+        ).splitlines()
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(f"git diff failed: {exc}")
+
+    files: list[Path] = []
+    skipped = 0
+    for rel in listed:
+        path = Path(rel)
+        if path.suffix.lower() not in SOURCE_EXTENSIONS:
+            skipped += 1
+            continue
+        if is_ignored(path, ignore_patterns):
+            skipped += 1
+            continue
+        files.append(root / path)
+    return files, skipped
