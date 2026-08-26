@@ -176,9 +176,17 @@ target_compile_definitions(SuperAdjustmentStudio PRIVATE SDK_TARGET_LE2)
 
 if (MSVC)
     # ensure SAS is using MSVC conformance flags when MSVC is used
-    target_compile_options(SuperAdjustmentStudio PRIVATE /std:c++20 /permissive /Zc:__cplusplus /wd4191 /wd4005)
+    target_compile_options(SuperAdjustmentStudio PRIVATE /std:c++20 /permissive /Zc:__cplusplus /wd4191 /wd4005 /EHa)
     # force to use the LESDK precompiled headers when MSVC is used
     target_precompile_headers(SuperAdjustmentStudio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp")
+
+    # parallel compilation, at least 8 processes regardless of detected core count
+    include(ProcessorCount)
+    ProcessorCount(SAS_CORE_COUNT)
+    if (SAS_CORE_COUNT LESS 8)
+        set(SAS_CORE_COUNT 8)
+    endif()
+    target_compile_options(SuperAdjustmentStudio PRIVATE /MP${SAS_CORE_COUNT})
 endif()
 
 target_compile_definitions(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:SAS_DEBUG>)

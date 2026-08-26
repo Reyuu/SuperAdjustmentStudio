@@ -34,12 +34,13 @@ enum PropertyType : int {
 
 struct PropertyEntry {
     public:
-        std::string name;        // property name
-        int offset = 0;          // memory offset
-        int type = PT_OTHER;     // PropertyType
-        bool readonly = false;   // is it readonly?
-        std::string detail;      // struct/object/array/enum name or current value label
-        void* enumObj = nullptr; // enum
+        std::string name;           // property name
+        int offset = 0;             // memory offset
+        int type = PT_OTHER;        // PropertyType
+        bool readonly = false;      // is it readonly?
+        std::string detail;         // struct/object/array/enum name or current value label
+        void* enumObj = nullptr;    // enum
+        void* arrayInner = nullptr; // array inner property
         std::vector<std::string> enumAvailableStrings = {};
         float fVector[4] = {0, 0, 0, 0};
         float fValue = 0.0f;    // float
@@ -49,6 +50,13 @@ struct PropertyEntry {
         char buffer[512] = {0}; // string buffer
         bool editing = false;   // is the user editing the property?
         bool toApply = false;   // is the edit staged yet?
+};
+
+struct FScriptArray {
+    public:
+        void* Data;
+        int32_t ArrayNum;
+        int32_t ArrayMax;
 };
 
 class Properties {
@@ -84,13 +92,16 @@ class Properties {
         std::string classShortName(UProperty* p);
         void readValue(UObject* obj, PropertyEntry& e);
         void writeValue(UObject* obj, PropertyEntry& e);
+        void classifyProperty(UProperty* prop, PropertyEntry& e);
         void classifyScalarProperty(UProperty* prop, PropertyEntry& e);
         bool tryExpandStructProperty(UProperty* prop, std::vector<PropertyEntry>& out);
         void collectProperties(UObject* obj, std::vector<PropertyEntry>& out);
         void bindSpawnProperties(const std::string& fullClass, bool force);
         void applySpawnProperties(AActor* actor, std::vector<PropertyEntry>& props);
         void renderPropertyTable(UObject* readObject, UObject* writeObject, std::vector<PropertyEntry>& props, const std::string& filter);
+        void renderPropertyEntry(UObject* readObject, UObject* writeObject, PropertyEntry& e, const std::string& id);
 
+        bool allowArraySlackExpansion = false; // allow adding new elements to arrays (requires reallocation, can be dangerous)
     private:
         std::vector<PropertyEntry> propertiesVector;
         std::string propertyPawnString;

@@ -1,8 +1,11 @@
 #include "props.h"
 #include "Common/FString.hpp"
+#include "IconsFontAwesome6.h"
 #include "LE2/Core_classes.hpp"
+#include "ui_helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Math.hpp>
+#include <cstring>
 
 std::string Properties::classShortName(UProperty* p) {
     PROP_CASE(p, UFloatProperty, "float")
@@ -223,12 +226,12 @@ void Properties::writeValue(UObject* obj, PropertyEntry& e) {
             break;
         }
         case PT_OBJECT: {
-        case PT_STRUCT: {
-            case PT_ARRAY: {
-                case PT_OTHER: {
-                    default: {
-                        break;
-        }
+            case PT_STRUCT: {
+                case PT_ARRAY: {
+                    case PT_OTHER: {
+                        default: {
+                            break;
+                        }
                     }
                 }
             }
@@ -398,6 +401,7 @@ void Properties::collectProperties(UObject* obj, std::vector<PropertyEntry>& out
                 e.readonly = true;
                 UProperty* inner = ((UArrayProperty*)prop)->Inner;
                 e.detail = "array of " + (inner ? classShortName(inner) : std::string("?")) + " (live count)";
+                e.arrayInner = inner;
             } else {
                 e.readonly = true;
                 e.detail = classShortName(prop);
@@ -476,102 +480,176 @@ void Properties::renderPropertyTable(UObject* readObject, UObject* writeObject, 
         if (!filter.empty() && toLowerStr(e.name).find(filter) == std::string::npos) {
             continue;
         }
+        renderPropertyEntry(readObject, writeObject, e, std::to_string(i));
+    }
+}
 
-        std::string label = e.name + "##p" + std::to_string(i);
-        if (!e.toApply) {
-            readValue(readObject, e);
+// render a single property entry (scalar or struct)
+void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, PropertyEntry& e, const std::string& id) {
+    std::string label = e.name + "##p" + id;
+    if (!e.toApply) {
+        readValue(readObject, e);
+    }
+
+    bool changed = false;
+    switch (e.type) {
+        case PT_FLOAT: {
+            // simple imgui widgets return bool upon change
+            changed = ImGui::DragFloat(label.c_str(), &e.fValue, 0.1f);
+            break;
         }
+        case PT_INT: {
+            changed = ImGui::DragInt(label.c_str(), &e.iValue, 1.0f);
+            break;
+        }
+        case PT_BOOL: {
+            changed = ImGui::Checkbox(label.c_str(), &e.bValue);
+            break;
+        }
+        case PT_BYTE: {
+            changed = ImGui::DragInt(label.c_str(), &e.iValue, 1.0f, 0, 255);
+            break;
+        }
+        case PT_ENUM: {
+            int maxIdx = (int)e.enumAvailableStrings.size() - 1;
+            if (maxIdx < 0) {
+                ImGui::TextDisabled("%s: %d (%s)", e.name.c_str(), e.iValue, e.detail.c_str());
+                break;
+            }
+            if (e.iValue < 0) {
+                e.iValue = 0;
+            }
+            if (e.iValue > maxIdx) {
+                e.iValue = maxIdx;
+            }
+            changed = ImGui::SliderInt(label.c_str(), &e.iValue, 0, maxIdx, e.enumAvailableStrings[e.iValue].c_str());
+            break;
+        }
+        case PT_NAME: {
+            case PT_STRING: {
+                ImGui::InputText(label.c_str(), e.buffer, sizeof(e.buffer));
+                e.editing = ImGui::IsItemActive();
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    changed = true;
+                }
+                break;
+            }
+        }
+        case PT_MASK: {
+            // 0b00000000
+            // the mask can only be 0x8 bytes in size
+            changed = ImGui::InputScalar(label.c_str(), ImGuiDataType_U32, &e.maskValue, NULL, NULL, "%08X", ImGuiInputTextFlags_CharsHexadecimal);
+            break;
+        }
+        case PT_VECTOR: {
+            changed = ImGui::DragFloat3(label.c_str(), e.fVector, 0.1f);
+            break;
+        }
+        case PT_VECTOR2D: {
+            changed = ImGui::DragFloat2(label.c_str(), e.fVector, 0.1f);
+            break;
+        }
+        case PT_ROTATOR: {
+            changed = ImGui::DragFloat3(label.c_str(), e.fVector, 0.1f, -180.0f, 180.0f, "%.1f");
+            break;
+        }
+        case PT_COLOR: {
+            case PT_LINEAR_COLOR: {
+                changed = ImGui::ColorEdit4(label.c_str(), e.fVector, ImGuiColorEditFlags_AlphaBar);
+                break;
+            }
+        }
+        case PT_ARRAY: {
+            std::string arrLabel = e.name + " (array of " + e.detail + ")";
+            if (!e.arrayInner) {
+                ImGui::TextDisabled("%s", arrLabel.c_str());
+                break;
+            }
 
-        bool changed = false;
-        switch (e.type) {
-            case PT_FLOAT: {
-                // simple imgui widgets return bool upon change
-                changed = ImGui::DragFloat(label.c_str(), &e.fValue, 0.1f);
-                break;
-            }
-            case PT_INT: {
-                changed = ImGui::DragInt(label.c_str(), &e.iValue, 1.0f);
-                break;
-            }
-            case PT_BOOL: {
-                changed = ImGui::Checkbox(label.c_str(), &e.bValue);
-                break;
-            }
-            case PT_BYTE: {
-                changed = ImGui::DragInt(label.c_str(), &e.iValue, 1.0f, 0, 255);
-                break;
-            }
-            case PT_ENUM: {
-                int maxIdx = (int)e.enumAvailableStrings.size() - 1;
-                if (maxIdx < 0) {
-                    ImGui::TextDisabled("%s: %d (%s)", e.name.c_str(), e.iValue, e.detail.c_str());
+            FScriptArray* arr = (FScriptArray*)((BYTE*)readObject + e.offset);
+            UProperty* arrayInner = reinterpret_cast<UProperty*>(e.arrayInner);
+            int stride = arrayInner ? arrayInner->ElementSize : 0;
+
+            std::string treeLabel = std::string(e.name) + " (array of " + classShortName(arrayInner) + ") [" + std::to_string(arr->ArrayNum) + "]";
+            if (ImGui::TreeNode((e.name + "##" + id).c_str(), "%s", treeLabel.c_str())) {
+                if (stride <= 0) {
+                    ImGui::TextDisabled("%s: %s (invalid array stride)", e.name.c_str(), e.detail.c_str());
+                    ImGui::TreePop();
                     break;
                 }
-                if (e.iValue < 0) {
-                    e.iValue = 0;
-                }
-                if (e.iValue > maxIdx) {
-                    e.iValue = maxIdx;
-                }
-                changed = ImGui::SliderInt(label.c_str(), &e.iValue, 0, maxIdx, e.enumAvailableStrings[e.iValue].c_str());
-                break;
-            }
-            case PT_NAME: {
-                case PT_STRING: {
-                    ImGui::InputText(label.c_str(), e.buffer, sizeof(e.buffer));
-                    e.editing = ImGui::IsItemActive();
-                    if (ImGui::IsItemDeactivatedAfterEdit()) {
-                        changed = true;
-                    }
-                    break;
-                }
-            }
-            case PT_MASK: {
-                // 0b00000000
-                // the mask can only be 0x8 bytes in size
-                changed = ImGui::InputScalar(label.c_str(), ImGuiDataType_U32, &e.maskValue, NULL, NULL, "%08X", ImGuiInputTextFlags_CharsHexadecimal);
-                break;
-            }
-            case PT_VECTOR: {
-                changed = ImGui::DragFloat3(label.c_str(), e.fVector, 0.1f);
-                break;
-            }
-            case PT_VECTOR2D: {
-                changed = ImGui::DragFloat2(label.c_str(), e.fVector, 0.1f);
-                break;
-            }
-            case PT_ROTATOR: {
-                changed = ImGui::DragFloat3(label.c_str(), e.fVector, 0.1f, -180.0f, 180.0f, "%.1f");
-                break;
-            }
-            case PT_COLOR: {
-                case PT_LINEAR_COLOR: {
-                    changed = ImGui::ColorEdit4(label.c_str(), e.fVector, ImGuiColorEditFlags_AlphaBar);
-                    break;
-                }
-            }
-            case PT_OBJECT: {
-                case PT_STRUCT: {
-                    case PT_ARRAY: {
-                        case PT_OTHER: {
-                            default: {
-                                ImGui::TextDisabled("%s: %s", e.name.c_str(), e.detail.c_str());
-                                break;
+                for (int idx = 0; idx < arr->ArrayNum; ++idx) {
+                    ImGui::PushID(idx);
+                    PropertyEntry innerEntry;
+                    innerEntry.name = e.name + "[" + std::to_string(idx) + "]";
+                    classifyScalarProperty(arrayInner, innerEntry);
+                    BYTE* innerPtr = (BYTE*)arr->Data + idx * stride;
+                    innerEntry.offset = (int)(innerPtr - (BYTE*)readObject);
+                    renderPropertyEntry(readObject, writeObject, innerEntry, id + "." + std::to_string(idx));
+                    if (writeObject) {
+                        ImGui::SameLine();
+                        if (ImGui::Button(ICON_FA_X)) {
+                            BYTE* base = (BYTE*)arr->Data;
+                            if (idx < arr->ArrayNum - 1) {
+                                memmove(base + idx * stride, base + (idx + 1) * stride, (arr->ArrayNum - idx - 1) * stride);
                             }
+                            arr->ArrayNum--;
+                            ImGui::PopID();
+                            break;
                         }
                     }
+                    ImGui::PopID();
+                }
+
+                if (writeObject) {
+                    ImGui::PushID((std::string("add") + id).c_str());
+                    if (arr->ArrayMax > arr->ArrayNum) {
+
+                        if (ImGui::Button(ICON_FA_PLUS), ) {
+                            BYTE* base = (BYTE*)arr->Data;
+                            memset(base + arr->ArrayNum * stride, 0, stride);
+                            arr->ArrayNum++;
+                        }
+                    } else if (allowArraySlackExpansion) {
+                        if (ImGui::Button(ICON_FA_PLUS)) {
+                            int newMax = arr->ArrayMax > 0 ? arr->ArrayMax * 2 : 4;
+                            BYTE* newData = new BYTE[(size_t)newMax * stride];
+                            if (arr->Data) {
+                                memcpy(newData, arr->Data, (size_t)arr->ArrayNum * stride);
+                            }
+                            memset(newData + (size_t)arr->ArrayNum * stride, 0, (size_t)(newMax - arr->ArrayNum) * stride);
+                            // ponytail: old game-allocated buffer intentionally leaked; freeing via delete[] would corrupt the game heap
+                            arr->Data = newData;
+                            arr->ArrayMax = newMax;
+                            arr->ArrayNum++;
+                        }
+                    } else {
+                        ImGui::TextDisabled("(array full)");
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::TreePop();
+            }
+            break;
+        }
+        case PT_OBJECT: {
+            case PT_STRUCT: {
+                case PT_OTHER: {
+                    default: {
+                        ImGui::TextDisabled("%s: %s", e.name.c_str(), e.detail.c_str());
+                        break;
+                    }
                 }
             }
         }
-        if (changed) {
-            if (writeObject) {
-                writeValue(writeObject, e);
-                if (e.type == PT_ENUM) {
-                    readValue(readObject, e); // enum value refresh
-                }
-            } else {
-                e.toApply = true;
+    }
+    if (changed) {
+        if (writeObject) {
+            writeValue(writeObject, e);
+            if (e.type == PT_ENUM) {
+                readValue(readObject, e); // enum value refresh
             }
+        } else {
+            e.toApply = true;
         }
     }
 }

@@ -391,6 +391,16 @@ void UI::renderControlsSection() {
             Application::instance().engine().setFloat(floatPawn, floatEnabled);
         }
     }
+
+    ImGui::TableNextColumn();
+    icon = ICON_FA_TRIANGLE_EXCLAMATION;
+    if (ImGui::Checkbox((std::string(icon) + " Allow array slack expansion ").c_str(), &Application::instance().properties().allowArraySlackExpansion)) {
+        if (Application::instance().properties().allowArraySlackExpansion) {
+            toastManager.addToastNotification("Enabling this option can be dangerous! It allows adding new elements to arrays, which requires reallocation.",
+                                              ToastTypeWarning, 3.0);
+        }
+    }
+
     ImGui::EndTable();
 
     ImGui::Separator();
