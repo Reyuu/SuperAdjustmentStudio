@@ -89,10 +89,10 @@ void Animation::resetAnimation(const std::string& pawnName)
         return;
     }
 
-    if (customAnimSlot) {
+    if (customAnimSlot && isLiveObject(customAnimSlot)) {
         customAnimSlot->StopCustomAnim(0.2f);
-        customAnimSlot = nullptr;
     }
+    customAnimSlot = nullptr;
 
     if (mesh->Animations) {
         mesh->StopAnim();
@@ -108,10 +108,15 @@ void Animation::resetAnimation(const std::string& pawnName)
     }
 
     // restore
+    if (playedNode && !isLiveObject(playedNode)) {
+        playedNode = nullptr;
+        playedNodeOrigSeq = nullptr;
+    }
     if (playedNode) {
         bool stillInTree = std::find(nodes.begin(), nodes.end(), playedNode) != nodes.end();
         if (!stillInTree) {
             playedNode = nullptr;
+            playedNodeOrigSeq = nullptr;
         }
     }
     if (playedNode) {
@@ -123,6 +128,7 @@ void Animation::resetAnimation(const std::string& pawnName)
             playedNode->AnimSeq = seq;
             playedNode->PlayAnim(1, 1.0f, 0.0f);
             playedNode = nullptr;
+            playedNodeOrigSeq = nullptr;
         }
     }
 

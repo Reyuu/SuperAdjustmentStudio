@@ -368,69 +368,75 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
     FBox box;
     bool drawOnTop = false;
 
-    if (       Context \
-            && Context->IsA(ABioHUD::StaticClass()) \
-            && Function->GetName().Equals(L"PostRender")) {
+    SAS_HOOK_TRY {
+        if (       Context \
+                && Context->IsA(ABioHUD::StaticClass()) \
+                && Function->GetName().Equals(L"PostRender")) {
 
-        hud = static_cast<ABioHUD*>(Context);
-        hud->FlushPersistentDebugLines();
+            hud = static_cast<ABioHUD*>(Context);
+            hud->FlushPersistentDebugLines();
 
-        const bool uiVisible = Application::instance().ui().showUI().load();
-        if (uiVisible && clickSelectState) {
-            checkClickSelect(hud);
-        }
-        actor = gizmoActor();
-        if (actor && highlightSelectedState) {
-            GetActorBoundsBox(actor, box);
-        }
-        if (debugAlwaysOnTopState) {
-            // do not draw aot lines here, we do it later.
-            // also do not draw it if the actor is not found
-            drawOnTop = actor != nullptr;
-        } else if (actor) {
-            UWorld* world = GWorld ? *GWorld : nullptr;
-            ULineBatchComponent* lb = world ? world->PersistentLineBatcher : nullptr;
-            if (lb && lb->FPrimitiveDrawInterfaceVfTable) {
-                if (showGizmoState) {
-                    DrawWorldGizmo(lb, actor);
-                }
-                if (highlightSelectedState && box.IsValid) {
-                    DrawWorldBox(lb, box);
-                }
+            const bool uiVisible = Application::instance().ui().showUI().load();
+            if (uiVisible && clickSelectState) {
+                checkClickSelect(hud);
+            }
+            actor = gizmoActor();
+            if (actor && highlightSelectedState) {
+                GetActorBoundsBox(actor, box);
+            }
+            if (debugAlwaysOnTopState) {
+                // do not draw aot lines here, we do it later.
+                // also do not draw it if the actor is not found
+                drawOnTop = actor != nullptr;
+            } else if (actor) {
+                UWorld* world = GWorld ? *GWorld : nullptr;
+                ULineBatchComponent* lb = world ? world->PersistentLineBatcher : nullptr;
+                if (lb && lb->FPrimitiveDrawInterfaceVfTable) {
+                    if (showGizmoState) {
+                        DrawWorldGizmo(lb, actor);
+                    }
+                    if (highlightSelectedState && box.IsValid) {
+                        DrawWorldBox(lb, box);
+                    }
 
-                APawn* playerPawn = GetPlayerPawn(hud);
-                if (drawTracerState && playerPawn) {
-                    DrawTracer(lb, playerPawn->Location, actor->Location);
+                    APawn* playerPawn = GetPlayerPawn(hud);
+                    if (drawTracerState && playerPawn) {
+                        DrawTracer(lb, playerPawn->Location, actor->Location);
+                    }
                 }
             }
         }
-    }
+    } SAS_HOOK_CATCH_VOID
 
     if (origProcessEvent) {
         origProcessEvent(Context, Function, Parms, Result);
     }
 
-    if (hud) {
-        Application::instance().engine().drainGameThreadTasks();
-        Application::instance().bones().keepBonePoses();
-    }
+    SAS_HOOK_TRY {
+        if (hud) {
+            Application::instance().engine().drainGameThreadTasks();
+            Application::instance().bones().keepBonePoses();
+        }
 
-    if (drawOnTop && actor) {
-        APawn* playerPawn = GetPlayerPawn(hud);
-        if (showGizmoState) {
-            DrawWorldGizmoOnTop(hud, actor);
+        if (drawOnTop && actor) {
+            APawn* playerPawn = GetPlayerPawn(hud);
+            if (showGizmoState) {
+                DrawWorldGizmoOnTop(hud, actor);
+            }
+            if (highlightSelectedState && box.IsValid) {
+                DrawWorldBoxOnTop(hud, box);
+            }
+            if (drawTracerState && playerPawn) {
+                DrawTracerOnTop(hud, playerPawn->Location, actor->Location);
+            }
         }
-        if (highlightSelectedState && box.IsValid) {
-            DrawWorldBoxOnTop(hud, box);
-        }
-        if (drawTracerState && playerPawn) {
-            DrawTracerOnTop(hud, playerPawn->Location, actor->Location);
-        }
-    }
+    } SAS_HOOK_CATCH_VOID
 }
 
 static void hkProcessEvent(UObject* Context, UFunction* Function, void* Parms, void* Result) {
-    Application::instance().gizmo().processEvent(Context, Function, Parms, Result);
+    SAS_HOOK_TRY {
+        Application::instance().gizmo().processEvent(Context, Function, Parms, Result);
+    } SAS_HOOK_CATCH_VOID
 }
 
 void Gizmo::initHooks(HookManager& hookManager, SDKContext& sdk) {

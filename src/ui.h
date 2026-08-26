@@ -40,6 +40,8 @@ class UI {
         bool renderTransformEditor(Transform& t, const char* idPrefix);
         void applyUIInputState(GameWindow& window);
         void renderOverlayContents(NativeRenderer& renderer);
+
+        ToastNotificationManager toastManager;
         
     private:
         void renderControlsSection();
@@ -103,8 +105,6 @@ class UI {
         bool boneListTried = false;
 
         void refreshBoneList(const std::string& pawnName);
-
-        ToastNotificationManager toastManager;
 };
 
 #endif // SAS_UI_H

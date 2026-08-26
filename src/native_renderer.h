@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <atomic>
 
 typedef HRESULT(STDMETHODCALLTYPE* PresentFn)(IDXGISwapChain*, UINT SyncInterval, UINT Flags);
 typedef HRESULT(STDMETHODCALLTYPE* ResizeBuffersFn)(IDXGISwapChain*, UINT BufferCount, UINT Width, UINT Height, \
@@ -85,7 +86,7 @@ class NativeRenderer {
         ID3D11DeviceContext* pd3dContext = nullptr;
         ID3D11RenderTargetView* pRenderTargetView = nullptr;
         RECT uiRectData = {0,0,0,0};
-        bool isImGuiInitializedBool = false;
+        std::atomic<bool> isImGuiInitializedBool{false};
         bool areHooksInstalledBool = false;
 
         PresentFn origPresentPointer = nullptr;

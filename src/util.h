@@ -74,4 +74,21 @@ static ImVec4 hexToImVec4(const std::string& hex) {
     return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 }
 
+static bool isLiveObject(UObject* obj) {
+    if (!obj || !UObject::GObjObjects || !UObject::GObjObjects->GetData()) {
+        return false;
+    }
+    if (obj->Class == nullptr) {
+        return false;
+    }
+    UObject** data = UObject::GObjObjects->GetData();
+    const int n = (int)UObject::GObjObjects->Count();
+    for (int i = 0; i < n; ++i) {
+        if (data[i] == obj) {
+            return true;
+        }
+    }
+    return false;
+}
+
 #endif // SAS_UTIL_H
