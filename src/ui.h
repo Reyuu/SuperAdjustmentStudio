@@ -88,6 +88,8 @@ class UI {
 
         char animationSearch[128] = "";
 
+        bool pendingCollectPawns = false;
+
         bool floatEnabled = false;
         std::string floatPawn;
 

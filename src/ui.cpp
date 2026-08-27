@@ -13,6 +13,20 @@
 #include "bones.h"
 #include "engine.h"
 #include "game_window.h"
+
+namespace {
+struct ChildScope {
+        explicit ChildScope(const char* id, const ImVec2& sz, bool border, ImGuiWindowFlags f = 0) {
+            open = ImGui::BeginChild(id, sz, border, f);
+        }
+        ~ChildScope() noexcept {
+            ImGui::EndChild();
+        }
+        ChildScope(const ChildScope&) = delete;
+        ChildScope& operator=(const ChildScope&) = delete;
+        bool open = false;
+};
+} // namespace
 #include "gizmo.h"
 #include "logger.h"
 #include "mouse.h"
@@ -316,6 +330,37 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
         lastClassRefresh = ImGui::GetTime();
         collectClasses();
     }
+    if (pawnIndexInt < 0) {
+        pawnIndexInt = 0;
+    }
+    if (!pawnNamesVector.empty() && pawnIndexInt >= (int)pawnNamesVector.size()) {
+        pawnIndexInt = (int)pawnNamesVector.size() - 1;
+    }
+    if (pawnNamesVector.empty()) {
+        pawnIndexInt = 0;
+    }
+    if (pendingCollectPawns) {
+        pendingCollectPawns = false;
+        collectPawns();
+    }
+    if (classIndex < 0) {
+        classIndex = 0;
+    }
+    if (!classes.empty() && classIndex >= (int)classes.size()) {
+        classIndex = (int)classes.size() - 1;
+    }
+    if (animationIndex < 0) {
+        animationIndex = 0;
+    }
+    if (!animationNames.empty() && animationIndex >= (int)animationNames.size()) {
+        animationIndex = (int)animationNames.size() - 1;
+    }
+    if (boneIndex < 0) {
+        boneIndex = 0;
+    }
+    if (!bones.empty() && boneIndex >= (int)bones.size()) {
+        boneIndex = (int)bones.size() - 1;
+    }
 
     ImGui::SetNextWindowSize(ImVec2(650, 1250), ImGuiCond_FirstUseEver);
 
@@ -335,6 +380,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
 
     ImGui::End();
     toastManager.renderToastNotifications();
+    Application::instance().properties().renderStructWindows();
 }
 
 #pragma region //  CONTROLS
@@ -373,13 +419,13 @@ void UI::renderControlsSection() {
 
     icon = advancedSelection ? ICON_FA_HAND : ICON_FA_HAND_BACK_FIST;
     if (ImGui::Checkbox((std::string(icon) + " Advanced selection").c_str(), &advancedSelection)) {
-        collectPawns();
+        pendingCollectPawns = true;
     }
 
     // so it only makes sense to apply it when:
     // - the collection is not empty
     // - we actually have a pawn selected
-    if (!pawnNamesVector.empty()) {
+    if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
         if (floatPawn != pawnNamesVector[pawnIndexInt]) {
             floatPawn = pawnNamesVector[pawnIndexInt];
             floatEnabled = false;
@@ -440,7 +486,12 @@ void UI::renderSelectionSection() {
 }
 
 void UI::renderSelectionTarget() {
-    const char* pawnPreview = pawnNamesVector.empty() ? "(no objects found)" : pawnNamesVector[pawnIndexInt].c_str();
+    if (!pawnNamesVector.empty() && (pawnIndexInt < 0 || pawnIndexInt >= (int)pawnNamesVector.size())) {
+        pawnIndexInt = 0;
+    }
+    const char* pawnPreview = (pawnNamesVector.empty() || pawnIndexInt < 0 || pawnIndexInt >= (int)pawnNamesVector.size())
+                                  ? "(no objects found)"
+                                  : pawnNamesVector[pawnIndexInt].c_str();
     ImGui::Text(ICON_FA_CROSSHAIRS " Target");
     ImGui::SameLine();
     ImGui::PushItemWidth(-100);
@@ -467,11 +518,17 @@ void UI::renderSelectionTarget() {
     // only removes a pawn that we spawned, since removing for example Player pawn would be...
     // disastrous
     auto& spawnedNames = Application::instance().engine().spawnedNames();
-    std::string& selectedPawn = pawnNamesVector[pawnIndexInt];
-    bool isFoundInCollection = std::find(spawnedNames.begin(), spawnedNames.end(), selectedPawn) != spawnedNames.end();
-    bool isSpawned = !pawnNamesVector.empty() && isFoundInCollection;
-    if (ImGui::Button(ICON_FA_TRASH "##sel") && isSpawned && !advancedSelection) {
-        Application::instance().engine().removeActor(selectedPawn);
+    bool isFoundInCollection = false;
+    bool isSpawned = false;
+    if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
+        const std::string& selectedPawn = pawnNamesVector[pawnIndexInt];
+        isFoundInCollection = std::find(spawnedNames.begin(), spawnedNames.end(), selectedPawn) != spawnedNames.end();
+        isSpawned = isFoundInCollection;
+        if (ImGui::Button(ICON_FA_TRASH "##sel") && isSpawned && !advancedSelection) {
+            Application::instance().engine().removeActor(selectedPawn);
+        }
+    } else {
+        ImGui::Button(ICON_FA_TRASH "##sel");
     }
 }
 
@@ -482,17 +539,17 @@ void UI::renderSelectionTransform() {
     }
     ImGui::Indent();
     ImGui::TextDisabled("Applies live to the selected object every 250ms.");
-    if (!pawnNamesVector.empty()) {
-        if (transformPawn != pawnNamesVector[pawnIndexInt] & !transformToApply) {
+    if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
+        if (transformPawn != pawnNamesVector[pawnIndexInt] && !transformToApply) {
             transformPawn = pawnNamesVector[pawnIndexInt];
             Application::instance().engine().loadTransformFromPawn(transformPawn, selectedTransform);
         }
-    } else {
+    } else if (pawnNamesVector.empty()) {
         transformPawn.clear();
     }
 
     if (ImGui::Button(ICON_FA_ARROW_RIGHT_TO_BRACKET " Reload from object##sel")) {
-        if (!pawnNamesVector.empty()) {
+        if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
             transformPawn = pawnNamesVector[pawnIndexInt];
             Application::instance().engine().loadTransformFromPawn(transformPawn, selectedTransform);
             transformToApply = false;
@@ -505,7 +562,7 @@ void UI::renderSelectionTransform() {
         transformToApply = true;
         transformLastApply = ImGui::GetTime();
     }
-    if (transformToApply && !pawnNamesVector.empty()) {
+    if (transformToApply && !pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
         applyDebounced(transformToApply, transformLastEdit, transformLastApply, [&] {
             Application::instance().engine().setTransform(pawnNamesVector[pawnIndexInt], selectedTransform);
         });
@@ -537,23 +594,25 @@ void UI::renderSelectionAnimation() {
     ImGui::InputText("##anim_search", animationSearch, sizeof(animationSearch));
     ImGui::PopItemWidth();
     std::string aFilter = toLowerStr(animationSearch);
-    if (ImGui::BeginChild("anim_list", ImVec2(0, 120), true)) {
-        int aShown = 0;
-        for (int i = 0; i < (int)animationNames.size(); ++i) {
-            if (!aFilter.empty() && toLowerStr(animationNames[i]).find(aFilter) == std::string::npos) {
-                continue;
+    {
+        ChildScope child("anim_list", ImVec2(0, 120), true);
+        if (child.open) {
+            int aShown = 0;
+            for (int i = 0; i < (int)animationNames.size(); ++i) {
+                if (!aFilter.empty() && toLowerStr(animationNames[i]).find(aFilter) == std::string::npos) {
+                    continue;
+                }
+                ++aShown;
+                std::string id = animationNames[i] + "##" + std::to_string(i);
+                if (ImGui::Selectable(id.c_str(), i == animationIndex)) {
+                    animationIndex = i;
+                }
             }
-            ++aShown;
-            std::string id = animationNames[i] + "##" + std::to_string(i);
-            if (ImGui::Selectable(id.c_str(), i == animationIndex)) {
-                animationIndex = i;
+            if (aShown == 0) {
+                ImGui::Text("(no matches)");
             }
-        }
-        if (aShown == 0) {
-            ImGui::Text("(no matches)");
         }
     }
-    ImGui::EndChild();
 
     ImGui::Text(ICON_FA_CROSSHAIRS " Selected animation: ");
     ImGui::SameLine();
@@ -651,38 +710,40 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
     ImGui::InputText("##bonesdirect", boneSearch, sizeof(boneSearch));
     ImGui::PopItemWidth();
     std::string bFilter = toLowerStr(boneSearch);
-    if (ImGui::BeginChild("bones_dir_list", ImVec2(0, 180), true)) {
-        int bShown = 0;
-        for (int i = 0; i < (int)bones.size(); ++i) {
-            const BonePoseInfo& b = bones[i];
-            std::string label = b.boneName;
-            if (label.empty()) {
-                label = "(bone " + std::to_string(b.index) + ")";
-            }
-            if (!b.parentName.empty()) {
-                label += " < " + b.parentName;
-            }
-            if (!bFilter.empty() && toLowerStr(label).find(bFilter) == std::string::npos) {
-                continue;
-            }
-            if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), i == boneIndex)) {
-                boneIndex = i;
-                BonePoseInfo fresh;
-                if (Application::instance().bones().getBoneTransform(pawn, (MeshTarget)meshTargetIndex, b.index, fresh)) {
-                    boneEdit = fresh;
-                    boneEdit.pos[0] = boneEdit.pos[1] = boneEdit.pos[2] = 0.0f; // position is an offset from current pose
-                    boneToApply = false;
+    {
+        ChildScope child("bones_dir_list", ImVec2(0, 180), true);
+        if (child.open) {
+            int bShown = 0;
+            for (int i = 0; i < (int)bones.size(); ++i) {
+                const BonePoseInfo& b = bones[i];
+                std::string label = b.boneName;
+                if (label.empty()) {
+                    label = "(bone " + std::to_string(b.index) + ")";
                 }
+                if (!b.parentName.empty()) {
+                    label += " < " + b.parentName;
+                }
+                if (!bFilter.empty() && toLowerStr(label).find(bFilter) == std::string::npos) {
+                    continue;
+                }
+                if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), i == boneIndex)) {
+                    boneIndex = i;
+                    BonePoseInfo fresh;
+                    if (Application::instance().bones().getBoneTransform(pawn, (MeshTarget)meshTargetIndex, b.index, fresh)) {
+                        boneEdit = fresh;
+                        boneEdit.pos[0] = boneEdit.pos[1] = boneEdit.pos[2] = 0.0f; // position is an offset from current pose
+                        boneToApply = false;
+                    }
+                }
+                ++bShown;
             }
-            ++bShown;
-        }
-        if (bShown == 0) {
-            ImGui::Text("(no bones match)");
-        } else {
-            ImGui::Text("%d bone(s)", (int)bones.size());
+            if (bShown == 0) {
+                ImGui::Text("(no bones match)");
+            } else {
+                ImGui::Text("%d bone(s)", (int)bones.size());
+            }
         }
     }
-    ImGui::EndChild();
     ImGui::Separator();
 
     const BonePoseInfo& sel = bones[boneIndex];
@@ -798,6 +859,7 @@ void UI::renderSelectionOtherProps() {
 
             UObject* target = (props.propertyComponentIndex() == 0) ? (UObject*)propActor : (UObject*)components[props.propertyComponentIndex() - 1];
             if (target != props.propertyObject()) {
+                props.closeStructWindows();
                 props.propertyObject() = target;
                 props.collectProperties(target, props.properties());
             }
@@ -816,10 +878,12 @@ void UI::renderSelectionOtherProps() {
 
             std::string pFilter = toLowerStr(props.propertySearch());
             ImGui::Text("%d properties on %s", (int)props.properties().size(), FStringToUtf8(target->GetName()).c_str());
-            if (ImGui::BeginChild("props_list", ImVec2(0, 300), true)) {
-                props.renderPropertyTable(target, target, props.properties(), pFilter);
+            {
+                ChildScope child("props_list", ImVec2(0, 300), true);
+                if (child.open) {
+                    props.renderPropertyTable(target, target, props.properties(), pFilter);
+                }
             }
-            ImGui::EndChild();
         }
     } else {
         props.propertyPawn().clear();
@@ -863,35 +927,37 @@ void UI::renderSpawnClassList() {
     }
 
     std::string filter = toLowerStr(classSearch);
-    if (ImGui::BeginChild("class_list", ImVec2(0, 220), true)) {
-        std::string lastPkg;
-        int shown = 0;
-        for (int i = 0; i < (int)classes.size(); ++i) {
-            const ClassEntry& e = classes[i];
-            if (!filter.empty()) {
-                std::string fullLower = toLowerStr(e.fullName);
-                std::string pkgLower = toLowerStr(e.package);
-                if (fullLower.find(filter) == std::string::npos && pkgLower.find(filter) == std::string::npos) {
-                    continue;
+    {
+        ChildScope child("class_list", ImVec2(0, 220), true);
+        if (child.open) {
+            std::string lastPkg;
+            int shown = 0;
+            for (int i = 0; i < (int)classes.size(); ++i) {
+                const ClassEntry& e = classes[i];
+                if (!filter.empty()) {
+                    std::string fullLower = toLowerStr(e.fullName);
+                    std::string pkgLower = toLowerStr(e.package);
+                    if (fullLower.find(filter) == std::string::npos && pkgLower.find(filter) == std::string::npos) {
+                        continue;
+                    }
                 }
+                if (e.package != lastPkg) {
+                    ImColor greyColor = ImColor(0.6f, 0.6f, 0.6f, 1.0f);
+                    ImGui::TextColored(greyColor, "%s", e.package.c_str());
+                    ImGui::Separator();
+                    lastPkg = e.package;
+                }
+                if (ImGui::Selectable((e.name + "##" + std::to_string(i)).c_str(), i == classIndex)) {
+                    classIndex = i;
+                    selectedClassFullName = e.fullName;
+                }
+                ++shown;
             }
-            if (e.package != lastPkg) {
-                ImColor greyColor = ImColor(0.6f, 0.6f, 0.6f, 1.0f);
-                ImGui::TextColored(greyColor, "%s", e.package.c_str());
-                ImGui::Separator();
-                lastPkg = e.package;
+            if (shown == 0) {
+                ImGui::Text("(no classes match)");
             }
-            if (ImGui::Selectable((e.name + "##" + std::to_string(i)).c_str(), i == classIndex)) {
-                classIndex = i;
-                selectedClassFullName = e.fullName;
-            }
-            ++shown;
-        }
-        if (shown == 0) {
-            ImGui::Text("(no classes match)");
         }
     }
-    ImGui::EndChild();
 
     if (!selectedClassFullName.empty()) {
         // keep it bound
@@ -959,11 +1025,13 @@ void UI::renderSpawnOtherProps() {
         if (props.spawnProperties().empty()) {
             ImGui::TextDisabled("(class not loaded or no editable properties)");
         } else {
-            if (ImGui::BeginChild("spawn_props_list", ImVec2(0, 220), true)) {
-                props.renderPropertyTable(props.spawnPropertiesCDO(), nullptr, props.spawnProperties(), spFilter);
+            {
+                ChildScope child("spawn_props_list", ImVec2(0, 220), true);
+                if (child.open) {
+                    props.renderPropertyTable(props.spawnPropertiesCDO(), nullptr, props.spawnProperties(), spFilter);
+                }
             }
             ImGui::TextDisabled("%d properties (applied upon Spawn)", (int)props.spawnProperties().size());
-            ImGui::EndChild();
         }
     }
     ImGui::Unindent();
