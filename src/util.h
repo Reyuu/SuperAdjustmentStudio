@@ -94,4 +94,7 @@ static bool isLiveObject(UObject* obj) {
     return false;
 }
 
+static void LoadPackageByName(const std::string& packageName) {
+}
+
 #endif // SAS_UTIL_H

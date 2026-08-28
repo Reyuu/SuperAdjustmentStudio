@@ -15,6 +15,7 @@
 #include "props.h"
 #include "sdk.h"
 #include "ui.h"
+#include "vfx.h"
 #include <atomic>
 #include <thread>
 
@@ -70,6 +71,10 @@ class Application {
         Animation& animation() {
             return animationInstance;
         }
+
+        VFXManager& vfx() {
+            return vfxInstance;
+        }
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -97,6 +102,7 @@ class Application {
         Gizmo gizmoInstance;
         Bones bonesInstance;
         Animation animationInstance;
+        VFXManager vfxInstance;
 
         bool previousF10 = false;
 };

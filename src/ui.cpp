@@ -375,6 +375,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     // DO NOT run Bones:keepBonePoses here -> SHOULD ALWAYS RUN ON GAME THREAD ABioHUD::PostRender
 
     renderControlsSection();
+    Application::instance().vfx().renderUI();
     renderSelectionSection();
     renderSpawnSection();
 

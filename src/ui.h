@@ -33,6 +33,13 @@ class UI {
             return pinnedNamesVector;
         }
 
+        std::string getSelectedPawnName() {
+            if (pawnIndexInt < 0 || pawnIndexInt >= (int)pawnNamesVector.size()) {
+                return "";
+            }
+            return pawnNamesVector[pawnIndexInt];
+        }
+
         void collectPawns();
         void collectClasses();
         void collectAnimations(const std::string& pawnName);
