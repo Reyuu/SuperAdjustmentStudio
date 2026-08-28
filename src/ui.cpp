@@ -376,6 +376,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
 
     renderControlsSection();
     Application::instance().vfx().renderUI();
+    Application::instance().particles().renderUI();
     renderSelectionSection();
     renderSpawnSection();
 
@@ -503,6 +504,7 @@ void UI::renderSelectionTarget() {
             std::string id = pawnNamesVector[i] + "##" + std::to_string(i);
             if (ImGui::Selectable(id.c_str(), i == pawnIndexInt)) {
                 pawnIndexInt = i;
+                Application::instance().gizmo().clearExplicitTarget();
             }
         }
         ImGui::EndCombo();
@@ -540,19 +542,21 @@ void UI::renderSelectionTransform() {
     }
     ImGui::Indent();
     ImGui::TextDisabled("Applies live to the selected object every 250ms.");
-    if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
-        if (transformPawn != pawnNamesVector[pawnIndexInt] && !transformToApply) {
-            transformPawn = pawnNamesVector[pawnIndexInt];
-            Application::instance().engine().loadTransformFromPawn(transformPawn, selectedTransform);
+    AActor* target = Application::instance().gizmo().target();
+    if (target) {
+        std::string targetName = FStringToUtf8(target->GetName());
+        if (transformPawn != targetName && !transformToApply) {
+            transformPawn = targetName;
+            Application::instance().engine().loadTransformFromActor(target, selectedTransform);
         }
     } else if (pawnNamesVector.empty()) {
         transformPawn.clear();
     }
 
     if (ImGui::Button(ICON_FA_ARROW_RIGHT_TO_BRACKET " Reload from object##sel")) {
-        if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
-            transformPawn = pawnNamesVector[pawnIndexInt];
-            Application::instance().engine().loadTransformFromPawn(transformPawn, selectedTransform);
+        if (target) {
+            transformPawn = FStringToUtf8(target->GetName());
+            Application::instance().engine().loadTransformFromActor(target, selectedTransform);
             transformToApply = false;
             toastManager.addToastNotification("Reloaded transform from " + transformPawn, ToastTypeSuccess, 2.0);
         }
@@ -563,9 +567,9 @@ void UI::renderSelectionTransform() {
         transformToApply = true;
         transformLastApply = ImGui::GetTime();
     }
-    if (transformToApply && !pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
+    if (transformToApply && target) {
         applyDebounced(transformToApply, transformLastEdit, transformLastApply, [&] {
-            Application::instance().engine().setTransform(pawnNamesVector[pawnIndexInt], selectedTransform);
+            Application::instance().engine().setTransform(target, selectedTransform);
         });
     }
     ImGui::Unindent();

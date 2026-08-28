@@ -220,11 +220,6 @@ void Bones::listBones(const std::string& pawnName, MeshTarget target, std::vecto
         n = (int)names.Count();
     }
 
-    std::ostringstream ss;
-    ss << "listBones: '" << pawnName << "' mesh=" << (target == MESH_HEAD ? "head" : "body") << " bones=" << n << " ref=" << ref.Count()
-       << " spaceBases=" << mesh->SpaceBases.Count() << " localAtoms=" << mesh->LocalAtoms.Count();
-    Logger->debug(ss.str());
-
     for (int i = 0; i < n; ++i) {
         BonePoseInfo b;
         b.index = i;

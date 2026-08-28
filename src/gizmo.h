@@ -33,6 +33,8 @@ class Gizmo {
 
         void initHooks(HookManager& hooks, SDKContext& sdk);
         void setTarget(AActor* actor);
+        void clearExplicitTarget();
+        AActor* target();
         void collectActorComponents(AActor* actor, std::vector<UActorComponent*>& out);
         void processEvent(UObject* Context, UFunction* Function, void* Parms, void* Result);
 
@@ -50,6 +52,8 @@ class Gizmo {
         AActor* gizmoActorPointer = nullptr;
         int gizmoActorIndex = -1;
         std::string gizmoActorName;
+
+        AActor* explicitTarget = nullptr;
 
         bool leftMouseButtonPreviouslyDown = false;
 

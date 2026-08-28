@@ -40,6 +40,10 @@ class UI {
             return pawnNamesVector[pawnIndexInt];
         }
 
+        const Transform& getSpawnTransform() const {
+            return spawnTransform;
+        }
+
         void collectPawns();
         void collectClasses();
         void collectAnimations(const std::string& pawnName);

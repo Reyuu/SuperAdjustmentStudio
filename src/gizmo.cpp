@@ -284,6 +284,12 @@ void Gizmo::collectActorComponents(AActor* actor, std::vector<UActorComponent*>&
 
 AActor* Gizmo::gizmoActor() {
     Application& app = Application::instance();
+
+    if (isObjectStillLive(explicitTarget)) {
+        return explicitTarget;
+    }
+    explicitTarget = nullptr;
+
     std::vector<std::string>& names = app.ui().pawnNames();
     int index = app.ui().pawnIndex();
     if (names.empty()) {
@@ -308,7 +314,12 @@ AActor* Gizmo::gizmoActor() {
     return gizmoActorPointer;
 }
 
+AActor* Gizmo::target() {
+    return gizmoActor();
+}
+
 void Gizmo::setTarget(AActor* actor) {
+    explicitTarget = actor;
     gizmoActorPointer = actor;
     if (actor) {
         gizmoActorIndex = Application::instance().ui().pawnIndex();
@@ -317,6 +328,11 @@ void Gizmo::setTarget(AActor* actor) {
         gizmoActorIndex = -1;
         gizmoActorName.clear();
     }
+}
+
+void Gizmo::clearExplicitTarget() {
+    explicitTarget = nullptr;
+    gizmoActorPointer = nullptr;
 }
 
 void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY) {
@@ -411,7 +427,6 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
 
     SAS_HOOK_TRY {
         if (hud) {
-            Application::instance().engine().drainGameThreadTasks();
             Application::instance().bones().keepBonePoses();
         }
 

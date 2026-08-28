@@ -12,6 +12,7 @@
 #include "logger.h"
 #include "mouse.h"
 #include "native_renderer.h"
+#include "particles.h"
 #include "props.h"
 #include "sdk.h"
 #include "ui.h"
@@ -75,6 +76,10 @@ class Application {
         VFXManager& vfx() {
             return vfxInstance;
         }
+
+        ParticleManager& particles() {
+            return particleInstance;
+        }
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -103,6 +108,7 @@ class Application {
         Bones bonesInstance;
         Animation animationInstance;
         VFXManager vfxInstance;
+        ParticleManager particleInstance;
 
         bool previousF10 = false;
 };
