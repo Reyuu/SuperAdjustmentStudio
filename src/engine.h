@@ -46,7 +46,9 @@ class Engine {
         std::string diagnoseClass(const std::string& className);
         void removeActor(const std::string& name);
         void loadTransformFromPawn(const std::string& pawnName, Transform& t);
+        void loadTransformFromActor(AActor* actor, Transform& t);
         void setTransform(const std::string& targetName, const Transform& t);
+        void setTransform(AActor* actor, const Transform& t);
         void setFloat(const std::string& targetName, bool enable);
 
         void applyHUDVisibility();

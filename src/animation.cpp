@@ -93,46 +93,34 @@ void Animation::resetAnimation(const std::string& pawnName) {
     }
     customAnimSlot = nullptr;
 
-    if (mesh->Animations) {
-        mesh->StopAnim();
-    } else {
+    if (!mesh->Animations) {
         Logger->debug("resetAnimation: mesh has no anim tree root");
         return;
     }
 
-    std::vector<UAnimNodeSequence*> nodes;
-    collectTreeSequenceNodes(mesh->Animations, nodes);
-    for (UAnimNodeSequence* n : nodes) {
-        n->StopAnim();
+    mesh->Animations->PlayAnim(true, 1.0f, 0.0f);
+
+    UAnimTree* tree = nullptr;
+    if (mesh->Animations->IsA(UAnimTree::StaticClass())) {
+        tree = (UAnimTree*)mesh->Animations;
+    }
+    if (!tree) {
+        forEachOf<UAnimTree>([&](UAnimTree* t) {
+            if (!tree && t->Outer == mesh) {
+                tree = t;
+            }
+        });
+    }
+    if (tree) {
+        tree->bUseSavedPose = false;
     }
 
-    // restore
-    if (playedNode && !isLiveObject(playedNode)) {
-        playedNode = nullptr;
-        playedNodeOrigSeq = nullptr;
-    }
-    if (playedNode) {
-        bool stillInTree = std::find(nodes.begin(), nodes.end(), playedNode) != nodes.end();
-        if (!stillInTree) {
-            playedNode = nullptr;
-            playedNodeOrigSeq = nullptr;
-        }
-    }
-    if (playedNode) {
-        UAnimSequence* seq = playedNodeOrigSeq;
-        if (!seq) {
-            seq = mesh->FindAnimSequence(playedNodeOrigName);
-            playedNode->SetAnim(playedNodeOrigName);
-            playedNode->AnimSeqName = playedNodeOrigName;
-            playedNode->AnimSeq = seq;
-            playedNode->PlayAnim(1, 1.0f, 0.0f);
-            playedNode = nullptr;
-            playedNodeOrigSeq = nullptr;
-        }
-    }
+    playedNode = nullptr;
+    playedNodeOrigSeq = nullptr;
+    playedNodeOrigName = SFXName();
 
     std::ostringstream ss;
-    ss << "resetAnimation: stopped " << nodes.size() << " seq nodes on '" << pawnName << "'";
+    ss << "resetAnimation: released custom anim and resumed locomotion on '" << pawnName << "'";
     Logger->debug(ss.str());
 }
 

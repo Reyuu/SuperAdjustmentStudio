@@ -23,6 +23,16 @@ static void hkGameEngineTick(void* self, float dt) {
             origGameEngineTick(self, dt);
         }
         Application::instance().engine().drainPackageLoads();
+        Application::instance().engine().drainGameThreadTasks();
+
+        static UWorld* s_lastWorld = nullptr;
+        UWorld* curWorld = (GWorld && *GWorld) ? *GWorld : nullptr;
+        if (curWorld != s_lastWorld) {
+            s_lastWorld = curWorld;
+            if (curWorld) {
+                Application::instance().particles().removeAllParticles();
+            }
+        }
     } SAS_HOOK_CATCH_VOID
 }
 
@@ -291,8 +301,7 @@ void Engine::removeActor(const std::string& name) {
     Application::instance().ui().collectPawns();
 }
 
-void Engine::loadTransformFromPawn(const std::string& pawnName, Transform& t) {
-    AActor* actor = findActorByName(pawnName);
+void Engine::loadTransformFromActor(AActor* actor, Transform& t) {
     if (!actor) {
         return;
     }
@@ -307,10 +316,13 @@ void Engine::loadTransformFromPawn(const std::string& pawnName, Transform& t) {
     t.scale[2] = actor->DrawScale3D.Z;
 }
 
-void Engine::setTransform(const std::string& targetName, const Transform& t) {
-    AActor* actor = Engine::findActorByName(targetName);
+void Engine::loadTransformFromPawn(const std::string& pawnName, Transform& t) {
+    loadTransformFromActor(findActorByName(pawnName), t);
+}
+
+void Engine::setTransform(AActor* actor, const Transform& t) {
     if (!actor) {
-        Logger->debug("setTransform: target not found");
+        Logger->debug("setTransform: actor is null");
         return;
     }
 
@@ -356,6 +368,10 @@ void Engine::setTransform(const std::string& targetName, const Transform& t) {
        << "," << actor->Location.Z << ")"
        << " phys=" << (int)oldPhys << " scaleOk=" << (scaleOk ? "true" : "false");
     Logger->debug(ss.str());
+}
+
+void Engine::setTransform(const std::string& targetName, const Transform& t) {
+    setTransform(findActorByName(targetName), t);
 }
 
 // suspend collision for floating

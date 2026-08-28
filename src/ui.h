@@ -33,6 +33,17 @@ class UI {
             return pinnedNamesVector;
         }
 
+        std::string getSelectedPawnName() {
+            if (pawnIndexInt < 0 || pawnIndexInt >= (int)pawnNamesVector.size()) {
+                return "";
+            }
+            return pawnNamesVector[pawnIndexInt];
+        }
+
+        const Transform& getSpawnTransform() const {
+            return spawnTransform;
+        }
+
         void collectPawns();
         void collectClasses();
         void collectAnimations(const std::string& pawnName);
@@ -87,6 +98,8 @@ class UI {
         std::string transformPawn;
 
         char animationSearch[128] = "";
+
+        bool pendingCollectPawns = false;
 
         bool floatEnabled = false;
         std::string floatPawn;

@@ -1,0 +1,4 @@
+Diagnostics:
+  Ignore:
+    - Matches: ".*/src/particles\.(h|cpp)"
+    - Matches: ".*/src/vfx\.(h|cpp)"

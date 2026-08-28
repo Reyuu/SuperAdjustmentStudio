@@ -220,11 +220,6 @@ void Bones::listBones(const std::string& pawnName, MeshTarget target, std::vecto
         n = (int)names.Count();
     }
 
-    std::ostringstream ss;
-    ss << "listBones: '" << pawnName << "' mesh=" << (target == MESH_HEAD ? "head" : "body") << " bones=" << n << " ref=" << ref.Count()
-       << " spaceBases=" << mesh->SpaceBases.Count() << " localAtoms=" << mesh->LocalAtoms.Count();
-    Logger->debug(ss.str());
-
     for (int i = 0; i < n; ++i) {
         BonePoseInfo b;
         b.index = i;
@@ -272,9 +267,10 @@ bool Bones::getBoneTransform(const std::string& pawnName, MeshTarget target, int
     out.pos[0] = loc.X;
     out.pos[1] = loc.Y;
     out.pos[2] = loc.Z;
-    out.scale[0] = out.scale[1] = out.scale[2] = mesh->LocalAtoms.GetData()[index].Scale;
     if (mesh->LocalAtoms.Count() == (int)ref.Count()) {
         out.scale[0] = out.scale[1] = out.scale[2] = mesh->LocalAtoms.GetData()[index].Scale;
+    } else {
+        out.scale[0] = out.scale[1] = out.scale[2] = 1.0f;
     }
 
     FRotator rot = mesh->QuatToRotator(quat);
