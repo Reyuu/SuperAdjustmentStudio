@@ -44,6 +44,7 @@ class VFXManager {
         bool ignoreCameraMovement = false;
         bool loopVFX = false;
         float vfxDuration = 10.0f;
+        bool showBoneSelection = false;
 };
 
 #endif // SAS_VFX_H

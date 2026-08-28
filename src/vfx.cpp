@@ -1,7 +1,11 @@
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "IconsFontAwesome6.h"
 #include "application.h"
 #include "imgui.h"
 #include "logger.h"
+#include "ui.h"
+#include "ui_helpers/raii_guards.h"
+#include "ui_helpers/toast_notifications.h"
 #include "util.h"
 
 #include "vfx.h"
@@ -188,7 +192,7 @@ void VFXManager::findAvailableTemplates(bool forceRefresh) {
 }
 
 void VFXManager::renderUI() {
-    if (!ImGui::CollapsingHeader("VFX")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_FIRE " VFX")) {
         return;
     }
 
@@ -207,52 +211,83 @@ void VFXManager::renderUI() {
     }
 
     ImGui::Indent();
-    if (ImGui::Button("Load BioP_Char package")) {
-        LoadPackageByName("BioP_Char");
-    }
     // list available templates
     // allow user to select a template and spawn it on a selected pawn
     static std::string boneSelect;
     std::vector<BonePoseInfo> bones;
     Application::instance().bones().listBones(Application::instance().ui().getSelectedPawnName(), MESH_BODY, bones);
-    if (boneSelect.empty() && !bones.empty()) {
-        boneSelect = bones[0].boneName;
-    }
-    if (ImGui::BeginCombo("Bone##vfx_bone", boneSelect.c_str())) {
-        for (const BonePoseInfo& b : bones) {
-            if (ImGui::Selectable(b.boneName.c_str())) {
-                boneSelect = b.boneName;
-            }
+    if (showBoneSelection) {
+        if (boneSelect.empty() && !bones.empty()) {
+            boneSelect = bones[0].boneName;
         }
-        ImGui::EndCombo();
+        ImGui::Text("Bone:");
+        ImGui::PushItemWidth(-100);
+        if (ImGui::BeginCombo("##vfx_bone", boneSelect.c_str())) {
+            for (const BonePoseInfo& b : bones) {
+                if (ImGui::Selectable(b.boneName.c_str())) {
+                    boneSelect = b.boneName;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
+    } else {
+        // select first bone by default if no selection
+        boneSelect = bones.empty() ? "" : bones[0].boneName;
     }
 
     ImGui::Separator();
-    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##vfx_available_refresh")) {
+    ImGui::Text("Available VFX:");
+    ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-100);
+    static char vfxSearchFilter[256] = "";
+    ImGui::InputText("##class_search", vfxSearchFilter, sizeof(vfxSearchFilter));
+    std::string filterLower = toLowerStr(vfxSearchFilter);
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
         findAvailableTemplates(true);
     }
     ImGui::SameLine();
-    ImGui::Text("Available VFX");
-    static char vfxSearchFilter[256] = "";
-    ImGui::InputTextWithHint("##vfx_search", "Search VFX...", vfxSearchFilter, sizeof(vfxSearchFilter));
-    std::string filterLower = toLowerStr(vfxSearchFilter);
-    if (ImGui::BeginCombo("##vfx_available", selectedVFXName.c_str())) {
-        for (UBioVFXTemplate* vfxTemplate : availableTemplates) {
-            if (!vfxTemplate) {
-                continue;
-            }
-            std::string name = FStringToUtf8(vfxTemplate->GetName());
-            if (!filterLower.empty() && toLowerStr(name).find(filterLower) == std::string::npos) {
-                continue;
-            }
-            if (ImGui::Selectable(name.c_str())) {
-                selectedVFXName = name;
+    if (ImGui::Button(ICON_FA_PLUS "##vfx_spawn_btn")) {
+        // spawn the selected VFX on the selected pawn
+        AActor* actor = Application::instance().engine().findActorByName(Application::instance().ui().getSelectedPawnName());
+        if (actor) {
+            UBioVFXTemplate* vfxTemplate = findVFXTemplateByName(selectedVFXName);
+            if (vfxTemplate) {
+                double spawnTime = ImGui::GetTime();
+                Application::instance().engine().postGameThreadTask([this, vfxTemplate, actor, boneSelect = boneSelect, spawnTime]() {
+                    addVFX(vfxTemplate, actor, boneSelect.c_str(), vfxDuration, spawnTime);
+                });
             }
         }
-        ImGui::EndCombo();
+    }
+    {
+        ChildScope child("##vfx_available_list", ImVec2(0, 120), true);
+        if (child.open) {
+            for (UBioVFXTemplate* vfxTemplate : availableTemplates) {
+                if (!vfxTemplate) {
+                    continue;
+                }
+                std::string name = FStringToUtf8(vfxTemplate->GetName());
+                std::string lowerName = toLowerStr(name);
+                if (!filterLower.empty() && lowerName.find(filterLower) == std::string::npos) {
+                    continue;
+                }
+                if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
+                    selectedVFXName = name;
+                }
+            }
+        }
     }
 
-    if (ImGui::Checkbox("Ignore camera movement##vfx_ignore_cam", &ignoreCameraMovement)) {
+    ImGui::Separator();
+
+    ImGui::BeginTable("##vfx_table", 2);
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    if (ImGui::Checkbox(ICON_FA_CAMERA " Ignore camera movement##vfx_ignore_cam", &ignoreCameraMovement)) {
         // apply/restore the camera-shake setting on all currently active VFX
         Application::instance().engine().postGameThreadTask([this]() {
             std::lock_guard<std::mutex> lock(vfxMtx);
@@ -270,8 +305,9 @@ void VFXManager::renderUI() {
             }
         });
     }
+    ImGui::TableNextColumn();
 
-    if (ImGui::Checkbox("Loop##vfx_loop", &loopVFX)) {
+    if (ImGui::Checkbox(ICON_FA_REPEAT " Loop##vfx_loop", &loopVFX)) {
         // apply/restore looping on all currently active VFX
         Application::instance().engine().postGameThreadTask([this]() {
             std::lock_guard<std::mutex> lock(vfxMtx);
@@ -283,54 +319,53 @@ void VFXManager::renderUI() {
             }
         });
     }
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::Checkbox(ICON_FA_BONE " Show bone selection##vfx_bone_selection", &showBoneSelection);
+    ImGui::EndTable();
 
-    ImGui::InputFloat("Duration##vfx_duration", &vfxDuration);
-
-    if (ImGui::Button("Spawn##vfx_spawn_btn")) {
-        // spawn the selected VFX on the selected pawn
-        AActor* actor = Application::instance().engine().findActorByName(Application::instance().ui().getSelectedPawnName());
-        if (actor) {
-            UBioVFXTemplate* vfxTemplate = findVFXTemplateByName(selectedVFXName);
-            if (vfxTemplate) {
-                double spawnTime = ImGui::GetTime();
-                Application::instance().engine().postGameThreadTask([this, vfxTemplate, actor, boneSelect = boneSelect, spawnTime]() {
-                    addVFX(vfxTemplate, actor, boneSelect.c_str(), vfxDuration, spawnTime);
-                });
-            }
-        }
-    }
+    ImGui::Text("Playback duration:");
+    ImGui::PushItemWidth(-100);
+    ImGui::DragFloat("##vfx_duration_drag", &vfxDuration, 0.1f, 0.1f, 60.0f, "%.1f");
+    ImGui::PopItemWidth();
 
     ImGui::Separator();
 
-    // list active VFX as selectables
-    // allow user to remove a VFX
-    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##vfx_active_refresh")) {
-        // refresh the active list: prune dead entries / re-loop
-        Application::instance().engine().postGameThreadTask([this]() {
-            updateActiveVFX();
-        });
-    }
-    ImGui::SameLine();
-    ImGui::Text("Active VFX");
-    if (vfxEntries.empty()) {
-        ImGui::TextDisabled("(no active VFX)");
-    } else {
-        for (size_t i = 0; i < vfxEntries.size(); ++i) {
-            VFXEntry& entry = vfxEntries[i];
-            std::ostringstream ss;
-            ss << entry.name << " on " << entry.pawnName << " at " << entry.boneName;
-            ImGui::Text("%s", ss.str().c_str());
-            ImGui::SameLine();
-            if (ImGui::Button((std::string(ICON_FA_MINUS) + "##" + entry.name + std::to_string(i)).c_str())) {
-                // capture the index and pawn name, not references, since the vector can be resized before this task runs
-                Application::instance().engine().postGameThreadTask([this, i, pawnName = entry.pawnName]() {
-                    if (i < vfxEntries.size()) {
-                        removeVFX(vfxEntries[i]);
-                    }
-                    // reset the pawn's animation and refresh the active list
-                    Application::instance().animation().resetAnimation(pawnName);
+    ImGui::Text("Active:");
+    {
+        ChildScope childActive("##vfx_active_list", ImVec2(0, 220), true);
+        if (childActive.open) {
+            // list active VFX as selectables
+            // allow user to remove a VFX
+            // align the refresh button to the left
+            if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##vfx_active_refresh")) {
+                // refresh the active list: prune dead entries / re-loop
+                Application::instance().engine().postGameThreadTask([this]() {
                     updateActiveVFX();
                 });
+            }
+            ImGui::Separator();
+            if (vfxEntries.empty()) {
+                ImGui::TextDisabled("(no active VFX)");
+            } else {
+                for (size_t i = 0; i < vfxEntries.size(); ++i) {
+                    VFXEntry& entry = vfxEntries[i];
+                    std::ostringstream ss;
+                    ss << entry.name << " on " << entry.pawnName << " at " << entry.boneName;
+                    ImGui::Text("%s", ss.str().c_str());
+                    ImGui::SameLine();
+                    if (ImGui::Button((std::string(ICON_FA_MINUS) + "##" + entry.name + std::to_string(i)).c_str())) {
+                        // capture the index and pawn name, not references, since the vector can be resized before this task runs
+                        Application::instance().engine().postGameThreadTask([this, i, pawnName = entry.pawnName]() {
+                            if (i < vfxEntries.size()) {
+                                removeVFX(vfxEntries[i]);
+                            }
+                            // reset the pawn's animation and refresh the active list
+                            Application::instance().animation().resetAnimation(pawnName);
+                            updateActiveVFX();
+                        });
+                    }
+                }
             }
         }
     }

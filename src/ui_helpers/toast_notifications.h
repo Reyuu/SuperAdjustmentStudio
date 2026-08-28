@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SAS_TOAST_NOTIFICATIONS_H
+#define SAS_TOAST_NOTIFICATIONS_H
+
 #include "../util.h"
 #include "IconsFontAwesome6.h"
 #include "imgui.h"
@@ -67,3 +69,5 @@ class ToastNotificationManager {
         ImGuiWindowFlags toastNotificationWindowFlags =
             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 };
+
+#endif // SAS_TOAST_NOTIFICATIONS_H

@@ -1,8 +1,11 @@
 #include "particles.h"
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "IconsFontAwesome6.h"
 #include "application.h"
 #include "imgui.h"
 #include "logger.h"
+#include "ui_helpers/raii_guards.h"
+#include "ui_helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Core.hpp>
 #include <LESDK/Includes.LE2.hpp>
@@ -191,13 +194,15 @@ void ParticleManager::updateActiveParticles() {
 }
 
 void ParticleManager::renderUI() {
-    if (!ImGui::CollapsingHeader("Particles")) {
+    if (!ImGui::CollapsingHeader(ICON_FA_WAND_SPARKLES " Particles")) {
         return;
     }
 
+    ImGui::Indent();
+
+    // refresh active particles every 250ms
     static std::string selectedParticleName;
     findAvailableTemplates();
-
     {
         static float lastAutoUpdate = 0.0f;
         if (ImGui::GetTime() - lastAutoUpdate > 0.25f) {
@@ -208,48 +213,21 @@ void ParticleManager::renderUI() {
         }
     }
 
-    ImGui::Indent();
-    if (ImGui::Button("Load BioD_ProNor package")) {
-        LoadPackageByName("BioD_ProNor");
-    }
-
     ImGui::Separator();
+    ImGui::Text("Available particles:");
+    ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
+    ImGui::SameLine();
+    static char particleSearchFilter[256] = "";
+    ImGui::PushItemWidth(-100);
+    ImGui::InputText("##particle_search", particleSearchFilter, sizeof(particleSearchFilter));
+    ImGui::PopItemWidth();
+    std::string filterLower = toLowerStr(particleSearchFilter);
+    ImGui::SameLine();
     if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##particle_available_refresh")) {
         findAvailableTemplates(true);
     }
     ImGui::SameLine();
-    ImGui::Text("Available Particles");
-    static char particleSearchFilter[256] = "";
-    ImGui::InputTextWithHint("##particle_search", "Search particles...", particleSearchFilter, sizeof(particleSearchFilter));
-    std::string filterLower = toLowerStr(particleSearchFilter);
-    if (ImGui::BeginCombo("##particle_available", selectedParticleName.c_str())) {
-        for (UParticleSystem* p : availableTemplates) {
-            if (!p) {
-                continue;
-            }
-            std::string name = FStringToUtf8(p->GetName());
-            if (!filterLower.empty() && toLowerStr(name).find(filterLower) == std::string::npos) {
-                continue;
-            }
-            if (ImGui::Selectable(name.c_str())) {
-                selectedParticleName = name;
-            }
-        }
-        ImGui::EndCombo();
-    }
-
-    if (ImGui::Checkbox("Loop##particle_loop", &loopParticles)) {
-        Application::instance().engine().postGameThreadTask([this]() {
-            std::lock_guard<std::mutex> lock(particleMtx);
-            for (ParticleEntry& entry : particleEntries) {
-                entry.loop = loopParticles;
-            }
-        });
-    }
-
-    ImGui::InputFloat("Duration##particle_duration", &particleDuration);
-
-    if (ImGui::Button("Spawn##particle_spawn_btn")) {
+    if (ImGui::Button(ICON_FA_PLUS "##particle_spawn_btn")) {
         std::string pawnName = Application::instance().ui().getSelectedPawnName();
         Transform spawnTransform = Application::instance().ui().getSpawnTransform();
         if (pawnName.empty()) {
@@ -275,36 +253,79 @@ void ParticleManager::renderUI() {
         }
     }
 
-    ImGui::Separator();
-
-    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##particle_active_refresh")) {
-        Application::instance().engine().postGameThreadTask([this]() {
-            updateActiveParticles();
-        });
-    }
-    ImGui::SameLine();
-    ImGui::Text("Active Particles");
-    if (particleEntries.empty()) {
-        ImGui::TextDisabled("(no active particles)");
-    } else {
-        for (size_t i = 0; i < particleEntries.size(); ++i) {
-            ParticleEntry& entry = particleEntries[i];
-            std::ostringstream ss;
-            ss << entry.name << " on " << entry.pawnName;
-            ImGui::Text("%s", ss.str().c_str());
-            ImGui::SameLine();
-            if (ImGui::Button((std::string("Select##") + entry.name + std::to_string(i)).c_str())) {
-                if (isLiveObject(entry.emitterActor)) {
-                    Application::instance().ui().selectActor(entry.emitterActor);
+    {
+        ChildScope child("##particle_template_list", ImVec2(0, 120), true);
+        if (child.open) {
+            for (UParticleSystem* p : availableTemplates) {
+                if (!p) {
+                    continue;
+                }
+                std::string name = FStringToUtf8(p->GetName());
+                if (!filterLower.empty() && toLowerStr(name).find(filterLower) == std::string::npos) {
+                    continue;
+                }
+                if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
+                    selectedParticleName = name;
                 }
             }
-            ImGui::SameLine();
-            if (ImGui::Button((std::string(ICON_FA_MINUS) + "##" + entry.name + std::to_string(i)).c_str())) {
-                Application::instance().engine().postGameThreadTask([this, i]() {
-                    if (i < particleEntries.size()) {
-                        removeParticle(particleEntries[i]);
-                    }
+        }
+    }
+    ImGui::Separator();
+
+    ImGui::BeginTable("##vfx_table", 2);
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    if (ImGui::Checkbox(ICON_FA_REPEAT " Loop##particle_loop", &loopParticles)) {
+        Application::instance().engine().postGameThreadTask([this]() {
+            std::lock_guard<std::mutex> lock(particleMtx);
+            for (ParticleEntry& entry : particleEntries) {
+                entry.loop = loopParticles;
+            }
+        });
+    }
+    ImGui::EndTable();
+
+    ImGui::PushItemWidth(-100);
+    ImGui::Text("Playback duration:");
+    ImGui::DragFloat("##particle_duration_drag", &particleDuration, 0.1f, 0.1f, 60.0f, "%.1f");
+    ImGui::PopItemWidth();
+
+    ImGui::Separator();
+
+    ImGui::Text("Active:");
+    {
+        ChildScope childActive("##particle_active_list", ImVec2(0, 220), true);
+        if (childActive.open) {
+            // list active particles here
+            if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##particle_active_refresh")) {
+                Application::instance().engine().postGameThreadTask([this]() {
+                    updateActiveParticles();
                 });
+            }
+            ImGui::Separator();
+            if (particleEntries.empty()) {
+                ImGui::TextDisabled("(no active particles)");
+            } else {
+                for (size_t i = 0; i < particleEntries.size(); ++i) {
+                    ParticleEntry& entry = particleEntries[i];
+                    std::ostringstream ss;
+                    ss << entry.name << " on " << entry.pawnName;
+                    ImGui::Text("%s", ss.str().c_str());
+                    ImGui::SameLine();
+                    if (ImGui::Button((std::string("Select##") + entry.name + std::to_string(i)).c_str())) {
+                        if (isLiveObject(entry.emitterActor)) {
+                            Application::instance().ui().selectActor(entry.emitterActor);
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button((std::string(ICON_FA_MINUS) + "##" + entry.name + std::to_string(i)).c_str())) {
+                        Application::instance().engine().postGameThreadTask([this, i]() {
+                            if (i < particleEntries.size()) {
+                                removeParticle(particleEntries[i]);
+                            }
+                        });
+                    }
+                }
             }
         }
     }

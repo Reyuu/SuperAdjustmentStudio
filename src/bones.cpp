@@ -267,9 +267,10 @@ bool Bones::getBoneTransform(const std::string& pawnName, MeshTarget target, int
     out.pos[0] = loc.X;
     out.pos[1] = loc.Y;
     out.pos[2] = loc.Z;
-    out.scale[0] = out.scale[1] = out.scale[2] = mesh->LocalAtoms.GetData()[index].Scale;
     if (mesh->LocalAtoms.Count() == (int)ref.Count()) {
         out.scale[0] = out.scale[1] = out.scale[2] = mesh->LocalAtoms.GetData()[index].Scale;
+    } else {
+        out.scale[0] = out.scale[1] = out.scale[2] = 1.0f;
     }
 
     FRotator rot = mesh->QuatToRotator(quat);
