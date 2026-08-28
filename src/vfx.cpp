@@ -83,6 +83,7 @@ void VFXManager::addVFX(UBioVFXTemplate* vfxTemplate, AActor* actor, const std::
             entry.spawnTime = spawnTime;
             entry.actor = vfxActor;
             entry.loop = loopVFX;
+            entry.loopDelay = loopDelayVFX;
             entry.cameraShake = vfxActor->m_cameraShake;
             entry.cameraShakenActor = vfxActor->m_cameraShakenActor;
             vfxEntries.push_back(entry);
@@ -159,10 +160,16 @@ void VFXManager::updateActiveVFX() {
             continue;
         }
         if (e.loop) {
-            // re-trigger a finished effect so it visibly loops
+            // re-trigger a finished effect so it visibly loops, waiting loopDelay between cycles
             bool ended = !e.actor->bActive || e.actor->bDeleteSelf || e.actor->eCurrentState == 2;
             if (ended) {
-                applyVFXLiveState(e);
+                if (e.nextLoopTime == 0.0) {
+                    // effect just ended: schedule the next re-trigger after the wait duration
+                    e.nextLoopTime = now + e.loopDelay;
+                } else if (now >= e.nextLoopTime) {
+                    applyVFXLiveState(e);
+                    e.nextLoopTime = 0.0;
+                }
             }
             ++it;
         } else if ((now - e.spawnTime) >= (double)e.lifeTime) {
@@ -315,6 +322,8 @@ void VFXManager::renderUI() {
                 if (entry.actor) {
                     entry.actor->LoopDuration(loopVFX ? 1 : 0);
                     entry.loop = loopVFX;
+                    entry.loopDelay = loopDelayVFX;
+                    entry.nextLoopTime = 0.0;
                 }
             }
         });
@@ -324,8 +333,13 @@ void VFXManager::renderUI() {
     ImGui::Checkbox(ICON_FA_BONE " Show bone selection##vfx_bone_selection", &showBoneSelection);
     ImGui::EndTable();
 
-    ImGui::Text("Playback duration:");
     ImGui::PushItemWidth(-100);
+    ImGui::Text("Loop delay:");
+    ImGui::DragFloat("##vfx_loop_delay", &loopDelayVFX, 0.1f, 0.0f, 60.0f, "%.1f");
+    ImGui::PopItemWidth();
+
+    ImGui::PushItemWidth(-100);
+    ImGui::Text("Playback duration:");
     ImGui::DragFloat("##vfx_duration_drag", &vfxDuration, 0.1f, 0.1f, 60.0f, "%.1f");
     ImGui::PopItemWidth();
 

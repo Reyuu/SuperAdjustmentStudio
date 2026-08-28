@@ -115,6 +115,7 @@ void ParticleManager::addParticle(UParticleSystem* particleTemplate, AActor* own
         entry.particleTemplate = particleTemplate;
         entry.emitterActor = emitter;
         entry.loop = loopParticles;
+        entry.loopDelay = loopDelayParticles;
         particleEntries.push_back(entry);
     }
     applyParticleLiveState(particleEntries.back());
@@ -176,7 +177,13 @@ void ParticleManager::updateActiveParticles() {
 
         if (e.loop) {
             if (!e.psc->bIsActive || e.psc->bWasCompleted) {
-                applyParticleLiveState(e);
+                if (e.nextLoopTime == 0.0) {
+                    // effect just ended: schedule the next re-trigger after the wait duration
+                    e.nextLoopTime = now + e.loopDelay;
+                } else if (now >= e.nextLoopTime) {
+                    applyParticleLiveState(e);
+                    e.nextLoopTime = 0.0;
+                }
             }
             ++it;
         } else if ((now - e.spawnTime) >= (double)e.lifeTime) {
@@ -280,10 +287,17 @@ void ParticleManager::renderUI() {
             std::lock_guard<std::mutex> lock(particleMtx);
             for (ParticleEntry& entry : particleEntries) {
                 entry.loop = loopParticles;
+                entry.loopDelay = loopDelayParticles;
+                entry.nextLoopTime = 0.0;
             }
         });
     }
     ImGui::EndTable();
+
+    ImGui::PushItemWidth(-100);
+    ImGui::Text("Loop delay:");
+    ImGui::DragFloat("##particle_loop_delay", &loopDelayParticles, 0.1f, 0.0f, 60.0f, "%.1f");
+    ImGui::PopItemWidth();
 
     ImGui::PushItemWidth(-100);
     ImGui::Text("Playback duration:");

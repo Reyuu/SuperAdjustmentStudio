@@ -18,6 +18,8 @@ struct VFXEntry {
         UBioCameraShake* cameraShake = nullptr; // original template shake, for restore
         AActor* cameraShakenActor = nullptr;    // original shaken actor, for restore
         bool loop = false;
+        double loopDelay = 0.0;    // seconds to wait after the effect ends before re-triggering
+        double nextLoopTime = 0.0; // game time at which the next loop may fire (0 == not scheduled)
 };
 
 // orders/unique-ifies available templates by (case-insensitive) name
@@ -43,6 +45,7 @@ class VFXManager {
         std::mutex vfxMtx;
         bool ignoreCameraMovement = false;
         bool loopVFX = false;
+        float loopDelayVFX = 0.0f;
         float vfxDuration = 10.0f;
         bool showBoneSelection = false;
 };

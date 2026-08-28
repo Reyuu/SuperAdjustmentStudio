@@ -1,6 +1,7 @@
 #ifndef SAS_PARTICLES_H
 #define SAS_PARTICLES_H
 
+#include "util.h"
 #include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
 #include <mutex>
@@ -17,6 +18,8 @@ struct ParticleEntry {
         UParticleSystem* particleTemplate = nullptr; // for re-activation / loop
         AActor* emitterActor = nullptr;              // owner of the PSC, kept so it can be click-selected / moved via the gizmo
         bool loop = false;
+        double loopDelay = 0.0;    // seconds to wait after the effect ends before re-triggering
+        double nextLoopTime = 0.0; // game time at which the next loop may fire (0 == not scheduled)
 };
 
 // orders/unique-ifies available templates by (case-insensitive) name
@@ -41,6 +44,7 @@ class ParticleManager {
         std::set<UParticleSystem*, ParticleTemplateNameLess> availableTemplates;
         std::mutex particleMtx;
         bool loopParticles = false;
+        float loopDelayParticles = 0.0f;
         float particleDuration = 10.0f;
 };
 #endif // SAS_PARTICLES_H
