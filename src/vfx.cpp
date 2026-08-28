@@ -146,6 +146,7 @@ void VFXManager::applyVFXLiveState(VFXEntry& entry) {
     a->fStateDurations[1] = entry.lifeTime; // LIFE
     a->bActive = 1;
     a->bPaused = 0;
+    a->bDeleteSelf = 0; // keep the revived effect alive; otherwise the engine would delete it right after we re-trigger
     // eCurrentState is an enum, 0=SPAWN, 1=LIFE, 2=DEATH
     a->SetState(1, true, true, false); // BVFX_LIFE
 }
@@ -155,7 +156,7 @@ void VFXManager::updateActiveVFX() {
     double now = ImGui::GetTime();
     for (auto it = vfxEntries.begin(); it != vfxEntries.end();) {
         VFXEntry& e = *it;
-        if (!e.actor) {
+        if (!isLiveObject(e.actor)) {
             it = vfxEntries.erase(it);
             continue;
         }

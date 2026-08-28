@@ -7,6 +7,11 @@ on:
         description: Environment containing Nexus Mods secrets
         required: true
         type: environment
+      is_hotfix:
+        description: Hotfix release - bumps the patch version (e.g. 0.2 -> 0.2.1) instead of the beta number
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -46,20 +51,49 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create beta tag
+      - name: Create release tag
         id: version
         shell: pwsh
         run: |
-          $latest = 0
-          git tag -l '0.*beta' | ForEach-Object {
-            if ($_ -match '^0\.(\d+)beta$') {
-              $latest = [Math]::Max($latest, [int]$Matches[1])
+          $hotfix = "${{ inputs.is_hotfix }}" -eq "true"
+
+          # Collect existing versions from git tags (supports 0.Nbeta, X.Y and X.Y.Z)
+          $versions = @()
+          git tag --list | ForEach-Object {
+            $t = $_
+            if ($t -match '^(\d+)\.(\d+)beta$') {
+              $versions += [version]::new([int]$Matches[1], [int]$Matches[2], 0)
+            } elseif ($t -match '^(\d+)\.(\d+)(?:\.(\d+))?$') {
+              $patch = if ($Matches[3]) { [int]$Matches[3] } else { 0 }
+              $versions += [version]::new([int]$Matches[1], [int]$Matches[2], $patch)
             }
           }
-          $tag = "0.$($latest + 1)beta"
+
+          $latest = $versions | Sort-Object | Select-Object -Last 1
+          if (-not $latest) { $latest = [version]::new(0, 0, 0) }
+
+          if ($hotfix) {
+            # bump patch and keep the beta suffix with no space: 0.2 -> 0.2.1beta, 0.5.2 -> 0.5.3beta
+            $tag = "$([version]::new($latest.Major, $latest.Minor, ($latest.Build + 1)).ToString())beta"
+          } else {
+            # existing behavior: next beta number derived from 0.Nbeta tags
+            $maxBeta = 0
+            git tag --list '0.*beta' | ForEach-Object {
+              if ($_ -match '^0\.(\d+)beta$') {
+                $maxBeta = [Math]::Max($maxBeta, [int]$Matches[1])
+              }
+            }
+            $tag = "0.$($maxBeta + 1)beta"
+          }
+
           git tag $tag
           git push origin $tag
           "tag=$tag" >> $env:GITHUB_OUTPUT
+
+          $note = "This is release $tag of the SuperAdjustmentStudio.`n`n**Full Changelog**: https://github.com/Reyuu/SuperAdjustmentStudio/commits/$tag"
+          "note<<EOF" >> $env:GITHUB_OUTPUT
+          $note >> $env:GITHUB_OUTPUT
+          "EOF" >> $env:GITHUB_OUTPUT
 
       - name: Download release artifact
         uses: actions/download-artifact@v7
@@ -76,18 +110,17 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: SAS - ${{ steps.version.outputs.tag }}
-          body: |
-            This is release ${{ steps.version.outputs.tag }} of the SuperAdjustmentStudio.
-
-            **Full Changelog**: https://github.com/Reyuu/SuperAdjustmentStudio/commits/${{ steps.version.outputs.tag }}
+          body: ${{ steps.version.outputs.note }}
           files: SuperAdjustmentStudio-${{ steps.version.outputs.tag }}.zip
 
       - name: Upload to Nexus Mods
-        uses: Nexus-Mods/upload-action@v1.0.0-beta.9
+        uses: Nexus-Mods/upload-action@v1.0.0-beta.10
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
           file_id: ${{ vars.NEXUS_FILE_ID }}
+          mod_id: ${{ vars.NEXUS_MOD_ID }}
           filename: SuperAdjustmentStudio-${{ steps.version.outputs.tag }}.zip
           version: ${{ steps.version.outputs.tag }}
           display_name: SAS - ${{ steps.version.outputs.tag }}
           description: This is release ${{ steps.version.outputs.tag }} of the SuperAdjustmentStudio.
+          changelog: ${{ steps.version.outputs.note }}
