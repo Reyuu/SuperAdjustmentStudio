@@ -62,11 +62,11 @@ void Animation::pauseAnimations(bool pause) {
             if (pausedAnimNodes[i]) {
                 pausedAnimNodes[i]->Rate = pausedAnimRates[i];
             }
-            pausedAnimNodes.clear();
-            pausedAnimRates.clear();
-            animPauseActiveState = false;
-            Logger->debug("pauseAnimations: resumed");
         }
+        pausedAnimNodes.clear();
+        pausedAnimRates.clear();
+        animPauseActiveState = false;
+        Logger->debug("pauseAnimations: resumed");
     }
 }
 

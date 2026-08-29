@@ -145,20 +145,23 @@ USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName) {
 }
 
 void Engine::setPause(bool pause) {
-    if (!UObject::GObjObjects) {
-        Logger->debug("setPause: no GObjObjects");
+    APlayerController* playerController = findFirstPlayerController();
+    if (!playerController) {
+        Logger->debug("setPause: no player controller");
         return;
     }
-
-    UGameUISceneClient* client = findFirstOf<UGameUISceneClient>();
-    if (!client) {
-        Logger->debug("setPause: UGameUISceneClient not found");
+    AWorldInfo* worldInfo = playerController->WorldInfo;
+    if (!worldInfo) {
+        Logger->debug("setPause: no WorldInfo");
         return;
     }
-    client->eventPauseGame(pause ? 1 : 0, 0);
-
+    if (pause && !playerController->PlayerReplicationInfo) {
+        Logger->debug("setPause: no player replication info, cannot pause");
+        return;
+    }
+    worldInfo->Pauser = pause ? playerController->PlayerReplicationInfo : nullptr;
     std::ostringstream ss;
-    ss << "setPause: called PauseGame(" << (pause ? "true" : "false") << ")";
+    ss << "setPause: " << (pause ? "paused" : "resumed");
     Logger->debug(ss.str());
 }
 

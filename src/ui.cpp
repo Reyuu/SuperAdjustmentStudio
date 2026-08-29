@@ -381,7 +381,7 @@ void UI::renderControlsSection() {
     const char* icon;
 
     icon = pauseTime ? ICON_FA_PAUSE : ICON_FA_PLAY;
-    if (ImGui::Checkbox((std::string(icon) + " Pause animations").c_str(), &pauseTime)) {
+    if (ImGui::Checkbox((std::string(icon) + " Pause").c_str(), &pauseTime)) {
         Application::instance().engine().setPause(pauseTime);
         Application::instance().animation().pauseAnimations(pauseTime);
     }
