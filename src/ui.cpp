@@ -391,9 +391,6 @@ void UI::renderControlsSection() {
     bool hideGameUI = Application::instance().engine().isGameUIHidden();
     icon = hideGameUI ? ICON_FA_EYE_SLASH : ICON_FA_EYE;
     if (ImGui::Checkbox((std::string(icon) + " Hide all game UI").c_str(), &hideGameUI)) {
-        if (hideGameUI) {
-            toastManager.addToastNotification("This feature does not work for now! You won't see any changes!", ToastTypeInfo, 2.0);
-        }
         Application::instance().engine().isGameUIHidden() = hideGameUI;
         Application::instance().engine().applyHUDVisibility();
     }

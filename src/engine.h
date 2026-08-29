@@ -5,6 +5,7 @@
 #include <functional>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "hook_manager.h"
@@ -79,9 +80,7 @@ class Engine {
         bool floatOldBlockActors = false;
         bool floatOldBlockRigidBody = false;
 
-        // FIXME: hide ui - borked
-        unsigned long savedHUDShowBits = 0;
-        bool hudShowBitsSaved = false;
+        std::unordered_map<UBioSFPanel*, bool> savedPanelVisibility;
 };
 
 #endif // SAS_ENGINE_H

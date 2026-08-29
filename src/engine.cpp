@@ -427,20 +427,20 @@ void Engine::setFloat(const std::string& targetName, bool enable) {
 }
 
 void Engine::applyHUDVisibility() {
-    AHUD* hud = findFirstOf<ABioHUD>();
-    if (!hud) {
-        return;
-    }
-
     if (isGameUIHiddenState) {
-        if (!hudShowBitsSaved) {
-            savedHUDShowBits = hud->bShowHUD;
-            hudShowBitsSaved = true;
+        forEachOf<UBioSFPanel>([this](UBioSFPanel* p) {
+            if (savedPanelVisibility.find(p) == savedPanelVisibility.end()) {
+                savedPanelVisibility.emplace(p, p->IsVisible != 0);
+            }
+            p->SetMovieVisibility(false);
+        });
+    } else {
+        for (auto it = savedPanelVisibility.begin(); it != savedPanelVisibility.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->SetMovieVisibility(it->second ? true : false);
+            }
+            it = savedPanelVisibility.erase(it);
         }
-        hud->bShowHUD = false;
-    } else if (hudShowBitsSaved) {
-        hud->bShowHUD = savedHUDShowBits;
-        hudShowBitsSaved = false;
     }
 }
 

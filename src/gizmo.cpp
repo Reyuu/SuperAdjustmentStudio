@@ -389,6 +389,8 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
             hud = static_cast<ABioHUD*>(Context);
             hud->FlushPersistentDebugLines();
 
+            Application::instance().engine().applyHUDVisibility();
+
             const bool uiVisible = Application::instance().ui().showUI().load();
             if (uiVisible && clickSelectState) {
                 checkClickSelect(hud);
@@ -398,8 +400,6 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                 GetActorBoundsBox(actor, box);
             }
             if (debugAlwaysOnTopState) {
-                // do not draw aot lines here, we do it later.
-                // also do not draw it if the actor is not found
                 drawOnTop = actor != nullptr;
             } else if (actor) {
                 UWorld* world = GWorld ? *GWorld : nullptr;

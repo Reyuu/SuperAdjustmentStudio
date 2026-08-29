@@ -116,9 +116,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             }
             app.previousF10 = currentF10;
 
-            if (app.engine().isGameUIHidden()) {
-                app.engine().applyHUDVisibility();
-            }
+            app.engine().applyHUDVisibility();
 
             app.rendererInstance.ensureRenderTarget(pSwapChain);
             app.rendererInstance.beginRender();
