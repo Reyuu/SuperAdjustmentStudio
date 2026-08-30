@@ -55,6 +55,10 @@ set(SPDLOG_BUILD_BENCH OFF)
 set(SPDLOG_INSTALL OFF)
 add_subdirectory(thirdparty/spdlog)
 
+#   sqlite (pre-built DLL)
+message(STATUS "Adding build target: thirdparty/sqlite")
+add_subdirectory(thirdparty/sqlite)
+
 #   imgui
 message(STATUS "Adding build target: thirdparty/imgui")
 # explicitly list the source files
@@ -154,6 +158,11 @@ else()
     message(FATAL_ERROR "No kiero target found. Please check the kiero submodule.")
 endif()
 
+if (TARGET sqlite)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE sqlite)
+else()
+    message(FATAL_ERROR "No sqlite target found.")
+endif()
 
 if (WIN32)
 # LE uses DirectX 11, so we need to link against the appropriate libraries
