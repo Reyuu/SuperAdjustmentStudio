@@ -208,14 +208,14 @@ void UI::collectClasses() {
 }
 
 void UI::collectPackages() {
-    std::vector<std::string> paths = collectGamePccFiles();
+    std::vector<PccFile> files = collectGamePccFiles();
     packages.clear();
-    packages.reserve(paths.size());
-    for (const std::string& p : paths) {
+    packages.reserve(files.size());
+    for (const PccFile& f : files) {
         // path()/stem() must be split on the filesystem's preferred separator
         // (Windows backslash); std::filesystem::path handles that.
-        std::string name = std::filesystem::path(p).stem().string();
-        packages.push_back({p, name, toLowerStr(name)});
+        std::string name = std::filesystem::path(f.path).stem().string();
+        packages.push_back({f.path, f.relPath, name, toLowerStr(name)});
     }
     if (packages.empty()) {
         packageIndex = 0;
@@ -1146,6 +1146,7 @@ void UI::renderPackagesSection() {
 
     if (!selectedName.empty() && packageIndex >= 0 && packageIndex < (int)packages.size()) {
         const PackageEntry& sel = packages[packageIndex];
+        ImGui::TextDisabled("Path: %s", sel.relPath.c_str());
         if (ImGui::Button(ICON_FA_DOWNLOAD " Load")) {
             const std::string loadPath = sel.path;
             const std::string loadName = sel.name;

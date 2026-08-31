@@ -23,6 +23,7 @@ struct ClassEntry {
 
 struct PackageEntry {
         std::string path;      // full path (for load)
+        std::string relPath;   // path relative to BIOGame (for display)
         std::string name;      // filename (for display)
         std::string nameLower; // lowercase (for filtering)
 };

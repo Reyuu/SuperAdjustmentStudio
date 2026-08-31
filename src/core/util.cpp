@@ -68,8 +68,8 @@ std::string toLowerStr(const std::string& str) {
     return out;
 };
 
-std::vector<std::string> collectGamePccFiles() {
-    std::vector<std::string> files;
+std::vector<PccFile> collectGamePccFiles() {
+    std::vector<PccFile> files;
 
     wchar_t exePath[MAX_PATH] = {};
     DWORD len = GetModuleFileNameW(nullptr, exePath, MAX_PATH);
@@ -89,14 +89,19 @@ std::vector<std::string> collectGamePccFiles() {
         return files;
     }
 
-    auto addPccs = [&files](const std::filesystem::path& dir) {
+    auto addPccs = [&files, &bioGame](const std::filesystem::path& dir) {
         std::error_code ec;
         for (auto& entry : std::filesystem::directory_iterator(dir, ec)) {
             if (ec || !entry.is_regular_file()) {
                 continue;
             }
             if (toLowerStr(entry.path().extension().string()) == ".pcc") {
-                files.push_back(entry.path().string());
+                std::string full = entry.path().string();
+                std::string rel = std::filesystem::relative(entry.path(), bioGame, ec).generic_string();
+                if (rel.empty() || ec) {
+                    rel = entry.path().filename().string();
+                }
+                files.push_back({full, rel});
             }
         }
     };
