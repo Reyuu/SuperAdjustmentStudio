@@ -1,7 +1,7 @@
 #ifndef SAS_UTIL_H
 #define SAS_UTIL_H
 
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "imgui.h"
 #include <LESDK/Includes.LE2.hpp>

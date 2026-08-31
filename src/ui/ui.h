@@ -9,8 +9,8 @@
 
 #include "bones.h"
 #include "game_window.h"
+#include "helpers/toast_notifications.h"
 #include "native_renderer.h"
-#include "ui_helpers/toast_notifications.h"
 #include "util.h"
 
 struct ClassEntry {

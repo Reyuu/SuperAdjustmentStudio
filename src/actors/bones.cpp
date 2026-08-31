@@ -1,5 +1,5 @@
 ﻿#include "bones.h"
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include <cmath>
 #include <cstring>

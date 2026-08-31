@@ -1,6 +1,6 @@
 #ifndef SAS_GAME_WINDOW_H
 #define SAS_GAME_WINDOW_H
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include <utility>
 #include <vector>

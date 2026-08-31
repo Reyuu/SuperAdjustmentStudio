@@ -1,7 +1,7 @@
 #ifndef SAS_PLUGIN_H
 #define SAS_PLUGIN_H
 
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #define PLUGIN_NAME     "SuperAdjustmentStudio"
 #define LPLUGIN_NAME    L"SuperAdjustmentStudio"

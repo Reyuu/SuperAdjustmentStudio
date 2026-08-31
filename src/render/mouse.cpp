@@ -1,5 +1,5 @@
 #define INITGUID
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "mouse.h"
 

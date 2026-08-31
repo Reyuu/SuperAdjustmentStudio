@@ -1,10 +1,10 @@
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "IconsFontAwesome6.h"
+#include "helpers/raii_guards.h"
+#include "helpers/toast_notifications.h"
 #include "imgui.h"
 #include "ui.h"
-#include "ui_helpers/raii_guards.h"
-#include "ui_helpers/toast_notifications.h"
 #include <LESDK/Includes.LE2.hpp>
 #include <algorithm>
 #include <atomic>

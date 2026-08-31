@@ -1,7 +1,7 @@
 #ifndef SAS_APPLICATION_H
 #define SAS_APPLICATION_H
 
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "animation.h"
 #include "bones.h"

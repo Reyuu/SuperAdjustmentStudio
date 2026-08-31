@@ -1,7 +1,7 @@
 #ifndef SAS_SDK_H
 #define SAS_SDK_H
 
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "plugin.h"
 #include <LESDK/Includes.LE2.hpp>

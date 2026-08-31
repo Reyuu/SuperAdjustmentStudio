@@ -1,11 +1,11 @@
 #include "particles.h"
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 #include "IconsFontAwesome6.h"
 #include "application.h"
 #include "imgui.h"
 #include "logger.h"
-#include "ui_helpers/raii_guards.h"
-#include "ui_helpers/toast_notifications.h"
+#include "ui/helpers/raii_guards.h"
+#include "ui/helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Core.hpp>
 #include <LESDK/Includes.LE2.hpp>

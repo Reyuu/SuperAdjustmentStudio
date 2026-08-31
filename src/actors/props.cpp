@@ -2,7 +2,7 @@
 #include "Common/FString.hpp"
 #include "IconsFontAwesome6.h"
 #include "LE2/Core_classes.hpp"
-#include "ui_helpers/toast_notifications.h"
+#include "ui/helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Math.hpp>
 #include <algorithm>

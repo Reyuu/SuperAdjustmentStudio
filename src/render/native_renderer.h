@@ -3,7 +3,7 @@
 // manual vtable scanning or dummy-device plumbing is needed on our side.
 #ifndef SAS_NATIVE_RENDERER_H
 #define SAS_NATIVE_RENDERER_H
-#include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include <atomic>
 #include <d3d11.h>

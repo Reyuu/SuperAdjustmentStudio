@@ -118,18 +118,23 @@ target_include_directories(kiero PUBLIC
 )
 
 # SAS targets
-file(GLOB SAS_SOURCES
+file(GLOB_RECURSE SAS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/**/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/*.rc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.rc
 )
 message(STATUS "Adding build target: SuperAdjustmentStudio")
 add_library(SuperAdjustmentStudio SHARED ${SAS_SOURCES})
 
 target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui_helpers
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/game
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/actors
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/render
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/helpers
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/parse
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
