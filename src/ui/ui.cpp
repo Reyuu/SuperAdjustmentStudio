@@ -207,6 +207,26 @@ void UI::collectClasses() {
     }
 }
 
+void UI::collectPackages() {
+    std::vector<std::string> paths = collectGamePccFiles();
+    packages.clear();
+    packages.reserve(paths.size());
+    for (const std::string& p : paths) {
+        // path()/stem() must be split on the filesystem's preferred separator
+        // (Windows backslash); std::filesystem::path handles that.
+        std::string name = std::filesystem::path(p).stem().string();
+        packages.push_back({p, name, toLowerStr(name)});
+    }
+    if (packages.empty()) {
+        packageIndex = 0;
+        return;
+    }
+    if (packageIndex < 0 || packageIndex >= (int)packages.size()) {
+        packageIndex = 0;
+    }
+    Logger->info("collectPackages: found " + std::to_string(packages.size()) + " .pcc packages");
+}
+
 void UI::collectAnimations(const std::string& pawnName) {
     animationNames.clear();
     animationIndex = 0;
@@ -320,6 +340,13 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
         lastClassRefresh = ImGui::GetTime();
         collectClasses();
     }
+    if (packages.empty()) {
+        collectPackages();
+    }
+    if (ImGui::GetTime() - lastPackageRefresh > 10.0f) {
+        lastPackageRefresh = ImGui::GetTime();
+        collectPackages();
+    }
     if (pawnIndexInt < 0) {
         pawnIndexInt = 0;
     }
@@ -367,6 +394,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     renderControlsSection();
     renderSelectionSection();
     renderSpawnSection();
+    renderPackagesSection();
 
     ImGui::End();
     toastManager.renderToastNotifications();
@@ -1063,5 +1091,182 @@ void UI::renderSpawnOtherProps() {
         }
     }
     ImGui::Unindent();
+}
+
+void UI::renderPackagesSection() {
+    if (!ImGui::CollapsingHeader(ICON_FA_BOX_ARCHIVE " Game packages##pkgs")) {
+        return;
+    }
+    ImGui::Indent();
+
+    ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(-100);
+    ImGui::InputText("##pkg_search", packageSearch, sizeof(packageSearch));
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
+        collectPackages();
+    }
+
+    std::string selectedName = (!packages.empty() && packageIndex >= 0 && packageIndex < (int)packages.size()) ? packages[packageIndex].name : "";
+
+    ImGui::Text("Selected package:");
+    ImGui::SameLine();
+    ImGui::Text("%s", selectedName.empty() ? "(none)" : selectedName.c_str());
+
+    std::string filter = toLowerStr(packageSearch);
+    {
+        ChildScope child("pkg_list", ImVec2(0, 220), true);
+        if (child.open) {
+            int shown = 0;
+            for (int i = 0; i < (int)packages.size(); ++i) {
+                const PackageEntry& e = packages[i];
+                if (!filter.empty() && e.nameLower.find(filter) == std::string::npos) {
+                    continue;
+                }
+                if (ImGui::Selectable((e.name + "##" + std::to_string(i)).c_str(), i == packageIndex)) {
+                    packageIndex = i;
+                }
+                ++shown;
+            }
+            if (shown == 0) {
+                ImGui::Text("(no packages match)");
+            }
+        }
+    }
+
+    if (!selectedName.empty() && packageIndex >= 0 && packageIndex < (int)packages.size()) {
+        const PackageEntry& sel = packages[packageIndex];
+        if (ImGui::Button(ICON_FA_DOWNLOAD " Load")) {
+            const std::string loadPath = sel.path;
+            const std::string loadName = sel.name;
+            toastManager.addToastNotification("Loading package " + loadName + "...", ToastTypeInfo, 2.0);
+            Application::instance().engine().postPackageLoad(loadPath, [this, loadName]() {
+                toastManager.addToastNotification("Loaded package " + loadName, ToastTypeSuccess, 3.0);
+            });
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_EYE " Preview")) {
+            packagePreviewName = sel.name;
+            packagePreview = PCCFile();
+            PCCParser parser(sel.path);
+            if (parser.parse()) {
+                packagePreview = parser.fileData();
+                packagePreviewOpen = true;
+            } else {
+                toastManager.addToastNotification("Failed to parse " + sel.name, ToastTypeError, 3.0);
+            }
+        }
+    }
+
+    if (packagePreviewOpen) {
+        renderPackagePreview();
+    }
+
+    ImGui::Unindent();
+}
+
+void UI::renderPackagePreview() {
+    ImGui::SetNextWindowSize(ImVec2(560, 640), ImGuiCond_FirstUseEver);
+    std::string winTitle = "Package Preview: " + packagePreviewName;
+    if (ImGui::Begin(winTitle.c_str(), &packagePreviewOpen)) {
+        ImGui::TextDisabled("File: %s", packagePreviewName.c_str());
+        ImGui::TextDisabled("%zu exports, %zu imports", packagePreview.exports.size(), packagePreview.imports.size());
+
+        ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
+        ImGui::SameLine();
+        ImGui::PushItemWidth(-60);
+        ImGui::InputText("##pkg_preview_search", packagePreviewSearch, sizeof(packagePreviewSearch));
+        ImGui::PopItemWidth();
+        ImGui::Separator();
+
+        std::string filter = toLowerStr(packagePreviewSearch);
+
+        if (ImGui::BeginChild("pkg_preview_tree", ImVec2(0, 0), true)) {
+            if (packagePreview.rootExports.empty()) {
+                ImGui::Text("(no root objects)");
+            } else {
+                ImGui::Indent(4.0f);
+                for (int32_t root : packagePreview.rootExports) {
+                    renderPackagePreviewNode(root, filter);
+                }
+                ImGui::Unindent(4.0f);
+            }
+
+            if (!packagePreview.imports.empty()) {
+                ImGui::Separator();
+                ImGui::Text("Imports:");
+                ImGui::Indent(4.0f);
+                int impShown = 0;
+                for (size_t i = 0; i < packagePreview.imports.size(); ++i) {
+                    const PCCImport& im = packagePreview.imports[i];
+                    std::string label = im.objectName;
+                    label += "  [import]";
+                    if (!im.className.empty()) {
+                        label += "  [" + im.className + "]";
+                    }
+                    if (!im.packageName.empty()) {
+                        label += "  <" + im.packageName + ">";
+                    }
+                    if (!filter.empty() && toLowerStr(label).find(filter) == std::string::npos) {
+                        continue;
+                    }
+                    ImGui::BulletText("%s", label.c_str());
+                    ++impShown;
+                }
+                if (impShown == 0) {
+                    ImGui::Text("(no imports match)");
+                }
+                ImGui::Unindent(4.0f);
+            }
+        }
+        ImGui::EndChild();
+    }
+    ImGui::End();
+}
+
+// returns true if the node itself or any descendant matches the filter.
+bool UI::renderPackagePreviewNode(int index, const std::string& filter) {
+    if (index < 0 || index >= (int)packagePreview.exports.size()) {
+        return false;
+    }
+    const PCCExport& ex = packagePreview.exports[index];
+    const std::vector<int32_t>& kids = packagePreview.children[index];
+
+    std::string label = ex.objectName;
+    label += "  [export]";
+    if (!ex.className.empty()) {
+        label += "  [" + ex.className + "]";
+    }
+    if (ex.dataSize > 0) {
+        label += "  (" + std::to_string(ex.dataSize) + " B)";
+    }
+
+    bool selfMatch = filter.empty() || toLowerStr(label).find(filter) != std::string::npos;
+    bool childMatch = false;
+    for (int32_t child : kids) {
+        if (renderPackagePreviewNode(child, filter)) {
+            childMatch = true;
+        }
+    }
+
+    if (!selfMatch && !childMatch) {
+        return false;
+    }
+
+    if (kids.empty()) {
+        ImGui::BulletText("%s", label.c_str());
+        return true;
+    }
+
+    ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+    if (ImGui::TreeNode((void*)(intptr_t)(index + 1), "%s", label.c_str())) {
+        for (int32_t child : kids) {
+            renderPackagePreviewNode(child, filter);
+        }
+        ImGui::TreePop();
+    }
+    return true;
 }
 #pragma endregion

@@ -11,6 +11,7 @@
 #include "game_window.h"
 #include "helpers/toast_notifications.h"
 #include "native_renderer.h"
+#include "pcc_parser.h"
 #include "util.h"
 
 struct ClassEntry {
@@ -18,6 +19,12 @@ struct ClassEntry {
         std::string package;
         std::string name;
         std::string fullName;
+};
+
+struct PackageEntry {
+        std::string path;      // full path (for load)
+        std::string name;      // filename (for display)
+        std::string nameLower; // lowercase (for filtering)
 };
 
 class UI {
@@ -49,6 +56,7 @@ class UI {
         void collectPawns();
         void collectClasses();
         void collectAnimations(const std::string& pawnName);
+        void collectPackages();
 
         void selectActor(AActor* actor);
         bool renderTransformEditor(Transform& t, const char* idPrefix);
@@ -71,6 +79,9 @@ class UI {
         void renderSpawnClassList();
         void renderSpawnTransform();
         void renderSpawnOtherProps();
+        void renderPackagesSection();
+        void renderPackagePreview();
+        bool renderPackagePreviewNode(int index, const std::string& filter);
 
         std::atomic<bool> showUIstate{false};
         std::vector<std::string> pawnNamesVector;
@@ -90,6 +101,16 @@ class UI {
         std::string selectedClassFullName;
         char classSearch[128] = "";
         float lastClassRefresh = 0.0f;
+
+        std::vector<PackageEntry> packages;
+        int packageIndex = 0;
+        char packageSearch[128] = "";
+        float lastPackageRefresh = 0.0f;
+
+        bool packagePreviewOpen = false;
+        PCCFile packagePreview;
+        std::string packagePreviewName;
+        char packagePreviewSearch[128] = "";
 
         Transform selectedTransform;
         Transform spawnTransform;
