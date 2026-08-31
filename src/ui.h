@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <windows.h>
+
 #include "bones.h"
 #include "game_window.h"
 #include "native_renderer.h"

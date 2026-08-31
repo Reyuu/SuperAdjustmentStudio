@@ -1,5 +1,10 @@
 #include "util.h"
 
+#include <algorithm>
+#include <filesystem>
+#include <vector>
+#include <windows.h>
+
 // UE3 FString -> length-prefixed UTF-16 buffer
 std::string FStringToUtf8(const FString& fStr) {
     std::wstring wStr = (std::wstring)fStr;
@@ -62,3 +67,52 @@ std::string toLowerStr(const std::string& str) {
     std::transform(out.begin(), out.end(), out.begin(), ::tolower);
     return out;
 };
+
+std::vector<std::string> collectGamePccFiles() {
+    std::vector<std::string> files;
+
+    wchar_t exePath[MAX_PATH] = {};
+    DWORD len = GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    if (len == 0) {
+        return files;
+    }
+
+    std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
+    std::filesystem::path bioGame;
+    for (auto dir = exeDir; !dir.empty(); dir = dir.parent_path()) {
+        if (std::filesystem::exists(dir / "BIOGame")) {
+            bioGame = dir / "BIOGame";
+            break;
+        }
+    }
+    if (bioGame.empty()) {
+        return files;
+    }
+
+    auto addPccs = [&files](const std::filesystem::path& dir) {
+        std::error_code ec;
+        for (auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+            if (ec || !entry.is_regular_file()) {
+                continue;
+            }
+            if (toLowerStr(entry.path().extension().string()) == ".pcc") {
+                files.push_back(entry.path().string());
+            }
+        }
+    };
+
+    addPccs(bioGame / "CookedPCConsole");
+
+    std::error_code ec;
+    std::filesystem::path dlcRoot = bioGame / "DLC";
+    if (std::filesystem::exists(dlcRoot)) {
+        for (auto& dlcDir : std::filesystem::directory_iterator(dlcRoot, ec)) {
+            if (ec || !dlcDir.is_directory()) {
+                continue;
+            }
+            addPccs(dlcDir.path() / "CookedPCConsole");
+        }
+    }
+
+    return files;
+}

@@ -30,6 +30,7 @@ std::string FStringToUtf8(const FString& fStr);
 std::string WStringToUtf8(const std::wstring& wStr);
 std::wstring toWString(const std::string& str);
 std::string toLowerStr(const std::string& str);
+std::vector<std::string> collectGamePccFiles();
 
 // first live object of type T in GObjObjects
 template <class T> T* findFirstOf() {

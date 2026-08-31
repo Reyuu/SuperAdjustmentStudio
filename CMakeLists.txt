@@ -59,6 +59,14 @@ add_subdirectory(thirdparty/spdlog)
 message(STATUS "Adding build target: thirdparty/sqlite")
 add_subdirectory(thirdparty/sqlite)
 
+#   zlib
+message(STATUS "Adding build target: thirdparty/zlib")
+set(ZLIB_BUILD_SHARED OFF)
+set(ZLIB_BUILD_STATIC ON)
+set(ZLIB_BUILD_TESTING OFF)
+set(ZLIB_INSTALL OFF)
+add_subdirectory(thirdparty/zlib)
+
 #   imgui
 message(STATUS "Adding build target: thirdparty/imgui")
 # explicitly list the source files
@@ -126,6 +134,7 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/IconFontCppHeaders
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib
 )
 
 # link dependencies
@@ -162,6 +171,12 @@ if (TARGET sqlite)
     target_link_libraries(SuperAdjustmentStudio PRIVATE sqlite)
 else()
     message(FATAL_ERROR "No sqlite target found.")
+endif()
+
+if (TARGET zlibstatic)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE zlibstatic)
+else()
+    message(FATAL_ERROR "No zlib target found. Please check the zlib submodule.")
 endif()
 
 if (WIN32)

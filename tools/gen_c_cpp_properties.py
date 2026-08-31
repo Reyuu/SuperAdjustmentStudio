@@ -7,22 +7,21 @@ root = sys.argv[1].rstrip('\\')
 cl = sys.argv[2].replace('\\', '\\\\')
 
 inc = [root + p for p in [
-    '/src', '/src/ui_helpers', '/thirdparty/libmdbx',
+    '/src', '/src/ui_helpers',
     '/thirdparty/LExSDKv2/Src', '/thirdparty/LExSDKv2/Src/LESDK',
     '/thirdparty/imgui', '/thirdparty/imgui/backends',
     '/thirdparty/IconFontCppHeaders', '/thirdparty/kiero',
     '/thirdparty/spdlog/include', '/thirdparty/LExSDKv2/External',
+    '/thirdparty/sqlite', '/thirdparty/zlib',
     '/build/compile-commands',
 ]]
-cfg = root + '/build/compile-commands/thirdparty/libmdbx/config-cmake.h'
 
 data = {
     "configurations": [{
         "name": "Win32",
         "compileCommands": root + "/compile_commands.json",
         "includePath": inc,
-        "defines": ["_DEBUG", "UNICODE", "_UNICODE",
-                    'MDBX_CONFIG_H="%s"' % cfg],
+        "defines": ["_DEBUG", "UNICODE", "_UNICODE"],
         "intelliSenseMode": "windows-msvc-x64",
         "compilerPath": cl,
         "cppStandard": "c++20",

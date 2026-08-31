@@ -7,6 +7,8 @@
 #include "ui_helpers/toast_notifications.h"
 #include <LESDK/Includes.LE2.hpp>
 #include <algorithm>
+#include <atomic>
+#include <filesystem>
 #include <sstream>
 
 #include "animation.h"
@@ -18,6 +20,7 @@
 #include "logger.h"
 #include "mouse.h"
 #include "native_renderer.h"
+#include "pcc_parser.h"
 #include "props.h"
 
 // TODO: translations (save needed strings to .po, header only utility, save as std::map?, set global language,
