@@ -546,6 +546,13 @@ void UI::renderSelectionTarget() {
         collectPawns();
     }
 
+    if (ImGui::Button(ICON_FA_PERSON " Target player##sel_target", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+        AActor* player = Application::instance().engine().playerPawn();
+        if (player) {
+            selectActor(player);
+        }
+    }
+
     {
         ChildScope child("sel_list", ImVec2(0, 120), true);
         ImGui::PushItemWidth(-100);
@@ -950,6 +957,7 @@ void UI::renderSpawnSection() {
         ImGui::TextColored(redColor, "SDK globals not initialized!!! Check log file for more info.");
     } else {
         renderSpawnClassList();
+        Application::instance().lights().renderUI();
         renderSpawnTransform();
         Application::instance().particles().renderUI();
         renderSpawnOtherProps();

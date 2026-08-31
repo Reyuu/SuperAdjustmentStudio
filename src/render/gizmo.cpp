@@ -6,11 +6,16 @@
 #include "logger.h"
 #include "sdk.h"
 #include "util.h"
+#include <algorithm>
+#include <cmath>
+#include <numbers>
 #include <sstream>
 
 #include <LESDK/Common/Math.hpp>
 
 #include "imgui.h"
+
+static void DrawWorldLineOnTop(ABioHUD* hud, FVector a, FVector b, const FColor& color);
 
 // X=forward, Y=right, Z=up
 static void RotatorToBasis(const FRotator& r, float outF[3], float outR[3], float outU[3]) {
@@ -54,6 +59,184 @@ static void DrawWorldGizmo(ULineBatchComponent* lineBatcher, AActor* actor) {
     // stupid hack
     FVector endX{origin.X + ax[0] * len, origin.Y + ax[1] * len, origin.Z + ax[2] * len};
     DrawLine(self, origin, endX, colors[0], 1, 0);
+}
+
+static void DrawLightRadius(ULineBatchComponent* lineBatcher, AActor* actor) {
+    if (!actor || !actor->IsA(ALight::StaticClass())) {
+        return;
+    }
+    ALight* light = static_cast<ALight*>(actor);
+    ULightComponent* component = light->LightComponent;
+    if (!isLiveObject(component) || !component->IsA(UPointLightComponent::StaticClass())) {
+        return;
+    }
+    float radius = static_cast<UPointLightComponent*>(component)->Radius;
+    if (radius <= 0.0f) {
+        return;
+    }
+    void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
+    auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
+    FVector center = actor->Location;
+    const FLinearColor color{1.0f, 0.85f, 0.1f, 1.0f};
+    constexpr int segments = 32;
+    constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
+    for (int i = 0; i < segments; ++i) {
+        float a = twoPi * i / segments;
+        float b = twoPi * (i + 1) / segments;
+        float ca = std::cos(a) * radius;
+        float sa = std::sin(a) * radius;
+        float cb = std::cos(b) * radius;
+        float sb = std::sin(b) * radius;
+        DrawLine(self, FVector{center.X + ca, center.Y + sa, center.Z}, FVector{center.X + cb, center.Y + sb, center.Z}, color, 1, 1.5f);
+        DrawLine(self, FVector{center.X + ca, center.Y, center.Z + sa}, FVector{center.X + cb, center.Y, center.Z + sb}, color, 1, 1.5f);
+        DrawLine(self, FVector{center.X, center.Y + ca, center.Z + sa}, FVector{center.X, center.Y + cb, center.Z + sb}, color, 1, 1.5f);
+    }
+}
+
+// Blender-style wire cone, a ring at the tip plus radial spokes back to the origin
+template <typename Fn>
+static void DrawConeWire(Fn&& draw, const FVector& origin, const float forward[3], const float right[3], const float up[3], float length, float radius,
+                         int segments) {
+    const float twoPi = 2.0f * std::numbers::pi_v<float>;
+    FVector tip{origin.X + forward[0] * length, origin.Y + forward[1] * length, origin.Z + forward[2] * length};
+    auto ringPoint = [&](float t) {
+        return FVector{tip.X + (right[0] * std::cos(t) + up[0] * std::sin(t)) * radius, tip.Y + (right[1] * std::cos(t) + up[1] * std::sin(t)) * radius,
+                       tip.Z + (right[2] * std::cos(t) + up[2] * std::sin(t)) * radius};
+    };
+    for (int i = 0; i < segments; ++i) {
+        float a = twoPi * i / segments;
+        float b = twoPi * ((i + 1) % segments) / segments;
+        FVector p0 = ringPoint(a);
+        FVector p1 = ringPoint(b);
+        draw(p0, p1);
+        draw(origin, p0);
+    }
+}
+
+static void DrawLightOrientation(ULineBatchComponent* lineBatcher, AActor* actor) {
+    if (!actor || !actor->IsA(ALight::StaticClass())) {
+        return;
+    }
+    ALight* light = static_cast<ALight*>(actor);
+    ULightComponent* component = light->LightComponent;
+    if (!isLiveObject(component) || !component->IsA(UPointLightComponent::StaticClass())) {
+        return;
+    }
+    float forward[3];
+    float right[3];
+    float up[3];
+    RotatorToBasis(actor->Rotation, forward, right, up);
+    UPointLightComponent* point = static_cast<UPointLightComponent*>(component);
+    float length = (point->Radius > 100.0f) ? point->Radius : 100.0f;
+    void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
+    auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
+    FVector origin = actor->Location;
+    FVector tip{origin.X + forward[0] * length, origin.Y + forward[1] * length, origin.Z + forward[2] * length};
+    const FLinearColor dirColor{0.2f, 0.8f, 1.0f, 1.0f};
+    const FLinearColor outerColor{0.2f, 0.8f, 1.0f, 1.0f};
+    const FLinearColor innerColor{0.6f, 0.9f, 1.0f, 1.0f};
+    DrawLine(self, origin, tip, dirColor, 1, 2.0f);
+
+    if (component->IsA(USpotLightComponent::StaticClass())) {
+        USpotLightComponent* spot = static_cast<USpotLightComponent*>(component);
+        constexpr float degToRad = std::numbers::pi_v<float> / 180.0f;
+        float outerRadius = std::tan(spot->OuterConeAngle * degToRad) * length;
+        float innerRadius = std::tan(spot->InnerConeAngle * degToRad) * length;
+        DrawConeWire(
+            [&](const FVector& a, const FVector& b) {
+                DrawLine(self, a, b, outerColor, 1, 1.5f);
+            },
+            origin, forward, right, up, length, outerRadius, 20);
+        if (innerRadius > 0.01f) {
+            DrawConeWire(
+                [&](const FVector& a, const FVector& b) {
+                    DrawLine(self, a, b, innerColor, 1, 1.0f);
+                },
+                origin, forward, right, up, length, innerRadius, 20);
+        }
+    } else {
+        float radius = (length * 0.25f < 60.0f) ? length * 0.25f : 60.0f;
+        DrawConeWire(
+            [&](const FVector& a, const FVector& b) {
+                DrawLine(self, a, b, outerColor, 1, 1.0f);
+            },
+            origin, forward, right, up, length, radius, 12);
+    }
+}
+
+static void DrawLightRadiusOnTop(ABioHUD* hud, AActor* actor) {
+    if (!actor || !actor->IsA(ALight::StaticClass())) {
+        return;
+    }
+    ALight* light = static_cast<ALight*>(actor);
+    ULightComponent* component = light->LightComponent;
+    if (!isLiveObject(component) || !component->IsA(UPointLightComponent::StaticClass())) {
+        return;
+    }
+    float radius = static_cast<UPointLightComponent*>(component)->Radius;
+    FVector center = actor->Location;
+    constexpr int segments = 32;
+    constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
+    const FColor color{26, 217, 255, 255};
+    for (int i = 0; i < segments; ++i) {
+        float a = twoPi * i / segments;
+        float b = twoPi * (i + 1) / segments;
+        DrawWorldLineOnTop(hud, {center.X + std::cos(a) * radius, center.Y + std::sin(a) * radius, center.Z},
+                           {center.X + std::cos(b) * radius, center.Y + std::sin(b) * radius, center.Z}, color);
+        DrawWorldLineOnTop(hud, {center.X + std::cos(a) * radius, center.Y, center.Z + std::sin(a) * radius},
+                           {center.X + std::cos(b) * radius, center.Y, center.Z + std::sin(b) * radius}, color);
+        DrawWorldLineOnTop(hud, {center.X, center.Y + std::cos(a) * radius, center.Z + std::sin(a) * radius},
+                           {center.X, center.Y + std::cos(b) * radius, center.Z + std::sin(b) * radius}, color);
+    }
+}
+
+static void DrawLightOrientationOnTop(ABioHUD* hud, AActor* actor) {
+    if (!actor || !actor->IsA(ALight::StaticClass())) {
+        return;
+    }
+    ALight* light = static_cast<ALight*>(actor);
+    ULightComponent* component = light->LightComponent;
+    if (!isLiveObject(component) || !component->IsA(UPointLightComponent::StaticClass())) {
+        return;
+    }
+    float forward[3];
+    float right[3];
+    float up[3];
+    RotatorToBasis(actor->Rotation, forward, right, up);
+    UPointLightComponent* point = static_cast<UPointLightComponent*>(component);
+    float length = (point->Radius > 100.0f) ? point->Radius : 100.0f;
+    FVector origin = actor->Location;
+    FVector tip{origin.X + forward[0] * length, origin.Y + forward[1] * length, origin.Z + forward[2] * length};
+    const FColor dirColor{255, 204, 51, 255};
+    const FColor outerColor{255, 204, 51, 255};
+    const FColor innerColor{255, 240, 150, 255};
+    DrawWorldLineOnTop(hud, origin, tip, dirColor);
+
+    if (component->IsA(USpotLightComponent::StaticClass())) {
+        USpotLightComponent* spot = static_cast<USpotLightComponent*>(component);
+        constexpr float degToRad = std::numbers::pi_v<float> / 180.0f;
+        float outerRadius = std::tan(spot->OuterConeAngle * degToRad) * length;
+        float innerRadius = std::tan(spot->InnerConeAngle * degToRad) * length;
+        DrawConeWire(
+            [&](const FVector& a, const FVector& b) {
+                DrawWorldLineOnTop(hud, a, b, outerColor);
+            },
+            origin, forward, right, up, length, outerRadius, 20);
+        if (innerRadius > 0.01f) {
+            DrawConeWire(
+                [&](const FVector& a, const FVector& b) {
+                    DrawWorldLineOnTop(hud, a, b, innerColor);
+                },
+                origin, forward, right, up, length, innerRadius, 20);
+        }
+    } else {
+        float radius = (length * 0.25f < 60.0f) ? length * 0.25f : 60.0f;
+        DrawConeWire(
+            [&](const FVector& a, const FVector& b) {
+                DrawWorldLineOnTop(hud, a, b, outerColor);
+            },
+            origin, forward, right, up, length, radius, 12);
+    }
 }
 
 static void DrawTracer(ULineBatchComponent* lineBatcher, const FVector& from, const FVector& to) {
@@ -407,6 +590,8 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                 if (lb && lb->FPrimitiveDrawInterfaceVfTable) {
                     if (showGizmoState) {
                         DrawWorldGizmo(lb, actor);
+                        DrawLightRadius(lb, actor);
+                        DrawLightOrientation(lb, actor);
                     }
                     if (highlightSelectedState && box.IsValid) {
                         DrawWorldBox(lb, box);
@@ -434,6 +619,8 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
             APawn* playerPawn = GetPlayerPawn(hud);
             if (showGizmoState) {
                 DrawWorldGizmoOnTop(hud, actor);
+                DrawLightRadiusOnTop(hud, actor);
+                DrawLightOrientationOnTop(hud, actor);
             }
             if (highlightSelectedState && box.IsValid) {
                 DrawWorldBoxOnTop(hud, box);

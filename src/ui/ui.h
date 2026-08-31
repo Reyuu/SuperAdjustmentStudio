@@ -52,6 +52,9 @@ class UI {
         const Transform& getSpawnTransform() const {
             return spawnTransform;
         }
+        const Transform& getSelectedTransform() const {
+            return selectedTransform;
+        }
 
         void collectPawns();
         void collectClasses();

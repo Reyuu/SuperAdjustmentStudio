@@ -9,6 +9,7 @@
 #include "game_window.h"
 #include "gizmo.h"
 #include "hook_manager.h"
+#include "lights.h"
 #include "logger.h"
 #include "mouse.h"
 #include "native_renderer.h"
@@ -80,6 +81,9 @@ class Application {
         ParticleManager& particles() {
             return particleInstance;
         }
+        LightManager& lights() {
+            return lightsInstance;
+        }
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -109,6 +113,7 @@ class Application {
         Animation animationInstance;
         VFXManager vfxInstance;
         ParticleManager particleInstance;
+        LightManager lightsInstance;
 
         bool previousF10 = false;
 };

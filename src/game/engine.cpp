@@ -109,6 +109,7 @@ static APlayerController* findFirstPlayerController() {
 AActor* Engine::findActorByName(const std::string& name) {
     std::string needle = toLowerStr(name);
     AActor* found = nullptr;
+    AActor* fallback = nullptr;
 
     forEachOf<AActor>([&](AActor* obj) {
         if (found) {
@@ -119,9 +120,15 @@ AActor* Engine::findActorByName(const std::string& name) {
         std::string sLower = toLowerStr(s);
         if (needle.empty()) {
             // empty name -> any pawn, spawning needs an actor to spawn from
-            // prefer player pawn, fallback to any BioPawn/Pawn
+            // prefer a real in-world pawn
             if (obj->IsA(ASFXPawn_Player::StaticClass()) || obj->IsA(ABioPawn::StaticClass()) || obj->IsA(APawn::StaticClass())) {
-                found = obj;
+                if (sLower.rfind("default__", 0) == 0) {
+                    if (!fallback) {
+                        fallback = obj;
+                    }
+                } else {
+                    found = obj;
+                }
             }
             return;
         }
@@ -129,7 +136,35 @@ AActor* Engine::findActorByName(const std::string& name) {
             found = obj;
         }
     });
-    return found;
+    return found ? found : fallback;
+}
+
+AActor* Engine::playerPawn() {
+    if (!UObject::GObjObjects) {
+        return nullptr;
+    }
+    AActor* fallback = nullptr;
+    for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
+        UObject* o = UObject::GObjObjects->GetData()[i];
+        if (!o || !o->IsA(APlayerController::StaticClass())) {
+            continue;
+        }
+        std::string nm = FStringToUtf8(o->GetName());
+        if (nm.rfind("Default__", 0) == 0) {
+            continue; // skip class default objects (no pawn, not the live player)
+        }
+        APlayerController* pc = static_cast<APlayerController*>(o);
+        if (!pc->Pawn) {
+            continue;
+        }
+        if (pc->IsLocalPlayerController()) {
+            return pc->Pawn;
+        }
+        if (!fallback) {
+            fallback = pc->Pawn;
+        }
+    }
+    return fallback;
 }
 
 USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName) {
@@ -207,7 +242,14 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     rot.Yaw = DegreesToUnrealRotationUnits(t.rot[1]);
     rot.Roll = DegreesToUnrealRotationUnits(t.rot[2]);
 
+    // ME2's runtime Spawn enforces the Placeable class flag (lights marked non-placeable
+    // return NULL). Temporarily set CLASS_Placeable + clear CLASS_NotPlaceable, then
+    // restore the original flags right after Spawn returns.
+    const DWORD originalFlags = cls->ClassFlags;
+    cls->ClassFlags |= CLASS_Placeable;
+    cls->ClassFlags &= ~CLASS_NotPlaceable;
     AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, NULL, 1, 0);
+    cls->ClassFlags = originalFlags;
     if (!spawned) {
         Logger->debug("spawnClass: spawn returned null, dumping class diagnostics:");
         Logger->debug(diagnoseClass(className));
@@ -221,7 +263,8 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     }
 
     std::ostringstream ss;
-    ss << "spawnClass: spawned '" << className << "' as '" << nm << "' at (" << t.pos[0] << "," << t.pos[1] << "," << t.pos[2] << ")";
+    ss << "spawnClass: spawned '" << className << "' as '" << nm << "' at (" << t.pos[0] << "," << t.pos[1] << "," << t.pos[2] << ") via caller '"
+       << FStringToUtf8(caller->GetName()) << "'";
     Logger->debug(ss.str());
     return spawned;
 }

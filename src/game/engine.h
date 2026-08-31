@@ -41,6 +41,7 @@ class Engine {
         void setPause(bool pause);
 
         AActor* findActorByName(const std::string& name);
+        AActor* playerPawn();
         USkeletalMeshComponent* findPawnMesh(const std::string& pawnName);
 
         AActor* spawnClass(const std::string& className, const Transform& t);
