@@ -5,6 +5,8 @@
 #include <vector>
 #include <windows.h>
 
+#include <LESDK/Common/Math.hpp>
+
 // UE3 FString -> length-prefixed UTF-16 buffer
 std::string FStringToUtf8(const FString& fStr) {
     std::wstring wStr = (std::wstring)fStr;

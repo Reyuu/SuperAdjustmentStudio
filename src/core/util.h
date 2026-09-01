@@ -4,7 +4,9 @@
 #include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "imgui.h"
+#include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
+#include <numbers>
 #include <string>
 
 // UE3 -> transform in degrees for rotation and per-axis scale. Converted to whatever is usable at the engine.
@@ -100,6 +102,22 @@ static bool isLiveObject(UObject* obj) {
 }
 
 static void LoadPackageByName(const std::string& packageName) {
+}
+
+static FVector RotateVector(const FVector& v, const FRotator& r) {
+    float pitch = UnrealRotationUnitsToRadians(r.Pitch);
+    float yaw = UnrealRotationUnitsToRadians(r.Yaw);
+    float roll = UnrealRotationUnitsToRadians(r.Roll);
+    float SP = sinf(pitch), CP = cosf(pitch);
+    float SY = sinf(yaw), CY = cosf(yaw);
+    float SR = sinf(roll), CR = cosf(roll);
+
+    // i have no idea... i just work here...
+    FVector out;
+    out.X = v.X * (CP * CY) + v.Y * (CP * SY) + v.Z * SP;
+    out.Y = v.X * (SR * SP * CY - CR * SY) + v.Y * (SR * SP * SY + CR * CY) + v.Z * (-SR * CP);
+    out.Z = v.X * (-(CR * SP * CY + SR * SY)) + v.Y * (-(CR * SP * SY - SR * CY)) + v.Z * (CR * CP);
+    return out;
 }
 
 #endif // SAS_UTIL_H
