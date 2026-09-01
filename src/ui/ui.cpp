@@ -122,10 +122,10 @@ void UI::selectActor(AActor* actor) {
         return;
     }
     // since clicked object can be any type -> forcefully turn on advanced selection
-    if (!advancedSelection) {
-        advancedSelection = true;
-        collectPawns();
-    }
+    // if (!advancedSelection) {
+    //     advancedSelection = true;
+    //     collectPawns();
+    // }
 
     std::string nm = FStringToUtf8(actor->GetName());
     int index = -1;
@@ -609,7 +609,14 @@ void UI::renderSelectionTransform() {
     }
     if (transformToApply && target) {
         applyDebounced(transformToApply, transformLastEdit, transformLastApply, [&] {
-            Application::instance().engine().setTransform(target, selectedTransform);
+            AActor* t = target;
+            Transform tr = selectedTransform;
+            Application::instance().engine().postGameThreadTask([t, tr]() {
+                if (!isLiveObject(t)) {
+                    return;
+                }
+                Application::instance().engine().setTransform(t, tr);
+            });
         });
     }
     ImGui::Unindent();
@@ -957,8 +964,9 @@ void UI::renderSpawnSection() {
         ImGui::TextColored(redColor, "SDK globals not initialized!!! Check log file for more info.");
     } else {
         renderSpawnClassList();
-        Application::instance().lights().renderUI();
         renderSpawnTransform();
+        Application::instance().lights().renderUI();
+        Application::instance().prefabs().renderUI();
         Application::instance().particles().renderUI();
         renderSpawnOtherProps();
     }
@@ -1152,6 +1160,7 @@ void UI::renderPackagesSection() {
             const std::string loadName = sel.name;
             toastManager.addToastNotification("Loading package " + loadName + "...", ToastTypeInfo, 2.0);
             Application::instance().engine().postPackageLoad(loadPath, [this, loadName]() {
+                Application::instance().prefabs().markNeedsRefresh();
                 toastManager.addToastNotification("Loaded package " + loadName, ToastTypeSuccess, 3.0);
             });
         }

@@ -95,7 +95,15 @@ void Engine::drainPackageLoads() {
             Logger->dump_backtrace();
             continue;
         }
-        Logger->debug("drainPackageLoads: package loaded " + FStringToUtf8(upkg->GetName()));
+        // to keep it alive and prevent garbage collection
+        // RF_RootSet = 0x4 is exactly what UObject::AddToRoot() does in this engine (UnObj.cpp)
+        // but... it still gets GC'd if nothing else references it
+        upkg->ObjectFlags |= 0x4ull;
+        Logger->debug("drainPackageLoads: package loaded " + FStringToUtf8(upkg->GetName()) + " rooted=1 (ObjectFlags=0x" + [&]() -> std::string {
+            std::ostringstream h;
+            h << std::hex << upkg->ObjectFlags;
+            return h.str();
+        }() + ")");
         if (task.onLoaded) {
             task.onLoaded();
         }
@@ -390,6 +398,8 @@ void Engine::setTransform(AActor* actor, const Transform& t) {
     actor->SetRotation(rot);
 
     actor->Physics = oldPhys;
+    // keep material visible after move (was disappearing)
+    Application::instance().prefabs().onActorMoved(actor);
 
     bool scaleOk = false;
     USkeletalMeshComponent* mesh = nullptr;

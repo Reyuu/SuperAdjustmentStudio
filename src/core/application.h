@@ -14,6 +14,7 @@
 #include "mouse.h"
 #include "native_renderer.h"
 #include "particles.h"
+#include "prefabs.h"
 #include "props.h"
 #include "sdk.h"
 #include "ui.h"
@@ -84,6 +85,9 @@ class Application {
         LightManager& lights() {
             return lightsInstance;
         }
+        PrefabManager& prefabs() {
+            return prefabsInstance;
+        }
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -114,6 +118,7 @@ class Application {
         VFXManager vfxInstance;
         ParticleManager particleInstance;
         LightManager lightsInstance;
+        PrefabManager prefabsInstance;
 
         bool previousF10 = false;
 };
