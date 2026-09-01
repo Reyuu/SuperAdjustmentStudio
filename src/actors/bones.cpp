@@ -11,6 +11,7 @@
 #include "util.h"
 
 #include <LESDK/Common/Math.hpp>
+#include <LESDK/Includes.LE2.hpp>
 
 static const int kParentSpace = 2; // EBoneSpace::BS_Parent
 

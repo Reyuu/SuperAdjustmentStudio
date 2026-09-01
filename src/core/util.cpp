@@ -6,6 +6,7 @@
 #include <windows.h>
 
 #include <LESDK/Common/Math.hpp>
+#include <LESDK/Includes.LE2.hpp>
 
 // UE3 FString -> length-prefixed UTF-16 buffer
 std::string FStringToUtf8(const FString& fStr) {

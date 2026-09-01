@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include <LESDK/Common/Math.hpp>
+#include <LESDK/Includes.LE2.hpp>
 
 #include "imgui.h"
 

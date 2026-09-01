@@ -5,6 +5,7 @@
 #include "ui/helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Math.hpp>
+#include <LESDK/Includes.LE2.hpp>
 #include <algorithm>
 #include <cstring>
 #include <windows.h>

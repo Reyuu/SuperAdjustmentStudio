@@ -12,6 +12,7 @@
 #include "util.h"
 
 #include <LESDK/Common/Math.hpp>
+#include <LESDK/Includes.LE2.hpp>
 
 // UGameEngine::Tick
 using gameEngineTickType = void(void*, float);
