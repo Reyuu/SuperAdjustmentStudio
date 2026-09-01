@@ -562,7 +562,7 @@ AActor* Gizmo::gizmoActor() {
     int index = app.ui().pawnIndex();
     if (names.empty()) {
         gizmoActorPointer = nullptr;
-        return nullptr;
+        return selectNextOnLostSelection();
     }
     const std::string& want = names[index];
 
@@ -578,6 +578,30 @@ AActor* Gizmo::gizmoActor() {
         gizmoActorPointer = app.engine().findActorByName(want);
         gizmoActorIndex = index;
         gizmoActorName = want;
+    }
+    if (gizmoActorPointer) {
+        return gizmoActorPointer;
+    }
+    return selectNextOnLostSelection();
+}
+
+// falls back to the next tracked object when the selection is lost (e.g. the actor was deleted); falls back to the player if none remain
+AActor* Gizmo::selectNextOnLostSelection() {
+    Application& app = Application::instance();
+    std::vector<std::string>& names = app.ui().pawnNames();
+    int index = app.ui().pawnIndex();
+    for (size_t offset = 1; offset <= names.size(); ++offset) {
+        int i = (index + (int)offset) % (int)names.size();
+        AActor* actor = app.engine().findActorByName(names[i]);
+        if (isObjectStillLive(actor)) {
+            app.ui().selectActor(actor);
+            return gizmoActorPointer;
+        }
+    }
+
+    AActor* player = app.engine().playerPawn();
+    if (player) {
+        app.ui().selectActor(player);
     }
     return gizmoActorPointer;
 }

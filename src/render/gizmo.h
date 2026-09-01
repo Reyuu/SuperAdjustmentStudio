@@ -73,6 +73,7 @@ class Gizmo {
         bool leftMouseButtonPreviouslyDown = false;
 
         AActor* gizmoActor();
+        AActor* selectNextOnLostSelection();
         void pickFromScreen(ABioHUD* hud, float mouseX, float mouseY);
         void checkClickSelect(ABioHUD* hud);
 };
