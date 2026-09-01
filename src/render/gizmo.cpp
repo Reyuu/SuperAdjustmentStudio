@@ -367,22 +367,8 @@ template <typename T> static void ForEachBoxEdge(const FVector& mn, const FVecto
         {mn.X, mx.Y, mx.Z},
         {mx.X, mx.Y, mx.Z},
     };
-    static const int edges[12][2] = {
-        {0, 1},
-        {1, 3},
-        {3, 2},
-        {2, 0},
-        {4, 5},
-        {5, 7},
-        {7, 6},
-        {6, 4},
-        {0, 4},
-        {1, 5},
-        {2, 6},
-        {3, 7},
-    };
     for (int i = 0; i < 12; ++i) {
-        draw(c[edges[i][0]], c[edges[i][1]]);
+        draw(c[cubeEdges[i][0]], c[cubeEdges[i][1]]);
     }
 }
 
@@ -422,6 +408,105 @@ static bool GetActorBoundsBox(AActor* actor, FBox& out) {
         out.IsValid = 1;
     }
     return out.IsValid != 0;
+}
+
+static UStaticMeshComponent* FindStaticMeshCompForGizmo(AActor* a) {
+    if (!a) {
+        return nullptr;
+    }
+
+    for (int i = 0; i < (int)a->Components.Count(); ++i) {
+        UObject* c = a->Components(i);
+        if (c && c->IsA(UStaticMeshComponent::StaticClass())) {
+            return static_cast<UStaticMeshComponent*>(c);
+        }
+    }
+    return nullptr;
+}
+
+static bool GetActorOBB(AActor* actor, FVector out[8]) {
+    if (!actor || !out) {
+        return false;
+    }
+
+    UStaticMeshComponent* comp = FindStaticMeshCompForGizmo(actor);
+    if (!comp || !comp->StaticMesh) {
+        return false;
+    }
+
+    FBoxSphereBounds bounds;
+    comp->GetUnscaledBounds(&bounds);
+    FVector extent{bounds.BoxExtent.X * actor->DrawScale3D.X, bounds.BoxExtent.Y * actor->DrawScale3D.Y, bounds.BoxExtent.Z * actor->DrawScale3D.Z};
+    if (extent.X < 5) {
+        extent.X = 80;
+    }
+    if (extent.Y < 5) {
+        extent.Y = 80;
+    }
+    if (extent.Z < 5) {
+        extent.Z = 80;
+    }
+
+    FVector localOrigin{bounds.Origin.X * actor->DrawScale3D.X, bounds.Origin.Y * actor->DrawScale3D.Y, bounds.Origin.Z * actor->DrawScale3D.Z};
+    // reuse RotatorToBasis for rotation
+    float f[3], r[3], u[3];
+    RotatorToBasis(actor->Rotation, f, r, u);
+    auto rotate = [&](const FVector& v) -> FVector {
+        return FVector{v.X * f[0] + v.Y * r[0] + v.Z * u[0], v.X * f[1] + v.Y * r[1] + v.Z * u[1], v.X * f[2] + v.Y * r[2] + v.Z * u[2]};
+    };
+
+    FVector worldOrigin = actor->Location;
+    FVector ro = rotate(localOrigin);
+    worldOrigin.X += ro.X;
+    worldOrigin.Y += ro.Y;
+    worldOrigin.Z += ro.Z;
+    int idx = 0;
+    // this probably can be simplified
+    for (int sx = -1; sx <= 1; sx += 2) {
+        for (int sy = -1; sy <= 1; sy += 2) {
+            for (int sz = -1; sz <= 1; sz += 2) {
+                FVector local{sx * extent.X, sy * extent.Y, sz * extent.Z};
+                FVector w = rotate(local);
+                out[idx++] = FVector{worldOrigin.X + w.X, worldOrigin.Y + w.Y, worldOrigin.Z + w.Z};
+            }
+        }
+    }
+    return true;
+}
+
+static void DrawWorldOBB(ULineBatchComponent* lineBatcher, AActor* actor) {
+    FVector corners[8];
+    if (!GetActorOBB(actor, corners)) {
+        FBox box;
+        if (GetActorBoundsBox(actor, box)) {
+            DrawWorldBox(lineBatcher, box);
+        }
+        return;
+    }
+
+    void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
+    auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
+    const FLinearColor color{1.0f, 0.5f, 0.0, 1.0f};
+    for (int i = 0; i < 12; ++i) {
+        DrawLine(self, corners[cubeEdges[i][0]], corners[cubeEdges[i][1]], color, 1, 1.0f);
+    }
+    DrawLine(self, corners[0], FVector{corners[1].X, corners[0].Y, corners[0].Z}, color, 1, 0);
+}
+
+static void DrawWorldOBBOnTop(ABioHUD* hud, AActor* actor) {
+    FVector corners[8];
+    if (!GetActorOBB(actor, corners)) {
+        FBox box;
+        if (GetActorBoundsBox(actor, box)) {
+            DrawWorldBoxOnTop(hud, box);
+        }
+        return;
+    }
+
+    const FColor color{0, 128, 255, 255};
+    for (int i = 0; i < 12; ++i) {
+        DrawWorldLineOnTop(hud, corners[cubeEdges[i][0]], corners[cubeEdges[i][1]], color);
+    }
 }
 
 static APawn* GetPlayerPawn(ABioHUD* hud) {
@@ -563,7 +648,6 @@ void Gizmo::checkClickSelect(ABioHUD* hud) {
 void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, void* Result) {
     ABioHUD* hud = nullptr;
     AActor* actor = nullptr;
-    FBox box;
     bool drawOnTop = false;
 
     SAS_HOOK_TRY {
@@ -579,9 +663,6 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                 checkClickSelect(hud);
             }
             actor = gizmoActor();
-            if (actor && highlightSelectedState) {
-                GetActorBoundsBox(actor, box);
-            }
             if (debugAlwaysOnTopState) {
                 drawOnTop = actor != nullptr;
             } else if (actor) {
@@ -593,8 +674,8 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                         DrawLightRadius(lb, actor);
                         DrawLightOrientation(lb, actor);
                     }
-                    if (highlightSelectedState && box.IsValid) {
-                        DrawWorldBox(lb, box);
+                    if (highlightSelectedState) {
+                        DrawWorldOBB(lb, actor);
                     }
 
                     APawn* playerPawn = GetPlayerPawn(hud);
@@ -622,8 +703,8 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                 DrawLightRadiusOnTop(hud, actor);
                 DrawLightOrientationOnTop(hud, actor);
             }
-            if (highlightSelectedState && box.IsValid) {
-                DrawWorldBoxOnTop(hud, box);
+            if (highlightSelectedState) {
+                DrawWorldOBBOnTop(hud, actor);
             }
             if (drawTracerState && playerPawn) {
                 DrawTracerOnTop(hud, playerPawn->Location, actor->Location);
