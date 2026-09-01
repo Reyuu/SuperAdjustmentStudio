@@ -170,12 +170,12 @@ void LightManager::renderUI() {
         spawn("Engine.SpotLightMovable", "Spot light");
     }
 
-    if (ImGui::GetTime() - lastRefresh > 0.25f) {
-        lastRefresh = ImGui::GetTime();
-        Application::instance().engine().postGameThreadTask([this]() {
-            updateActiveLights();
-        });
-    }
+    // if (ImGui::GetTime() - lastRefresh > 0.25f) {
+    //     lastRefresh = ImGui::GetTime();
+    //     Application::instance().engine().postGameThreadTask([this]() {
+    //         updateActiveLights();
+    //     });
+    // }
 
     ImGui::Separator();
     ImGui::Text("Active:");
