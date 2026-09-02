@@ -3,9 +3,14 @@ name: Release build
 on:
   workflow_dispatch:
     inputs:
+      dry_run:
+        description: Dry run - build only, skip tag / GitHub release / Nexus upload
+        required: false
+        type: boolean
+        default: true
       environment:
-        description: Environment containing Nexus Mods secrets
-        required: true
+        description: Environment containing Nexus Mods secrets (only needed when dry run is off)
+        required: false
         type: environment
       is_hotfix:
         description: Hotfix release - bumps the patch version (e.g. 0.2 -> 0.2.1) instead of the beta number
@@ -90,6 +95,7 @@ jobs:
           path: ${{ runner.temp }}\deploy\*.asi
 
   release:
+    if: ${{ !inputs.dry_run }}
     needs: build
     runs-on: windows-latest
     environment: ${{ inputs.environment }}
