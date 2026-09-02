@@ -17,24 +17,26 @@ Please treat this release as <ins>**BETA**</ins>.
 - drawing the helpers above everything else (always-on-top)
 - click to select for Actors that have a collision
 - disabling the collisions for the selected Actor
+- spawning lights, prefabs and other objects
+- spawning particles! ✨
+- assign VFX to objects
+- manual package loading and preview - allows you to load additional content into the game (you have to know where a specific prefab/animation is located)
 
 ### Known issues (what doesn't work)
-- hiding all game UI - fully borked
-- after animation is played back and the character reset - animations stay broken, notably walking animation, which can lead to "sliding" Shepard
+- hiding all game UI - only kinda broken
+- after animation is played back and the character reset - animations can stay broken, the solution is to play and then reset the animation again
 - trying to spawn some objects will do nothing, hang the game or crash to desktop, no matter the properties (seems like engine limitation?? or I'm just stupid)
 - scaling the bones in non-uniform manner can give weird results (the scale is forced to be uniform by extension)
 - some of the components are not editable (for some of them, it's not really possible to make them editable, as we're risking infinite recursion and race conditions)
-- not every animation is available to you - if the animation is not loaded anywhere on the scene (via AnimSet or some other way), it's not going to be available. There is a way to dynamically load the packages to the current scene, more research required.
+- not every animation is available to you - if the animation is not loaded anywhere on the scene (via AnimSet or some other way), it's not going to be available.
 
 ### TODO (what I work on)
 - documentation
 - translation handling
 - improving the search
 - handling other properties (Components)
-- UI improvements
 - UI settings along with customizable keybinds
 - saving and loading the presets (saving the poses, the properties for the objects, transforms and so on)
-- easier way to spawn a light, an object, a mesh
 - spawning a pawn - so you could pose different game characters together!
 - expanding to LE1 and LE3 - (LE3 might be easier than LE1)
 
@@ -87,14 +89,7 @@ To deploy the generated DLL, use `deploy.bat`. It runs `env.bat` and copies the 
 .\build.bat Debug clean && .\deploy.bat && .\compile_commands.bat
 ```
 ## Contributing
-```
-//TODO: docs/contribute.md
-```
-
-Make sure you have the hooks directory set:
-```
-git config core.hooksPath .githooks
-```
+See [CONTRIBUTING.md](docs/contributing.md) for contribution guidelines.
 
 ## Attributions
 This project uses libraries from:
@@ -105,6 +100,7 @@ This project uses libraries from:
 - [gabime/spdlog](https://github.com/gabime/spdlog)
 - [juliettef/IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders)
 - [FortAwesome/Font-Awesome](https://github.com/FortAwesome/Font-Awesome/releases#release-6.7.2)
+- [wolfpld/tracy](https://github.com/wolfpld/tracy)
 
 
 Code from:
