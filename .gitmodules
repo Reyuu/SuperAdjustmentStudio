@@ -13,3 +13,9 @@
 [submodule "thirdparty/IconFontCppHeaders"]
 	path = thirdparty/IconFontCppHeaders
 	url = https://github.com/juliettef/IconFontCppHeaders
+[submodule "thirdparty/zlib"]
+	path = thirdparty/zlib
+	url = https://github.com/madler/zlib
+[submodule "thirdparty/tracy"]
+	path = thirdparty/tracy
+	url = https://github.com/wolfpld/tracy.git

@@ -31,5 +31,16 @@ REM clangd auto-discovers compile_commands.json in the project root
 copy /y "%BUILD_DIR%\compile_commands.json" "%ROOT_DIR%\compile_commands.json" >nul
 if errorlevel 1 exit /b 1
 
+REM Refresh .vscode/c_cpp_properties.json so VS Code IntelliSense can resolve
+REM headers when a header is opened directly and no compile_commands TU entry
+REM matches it.
+for /f "usebackq tokens=*" %%c in (`where cl.exe`) do set "CL_EXE=%%c"
+python "%ROOT_DIR%\tools\gen_c_cpp_properties.py" "%ROOT_DIR%" "%CL_EXE%"
+if errorlevel 1 (
+    echo Warning: failed to write c_cpp_properties.json
+) else (
+    echo c_cpp_properties.json written to %ROOT_DIR%\.vscode\c_cpp_properties.json
+)
+
 echo compile_commands.json written to %ROOT_DIR%\compile_commands.json
 exit /b 0

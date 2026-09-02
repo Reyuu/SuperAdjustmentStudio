@@ -1,8 +1,8 @@
 #include "../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "SPI.h"
-#include "application.h"
-#include "plugin.h"
+#include "core/application.h"
+#include "core/plugin.h"
 
 static Application gApplication;
 

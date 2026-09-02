@@ -55,6 +55,18 @@ set(SPDLOG_BUILD_BENCH OFF)
 set(SPDLOG_INSTALL OFF)
 add_subdirectory(thirdparty/spdlog)
 
+#   sqlite (pre-built DLL)
+message(STATUS "Adding build target: thirdparty/sqlite")
+add_subdirectory(thirdparty/sqlite)
+
+#   zlib
+message(STATUS "Adding build target: thirdparty/zlib")
+set(ZLIB_BUILD_SHARED OFF)
+set(ZLIB_BUILD_STATIC ON)
+set(ZLIB_BUILD_TESTING OFF)
+set(ZLIB_INSTALL OFF)
+add_subdirectory(thirdparty/zlib)
+
 #   imgui
 message(STATUS "Adding build target: thirdparty/imgui")
 # explicitly list the source files
@@ -106,22 +118,28 @@ target_include_directories(kiero PUBLIC
 )
 
 # SAS targets
-file(GLOB SAS_SOURCES
+file(GLOB_RECURSE SAS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/**/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/resources/*.rc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.rc
 )
 message(STATUS "Adding build target: SuperAdjustmentStudio")
 add_library(SuperAdjustmentStudio SHARED ${SAS_SOURCES})
 
 target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui_helpers
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/game
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/actors
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/render
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/helpers
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/parse
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/IconFontCppHeaders
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib
 )
 
 # link dependencies
@@ -154,6 +172,37 @@ else()
     message(FATAL_ERROR "No kiero target found. Please check the kiero submodule.")
 endif()
 
+message(STATUS "Adding build target: thirdparty/tracy")
+option(SAS_TRACY_ENABLE "Enable Tracy profiler" ON)
+if(SAS_TRACY_ENABLE)
+    set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
+    # users can override via -DTRACY_ON_DEMAND=ON
+    add_subdirectory(thirdparty/tracy)
+    message(STATUS "Tracy profiler enabled (TRACY_ENABLE=ON)")
+else()
+    message(STATUS "Tracy profiler disabled (SAS_TRACY_ENABLE=OFF)")
+endif()
+
+if(SAS_TRACY_ENABLE)
+    if(TARGET TracyClient)
+        # only link and define TRACY_ENABLE for Debug builds (Release has zero overhead / not linked)
+        target_link_libraries(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:TracyClient>)
+        target_compile_definitions(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:TRACY_ENABLE>)
+        message(STATUS "Linking TracyClient to SuperAdjustmentStudio (Debug only, via generator expression)")
+    endif()
+endif()
+
+if (TARGET sqlite)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE sqlite)
+else()
+    message(FATAL_ERROR "No sqlite target found.")
+endif()
+
+if (TARGET zlibstatic)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE zlibstatic)
+else()
+    message(FATAL_ERROR "No zlib target found. Please check the zlib submodule.")
+endif()
 
 if (WIN32)
 # LE uses DirectX 11, so we need to link against the appropriate libraries

@@ -1,18 +1,24 @@
 ## File management
+
 | Extension | File type        | Comment |
 | --------- | ---------------- | ------- |
 | `.h`      | headers          |         |
 | `.cpp`    | source           |         |
 | `.rc`     | resource headers |         |
 
+Filenames for source and header files should be unique across the whole repo.
+
 | Directory         | Comment                                                                               |
 | ----------------- | ------------------------------------------------------------------------------------- |
-| `src/`            | Source directory, try to keep a flat structure.                                       |
-| `src/ui_helpers/` | UI helpers that could and will eventually moved to a separate library                 |
+| `src/`            | Source directory.                                                                     |
+| `src/ui/helpers/` | UI helpers that could and will eventually moved to a separate library                 |
 | `thirdparty/`     | All of the submodules and third-party libraries.                                      |
 | `assets/`         | Assets for the README.md and other user facing documents.                             |
 | `docs/`           | Documentation about the project.                                                      |
 | `build/`          | Build artifacts, generated only after building the project. Should NEVER be comitted. |
+
+# pragma or not to pragma
+Do not use `#pragma once`, use C-style header guards. Other `pragma` commands are allowed, but if the behaviour varies vastly between compilers - reconsider its use.
 
 ## Indentation
 Use K&R style indentation style.
