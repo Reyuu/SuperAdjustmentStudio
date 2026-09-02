@@ -15,6 +15,7 @@
 #include <LESDK/Includes.LE2.hpp>
 
 #include "imgui.h"
+#include "tracy.h"
 
 static void DrawWorldLineOnTop(ABioHUD* hud, FVector a, FVector b, const FColor& color);
 
@@ -79,7 +80,7 @@ static void DrawLightRadius(ULineBatchComponent* lineBatcher, AActor* actor) {
     auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
     FVector center = actor->Location;
     const FLinearColor color{1.0f, 0.85f, 0.1f, 1.0f};
-    constexpr int segments = 32;
+    constexpr int segments = 24;
     constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
     for (int i = 0; i < segments; ++i) {
         float a = twoPi * i / segments;
@@ -147,13 +148,13 @@ static void DrawLightOrientation(ULineBatchComponent* lineBatcher, AActor* actor
             [&](const FVector& a, const FVector& b) {
                 DrawLine(self, a, b, outerColor, 1, 1.5f);
             },
-            origin, forward, right, up, length, outerRadius, 20);
+            origin, forward, right, up, length, outerRadius, 16);
         if (innerRadius > 0.01f) {
             DrawConeWire(
                 [&](const FVector& a, const FVector& b) {
                     DrawLine(self, a, b, innerColor, 1, 1.0f);
                 },
-                origin, forward, right, up, length, innerRadius, 20);
+                origin, forward, right, up, length, innerRadius, 16);
         }
     } else {
         float radius = (length * 0.25f < 60.0f) ? length * 0.25f : 60.0f;
@@ -176,7 +177,7 @@ static void DrawLightRadiusOnTop(ABioHUD* hud, AActor* actor) {
     }
     float radius = static_cast<UPointLightComponent*>(component)->Radius;
     FVector center = actor->Location;
-    constexpr int segments = 32;
+    constexpr int segments = 24;
     constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
     const FColor color{26, 217, 255, 255};
     for (int i = 0; i < segments; ++i) {
@@ -222,13 +223,13 @@ static void DrawLightOrientationOnTop(ABioHUD* hud, AActor* actor) {
             [&](const FVector& a, const FVector& b) {
                 DrawWorldLineOnTop(hud, a, b, outerColor);
             },
-            origin, forward, right, up, length, outerRadius, 20);
+            origin, forward, right, up, length, outerRadius, 16);
         if (innerRadius > 0.01f) {
             DrawConeWire(
                 [&](const FVector& a, const FVector& b) {
                     DrawWorldLineOnTop(hud, a, b, innerColor);
                 },
-                origin, forward, right, up, length, innerRadius, 20);
+                origin, forward, right, up, length, innerRadius, 16);
         }
     } else {
         float radius = (length * 0.25f < 60.0f) ? length * 0.25f : 60.0f;
@@ -671,6 +672,7 @@ void Gizmo::checkClickSelect(ABioHUD* hud) {
 // event processing makes me want to commit sudoku
 
 void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, void* Result) {
+    ZoneScopedN("Gizmo::processEvent");
     ABioHUD* hud = nullptr;
     AActor* actor = nullptr;
     bool drawOnTop = false;
@@ -687,7 +689,12 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
             if (uiVisible && clickSelectState) {
                 checkClickSelect(hud);
             }
-            actor = gizmoActor();
+            // avoid expensive GObj scan when no gizmo visuals enabled
+            if (!showGizmoState && !highlightSelectedState && !drawTracerState && !debugAlwaysOnTopState) {
+                actor = nullptr;
+            } else {
+                actor = gizmoActor();
+            }
             if (debugAlwaysOnTopState) {
                 drawOnTop = actor != nullptr;
             } else if (actor) {

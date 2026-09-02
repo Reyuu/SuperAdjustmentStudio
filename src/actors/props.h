@@ -35,6 +35,7 @@ enum PropertyType : int {
 struct PropertyEntry {
     public:
         std::string name;           // property name
+        std::string nameLower;      // lowercase for filtering (cached)
         int offset = 0;             // memory offset
         int type = PT_OTHER;        // PropertyType
         bool readonly = false;      // is it readonly?

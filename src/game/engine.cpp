@@ -14,6 +14,8 @@
 #include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
 
+#include "tracy.h"
+
 // UGameEngine::Tick
 using gameEngineTickType = void(void*, float);
 static gameEngineTickType* origGameEngineTick = nullptr;
@@ -53,6 +55,7 @@ void Engine::postGameThreadTask(std::function<void()> fn) {
 }
 
 void Engine::drainGameThreadTasks() {
+    ZoneScopedN("Engine::drainGameThreadTasks");
     std::vector<std::function<void()>> local;
     {
         std::lock_guard<std::mutex> lock(gameTasksMutex);
@@ -74,6 +77,7 @@ void Engine::postPackageLoad(const std::string& package, std::function<void()> o
 }
 
 void Engine::drainPackageLoads() {
+    ZoneScopedN("Engine::drainPackageLoads");
     std::vector<PackageLoadTask> local;
     {
         std::lock_guard<std::mutex> lock(loadTasksMutex);

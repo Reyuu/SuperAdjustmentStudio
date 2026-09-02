@@ -10,6 +10,8 @@
 #include <cstring>
 #include <windows.h>
 
+#include "tracy.h"
+
 static bool safeReadValue(UObject* obj, PropertyEntry& e) {
     try {
         Properties::readValue(obj, e);
@@ -342,6 +344,7 @@ bool Properties::tryExpandStructProperty(UProperty* prop, std::vector<PropertyEn
 
     PropertyEntry hdr;
     hdr.name = FStringToUtf8(prop->GetName());
+    hdr.nameLower = toLowerStr(hdr.name);
     hdr.offset = baseOffset + prop->Offset;
     hdr.type = PT_STRUCT;
     hdr.readonly = true;
@@ -351,6 +354,7 @@ bool Properties::tryExpandStructProperty(UProperty* prop, std::vector<PropertyEn
     for (UProperty* cp : children) {
         PropertyEntry ce;
         ce.name = hdr.name + "." + FStringToUtf8(cp->GetName());
+        ce.nameLower = toLowerStr(ce.name);
         ce.offset = hdr.offset + cp->Offset;
         classifyScalarProperty(cp, ce);
         out.push_back(ce);
@@ -359,6 +363,7 @@ bool Properties::tryExpandStructProperty(UProperty* prop, std::vector<PropertyEn
 }
 
 void Properties::collectProperties(UObject* obj, std::vector<PropertyEntry>& out) {
+    ZoneScopedN("Props::collectProperties");
     out.clear();
     if (!obj || !obj->Class) {
         return;
@@ -377,6 +382,7 @@ void Properties::collectProperties(UObject* obj, std::vector<PropertyEntry>& out
 
             PropertyEntry e;
             e.name = FStringToUtf8(prop->GetName());
+            e.nameLower = toLowerStr(e.name);
             e.offset = prop->Offset;
             if (prop->ArrayDim > 1) {
                 e.type = PT_ARRAY;
@@ -502,9 +508,11 @@ void Properties::applySpawnProperties(AActor* actor, std::vector<PropertyEntry>&
 
 void Properties::renderPropertyTable(UObject* readObject, UObject* writeObject, std::vector<PropertyEntry>& props, const std::string& filter,
                                      const std::string& pathPrefix, const std::string& parentId) {
+    ZoneScopedN("Props::renderPropertyTable");
     for (int i = 0; i < (int)props.size(); i++) {
         PropertyEntry& e = props[i];
-        if (!filter.empty() && toLowerStr(e.name).find(filter) == std::string::npos) {
+        const std::string& lower = e.nameLower.empty() ? (e.nameLower = toLowerStr(e.name), e.nameLower) : e.nameLower;
+        if (!filter.empty() && lower.find(filter) == std::string::npos) {
             continue;
         }
         std::string basePath = pathPrefix.empty() ? e.name : (pathPrefix + "." + e.name);
@@ -515,6 +523,7 @@ void Properties::renderPropertyTable(UObject* readObject, UObject* writeObject, 
 // render a single property entry (scalar or struct)
 void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, PropertyEntry& e, const std::string& id, const std::string& basePath,
                                      const std::string& parentId) {
+    ZoneScopedN("Props::renderPropertyEntry");
     std::string label = e.name + "##p" + id;
     if (!e.toApply) {
         if (!safeReadValue(readObject, e)) {
@@ -627,6 +636,7 @@ void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, 
                             try {
                                 PropertyEntry innerEntry;
                                 innerEntry.name = e.name + "[" + std::to_string(idx) + "]";
+                                innerEntry.nameLower = toLowerStr(innerEntry.name);
                                 classifyScalarProperty(arrayInner, innerEntry);
                                 innerEntry.fromArray = true;
                                 if (innerEntry.type == PT_OTHER && arrayInner->IsA(UStructProperty::StaticClass())) {
@@ -840,6 +850,7 @@ void Properties::collectStructFields(UStruct* s, UObject* baseObj, int structOff
 
             PropertyEntry e;
             e.name = FStringToUtf8(prop->GetName());
+            e.nameLower = toLowerStr(e.name);
             e.offset = structOffset + prop->Offset;
 
             if (prop->ArrayDim > 1) {
@@ -877,6 +888,7 @@ void Properties::collectStructFields(UStruct* s, UObject* baseObj, int structOff
 }
 
 void Properties::renderStructWindows() {
+    ZoneScopedN("Props::renderStructWindows");
     ImGuiIO& io = ImGui::GetIO();
     int windowCount = (int)structWindows.size();
     for (int i = 0; i < windowCount; i++) {

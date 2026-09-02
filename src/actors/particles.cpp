@@ -11,6 +11,8 @@
 #include <LESDK/Includes.LE2.hpp>
 #include <sstream>
 
+#include "tracy.h"
+
 static UParticleSystem* findParticleTemplateByName(const std::string& name) {
     UParticleSystem* found = nullptr;
     forEachOf<UParticleSystem>([&](UParticleSystem* p) {
@@ -201,6 +203,7 @@ void ParticleManager::updateActiveParticles() {
 }
 
 void ParticleManager::renderUI() {
+    ZoneScopedN("Particles::renderUI");
     if (!ImGui::CollapsingHeader(ICON_FA_WAND_SPARKLES " Particles")) {
         return;
     }
@@ -263,16 +266,52 @@ void ParticleManager::renderUI() {
     {
         ChildScope child("##particle_template_list", ImVec2(0, 120), true);
         if (child.open) {
-            for (UParticleSystem* p : availableTemplates) {
-                if (!p) {
-                    continue;
+            // build filtered vector once per frame to allow clipping
+            static std::vector<std::pair<std::string, UParticleSystem*>> filtered;
+            filtered.clear();
+            if (filterLower.empty()) {
+                filtered.reserve(availableTemplates.size());
+                for (UParticleSystem* p : availableTemplates) {
+                    if (!p) {
+                        continue;
+                    }
+                    std::string name = FStringToUtf8(p->GetName());
+                    filtered.emplace_back(name, p);
                 }
-                std::string name = FStringToUtf8(p->GetName());
-                if (!filterLower.empty() && toLowerStr(name).find(filterLower) == std::string::npos) {
-                    continue;
+                ImGuiListClipper clipper;
+                clipper.Begin((int)filtered.size());
+                while (clipper.Step()) {
+                    for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                        const std::string& name = filtered[n].first;
+                        if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
+                            selectedParticleName = name;
+                        }
+                    }
                 }
-                if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
-                    selectedParticleName = name;
+            } else {
+                for (UParticleSystem* p : availableTemplates) {
+                    if (!p) {
+                        continue;
+                    }
+                    std::string name = FStringToUtf8(p->GetName());
+                    if (toLowerStr(name).find(filterLower) == std::string::npos) {
+                        continue;
+                    }
+                    filtered.emplace_back(name, p);
+                }
+                if (filtered.empty()) {
+                    ImGui::TextDisabled("(no matches)");
+                } else {
+                    ImGuiListClipper clipper;
+                    clipper.Begin((int)filtered.size());
+                    while (clipper.Step()) {
+                        for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                            const std::string& name = filtered[n].first;
+                            if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
+                                selectedParticleName = name;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -332,7 +371,7 @@ void ParticleManager::renderUI() {
                         }
                     }
                     ImGui::SameLine();
-                    if (ImGui::Button((std::string(ICON_FA_MINUS) + "##" + entry.name + std::to_string(i)).c_str())) {
+                    if (ImGui::Button((std::string(ICON_FA_TRASH_CAN) + "##" + entry.name + std::to_string(i)).c_str())) {
                         Application::instance().engine().postGameThreadTask([this, i]() {
                             if (i < particleEntries.size()) {
                                 removeParticle(particleEntries[i]);

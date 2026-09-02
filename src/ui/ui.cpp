@@ -8,6 +8,7 @@
 #include <LESDK/Includes.LE2.hpp>
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <sstream>
 
@@ -22,6 +23,7 @@
 #include "native_renderer.h"
 #include "pcc_parser.h"
 #include "props.h"
+#include "tracy.h"
 
 // TODO: translations (save needed strings to .po, header only utility, save as std::map?, set global language,
 // gettext("english"))
@@ -71,8 +73,10 @@ static bool isActorClass(UClass* cls) {
 }
 
 void UI::collectPawns() {
+    ZoneScopedN("UI::collectPawns");
     std::string sel = (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) ? pawnNamesVector[pawnIndexInt] : "";
     pawnNamesVector.clear();
+    pawnNamesLowerVector.clear();
     pawnIndexInt = 0;
     forEachOf<AActor>([&](AActor* obj) {
         if (!advancedSelection && !obj->IsA(APawn::StaticClass())) {
@@ -104,6 +108,12 @@ void UI::collectPawns() {
         if (Application::instance().engine().findActorByName(pn)) {
             pawnNamesVector.push_back(pn);
         }
+    }
+
+    pawnNamesLowerVector.clear();
+    pawnNamesLowerVector.reserve(pawnNamesVector.size());
+    for (const std::string& n : pawnNamesVector) {
+        pawnNamesLowerVector.push_back(toLowerStr(n));
     }
 
     if (!sel.empty()) {
@@ -138,6 +148,7 @@ void UI::selectActor(AActor* actor) {
 
     if (index < 0) {
         pawnNamesVector.push_back(nm);
+        pawnNamesLowerVector.push_back(toLowerStr(nm));
         index = (int)pawnNamesVector.size() - 1;
     }
     pawnIndexInt = index;
@@ -148,6 +159,7 @@ void UI::selectActor(AActor* actor) {
 }
 
 void UI::collectClasses() {
+    ZoneScopedN("UI::collectClasses");
     std::string sel = selectedClassFullName;
     classes.clear();
     classIndex = 0;
@@ -178,6 +190,8 @@ void UI::collectClasses() {
         if (e.package.empty()) {
             e.package = "(unknown)";
         }
+        e.fullNameLower = toLowerStr(e.fullName);
+        e.packageLower = toLowerStr(e.package);
         classes.push_back(e);
     });
 
@@ -208,6 +222,7 @@ void UI::collectClasses() {
 }
 
 void UI::collectPackages() {
+    ZoneScopedN("UI::collectPackages");
     std::vector<PccFile> files = collectGamePccFiles();
     packages.clear();
     packages.reserve(files.size());
@@ -225,6 +240,53 @@ void UI::collectPackages() {
         packageIndex = 0;
     }
     Logger->info("collectPackages: found " + std::to_string(packages.size()) + " .pcc packages");
+}
+
+void UI::collectPackagesAsync() {
+    ZoneScopedN("UI::collectPackagesAsync");
+    std::lock_guard<std::mutex> lk(packagesMutex);
+    if (packagesCollecting.load()) {
+        return;
+    }
+    packagesCollecting.store(true);
+    packagesFuture = std::async(std::launch::async, []() -> std::vector<PackageEntry> {
+        ZoneScopedN("collectPackages worker");
+        std::vector<PccFile> files = collectGamePccFiles();
+        std::vector<PackageEntry> out;
+        out.reserve(files.size());
+        for (const PccFile& f : files) {
+            std::string name = std::filesystem::path(f.path).stem().string();
+            out.push_back({f.path, f.relPath, name, toLowerStr(name)});
+        }
+        TracyMessageL("collectPackages worker done");
+        return out;
+    });
+}
+
+void UI::pollPackagesAsync() {
+    ZoneScopedN("UI::pollPackagesAsync");
+    std::lock_guard<std::mutex> lk(packagesMutex);
+    if (!packagesCollecting.load() || !packagesFuture.valid()) {
+        return;
+    }
+    if (packagesFuture.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+        return;
+    }
+    try {
+        auto result = packagesFuture.get();
+        packages = std::move(result);
+        if (packages.empty()) {
+            packageIndex = 0;
+        } else if (packageIndex < 0 || packageIndex >= (int)packages.size()) {
+            packageIndex = 0;
+        }
+        Logger->info("collectPackagesAsync: found " + std::to_string(packages.size()) + " .pcc packages (async)");
+    } catch (const std::exception& e) {
+        Logger->info(std::string("collectPackagesAsync: worker threw: ") + e.what());
+    } catch (...) {
+        Logger->info("collectPackagesAsync: worker threw unknown");
+    }
+    packagesCollecting.store(false);
 }
 
 void UI::collectAnimations(const std::string& pawnName) {
@@ -324,6 +386,9 @@ void UI::applyUIInputState(GameWindow& window) {
 
 // main function to render the overlay contents
 void UI::renderOverlayContents(NativeRenderer& renderer) {
+    ZoneScopedN("UI::renderOverlayContents");
+    // poll any in-flight package scan (non-blocking, Tracy-tracked worker)
+    pollPackagesAsync();
     if (pawnNamesVector.empty()) {
         collectPawns();
     }
@@ -340,12 +405,12 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
         lastClassRefresh = ImGui::GetTime();
         collectClasses();
     }
-    if (packages.empty()) {
-        collectPackages();
+    if (packages.empty() && !packagesCollecting.load()) {
+        collectPackagesAsync();
     }
-    if (ImGui::GetTime() - lastPackageRefresh > 10.0f) {
+    if (ImGui::GetTime() - lastPackageRefresh > 10.0f && !packagesCollecting.load()) {
         lastPackageRefresh = ImGui::GetTime();
-        collectPackages();
+        collectPackagesAsync();
     }
     if (pawnIndexInt < 0) {
         pawnIndexInt = 0;
@@ -381,7 +446,16 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
 
     ImGui::SetNextWindowSize(ImVec2(650, 1250), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin(ICON_FA_SLIDERS " SuperAdjustmentStudio " PLUGIN_VERSION, NULL);
+    ImGui::Begin(ICON_FA_SLIDERS " SuperAdjustmentStudio " PLUGIN_VERSION, NULL, ImGuiWindowFlags_MenuBar);
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Debug")) {
+            ImGui::MenuItem("Metrics##imgui_debug_metrics", ICON_FA_CHART_SIMPLE " Metrics", &showMetricsWindow);
+            ImGui::MenuItem("Debug Log##imgui_debug_log", ICON_FA_LIST " Debug Log", &showDebugLogWindow);
+            ImGui::MenuItem("ID Stack##imgui_id_stack", ICON_FA_LAYER_GROUP " ID Stack", &showIDStackToolWindow);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
     ImVec2 windowPosition = ImGui::GetWindowPos();
     ImVec2 windowSize = ImGui::GetWindowSize();
     renderer.setUiRect({(LONG)windowPosition.x, (LONG)windowPosition.y, (LONG)(windowPosition.x + windowSize.x), (LONG)(windowPosition.y + windowSize.y)});
@@ -397,6 +471,17 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     renderPackagesSection();
 
     ImGui::End();
+
+    if (showMetricsWindow) {
+        ImGui::ShowMetricsWindow(&showMetricsWindow);
+    }
+    if (showDebugLogWindow) {
+        ImGui::ShowDebugLogWindow(&showDebugLogWindow);
+    }
+    if (showIDStackToolWindow) {
+        ImGui::ShowIDStackToolWindow(&showIDStackToolWindow);
+    }
+
     toastManager.renderToastNotifications();
     Application::instance().properties().renderStructWindows();
 }
@@ -557,14 +642,43 @@ void UI::renderSelectionTarget() {
         ChildScope child("sel_list", ImVec2(0, 120), true);
         ImGui::PushItemWidth(-100);
         if (child.open) {
-            for (int i = 0; i < (int)pawnNamesVector.size(); ++i) {
-                std::string id = pawnNamesVector[i] + "##" + std::to_string(i);
-                std::string filterLower = toLowerStr(targetSearchFilter);
-                std::string pawnLower = toLowerStr(pawnNamesVector[i]);
-                if (filterLower.empty() || pawnLower.find(filterLower) != std::string::npos) {
-                    if (ImGui::Selectable(id.c_str(), i == pawnIndexInt)) {
-                        pawnIndexInt = i;
-                        Application::instance().gizmo().clearExplicitTarget();
+            if (filterLower.empty()) {
+                ImGuiListClipper clipper;
+                clipper.Begin((int)pawnNamesVector.size());
+                while (clipper.Step()) {
+                    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                        std::string id = pawnNamesVector[i] + "##" + std::to_string(i);
+                        if (ImGui::Selectable(id.c_str(), i == pawnIndexInt)) {
+                            pawnIndexInt = i;
+                            Application::instance().gizmo().clearExplicitTarget();
+                        }
+                    }
+                }
+            } else {
+                // filtered: use cached lower vector to avoid per-item toLower
+                static std::vector<int> filteredPawns;
+                filteredPawns.clear();
+                filteredPawns.reserve(pawnNamesVector.size());
+                for (int i = 0; i < (int)pawnNamesVector.size(); ++i) {
+                    const std::string& lower = (i < (int)pawnNamesLowerVector.size()) ? pawnNamesLowerVector[i] : toLowerStr(pawnNamesVector[i]);
+                    if (lower.find(filterLower) != std::string::npos) {
+                        filteredPawns.push_back(i);
+                    }
+                }
+                if (filteredPawns.empty()) {
+                    ImGui::TextDisabled("(no matches)");
+                } else {
+                    ImGuiListClipper clipper;
+                    clipper.Begin((int)filteredPawns.size());
+                    while (clipper.Step()) {
+                        for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                            int i = filteredPawns[n];
+                            std::string id = pawnNamesVector[i] + "##" + std::to_string(i);
+                            if (ImGui::Selectable(id.c_str(), i == pawnIndexInt)) {
+                                pawnIndexInt = i;
+                                Application::instance().gizmo().clearExplicitTarget();
+                            }
+                        }
                     }
                 }
             }
@@ -656,14 +770,39 @@ void UI::renderSelectionAnimation() {
             ImGui::Separator();
 
             int aShown = 0;
-            for (int i = 0; i < (int)animationNames.size(); ++i) {
-                if (!aFilter.empty() && toLowerStr(animationNames[i]).find(aFilter) == std::string::npos) {
-                    continue;
+            if (aFilter.empty()) {
+                aShown = (int)animationNames.size();
+                ImGuiListClipper clipper;
+                clipper.Begin((int)animationNames.size());
+                while (clipper.Step()) {
+                    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                        std::string id = animationNames[i] + "##" + std::to_string(i);
+                        if (ImGui::Selectable(id.c_str(), i == animationIndex)) {
+                            animationIndex = i;
+                        }
+                    }
                 }
-                ++aShown;
-                std::string id = animationNames[i] + "##" + std::to_string(i);
-                if (ImGui::Selectable(id.c_str(), i == animationIndex)) {
-                    animationIndex = i;
+            } else {
+                // build indices first to allow clipping
+                static std::vector<int> filtered;
+                filtered.clear();
+                filtered.reserve(animationNames.size());
+                for (int i = 0; i < (int)animationNames.size(); ++i) {
+                    if (toLowerStr(animationNames[i]).find(aFilter) != std::string::npos) {
+                        filtered.push_back(i);
+                    }
+                }
+                aShown = (int)filtered.size();
+                ImGuiListClipper clipper;
+                clipper.Begin((int)filtered.size());
+                while (clipper.Step()) {
+                    for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                        int i = filtered[n];
+                        std::string id = animationNames[i] + "##" + std::to_string(i);
+                        if (ImGui::Selectable(id.c_str(), i == animationIndex)) {
+                            animationIndex = i;
+                        }
+                    }
                 }
             }
             if (aShown == 0) {
@@ -773,28 +912,73 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
         ChildScope child("bones_dir_list", ImVec2(0, 180), true);
         if (child.open) {
             int bShown = 0;
-            for (int i = 0; i < (int)bones.size(); ++i) {
-                const BonePoseInfo& b = bones[i];
-                std::string label = b.boneName;
-                if (label.empty()) {
-                    label = "(bone " + std::to_string(b.index) + ")";
-                }
-                if (!b.parentName.empty()) {
-                    label += " < " + b.parentName;
-                }
-                if (!bFilter.empty() && toLowerStr(label).find(bFilter) == std::string::npos) {
-                    continue;
-                }
-                if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), i == boneIndex)) {
-                    boneIndex = i;
-                    BonePoseInfo fresh;
-                    if (Application::instance().bones().getBoneTransform(pawn, (MeshTarget)meshTargetIndex, b.index, fresh)) {
-                        boneEdit = fresh;
-                        boneEdit.pos[0] = boneEdit.pos[1] = boneEdit.pos[2] = 0.0f; // position is an offset from current pose
-                        boneToApply = false;
+            if (bFilter.empty()) {
+                bShown = (int)bones.size();
+                ImGuiListClipper clipper;
+                clipper.Begin((int)bones.size());
+                while (clipper.Step()) {
+                    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                        const BonePoseInfo& b = bones[i];
+                        std::string label = b.boneName;
+                        if (label.empty()) {
+                            label = "(bone " + std::to_string(b.index) + ")";
+                        }
+                        if (!b.parentName.empty()) {
+                            label += " < " + b.parentName;
+                        }
+                        if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), i == boneIndex)) {
+                            boneIndex = i;
+                            BonePoseInfo fresh;
+                            if (Application::instance().bones().getBoneTransform(pawn, (MeshTarget)meshTargetIndex, b.index, fresh)) {
+                                boneEdit = fresh;
+                                boneEdit.pos[0] = boneEdit.pos[1] = boneEdit.pos[2] = 0.0f;
+                                boneToApply = false;
+                            }
+                        }
                     }
                 }
-                ++bShown;
+            } else {
+                static std::vector<int> filteredBones;
+                filteredBones.clear();
+                filteredBones.reserve(bones.size());
+                for (int i = 0; i < (int)bones.size(); ++i) {
+                    const BonePoseInfo& b = bones[i];
+                    std::string label = b.boneName;
+                    if (label.empty()) {
+                        label = "(bone " + std::to_string(b.index) + ")";
+                    }
+                    if (!b.parentName.empty()) {
+                        label += " < " + b.parentName;
+                    }
+                    if (toLowerStr(label).find(bFilter) != std::string::npos) {
+                        filteredBones.push_back(i);
+                    }
+                }
+                bShown = (int)filteredBones.size();
+                ImGuiListClipper clipper;
+                clipper.Begin((int)filteredBones.size());
+                while (clipper.Step()) {
+                    for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                        int i = filteredBones[n];
+                        const BonePoseInfo& b = bones[i];
+                        std::string label = b.boneName;
+                        if (label.empty()) {
+                            label = "(bone " + std::to_string(b.index) + ")";
+                        }
+                        if (!b.parentName.empty()) {
+                            label += " < " + b.parentName;
+                        }
+                        if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), i == boneIndex)) {
+                            boneIndex = i;
+                            BonePoseInfo fresh;
+                            if (Application::instance().bones().getBoneTransform(pawn, (MeshTarget)meshTargetIndex, b.index, fresh)) {
+                                boneEdit = fresh;
+                                boneEdit.pos[0] = boneEdit.pos[1] = boneEdit.pos[2] = 0.0f;
+                                boneToApply = false;
+                            }
+                        }
+                    }
+                }
             }
             if (bShown == 0) {
                 ImGui::Text("(no bones match)");
@@ -974,6 +1158,7 @@ void UI::renderSpawnSection() {
 }
 
 void UI::renderSpawnClassList() {
+    ZoneScopedN("UI::renderSpawnClassList");
     // simplification for the sake of the user
     if (!ImGui::CollapsingHeader(ICON_FA_CUBES " Object list##spawn")) {
         return;
@@ -1005,12 +1190,8 @@ void UI::renderSpawnClassList() {
             int shown = 0;
             for (int i = 0; i < (int)classes.size(); ++i) {
                 const ClassEntry& e = classes[i];
-                if (!filter.empty()) {
-                    std::string fullLower = toLowerStr(e.fullName);
-                    std::string pkgLower = toLowerStr(e.package);
-                    if (fullLower.find(filter) == std::string::npos && pkgLower.find(filter) == std::string::npos) {
-                        continue;
-                    }
+                if (!filter.empty() && e.fullNameLower.find(filter) == std::string::npos && e.packageLower.find(filter) == std::string::npos) {
+                    continue;
                 }
                 if (e.package != lastPkg) {
                     ImColor greyColor = ImColor(0.6f, 0.6f, 0.6f, 1.0f);
@@ -1122,7 +1303,12 @@ void UI::renderPackagesSection() {
     ImGui::PopItemWidth();
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
-        collectPackages();
+        lastPackageRefresh = ImGui::GetTime();
+        collectPackagesAsync();
+    }
+    if (packagesCollecting.load()) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(scanning...)");
     }
 
     std::string selectedName = (!packages.empty() && packageIndex >= 0 && packageIndex < (int)packages.size()) ? packages[packageIndex].name : "";
@@ -1135,19 +1321,43 @@ void UI::renderPackagesSection() {
     {
         ChildScope child("pkg_list", ImVec2(0, 220), true);
         if (child.open) {
-            int shown = 0;
-            for (int i = 0; i < (int)packages.size(); ++i) {
-                const PackageEntry& e = packages[i];
-                if (!filter.empty() && e.nameLower.find(filter) == std::string::npos) {
-                    continue;
+            if (filter.empty()) {
+                ImGuiListClipper clipper;
+                clipper.Begin((int)packages.size());
+                while (clipper.Step()) {
+                    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                        const PackageEntry& e = packages[i];
+                        if (ImGui::Selectable((e.name + "##" + std::to_string(i)).c_str(), i == packageIndex)) {
+                            packageIndex = i;
+                        }
+                    }
                 }
-                if (ImGui::Selectable((e.name + "##" + std::to_string(i)).c_str(), i == packageIndex)) {
-                    packageIndex = i;
+                if (packages.empty()) {
+                    ImGui::Text("(no packages match)");
                 }
-                ++shown;
-            }
-            if (shown == 0) {
-                ImGui::Text("(no packages match)");
+            } else {
+                static std::vector<int> filteredPkg;
+                filteredPkg.clear();
+                for (int i = 0; i < (int)packages.size(); ++i) {
+                    if (packages[i].nameLower.find(filter) != std::string::npos) {
+                        filteredPkg.push_back(i);
+                    }
+                }
+                if (filteredPkg.empty()) {
+                    ImGui::Text("(no packages match)");
+                } else {
+                    ImGuiListClipper clipper;
+                    clipper.Begin((int)filteredPkg.size());
+                    while (clipper.Step()) {
+                        for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                            int i = filteredPkg[n];
+                            const PackageEntry& e = packages[i];
+                            if (ImGui::Selectable((e.name + "##" + std::to_string(i)).c_str(), i == packageIndex)) {
+                                packageIndex = i;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1171,6 +1381,7 @@ void UI::renderPackagesSection() {
             PCCParser parser(sel.path);
             if (parser.parse()) {
                 packagePreview = parser.fileData();
+                rebuildPackagePreviewCache();
                 packagePreviewOpen = true;
             } else {
                 toastManager.addToastNotification("Failed to parse " + sel.name, ToastTypeError, 3.0);
@@ -1185,7 +1396,63 @@ void UI::renderPackagesSection() {
     ImGui::Unindent();
 }
 
+void UI::rebuildPackagePreviewCache() {
+    ZoneScopedN("UI::rebuildPackagePreviewCache");
+    packagePreviewExportLabels.clear();
+    packagePreviewExportLabelsLower.clear();
+    packagePreviewImportLabels.clear();
+    packagePreviewImportLabelsLower.clear();
+    packagePreviewExportLabels.reserve(packagePreview.exports.size());
+    packagePreviewExportLabelsLower.reserve(packagePreview.exports.size());
+    for (const auto& ex : packagePreview.exports) {
+        std::string label = ex.objectName;
+        label += "  [export]";
+        if (!ex.className.empty()) {
+            label += "  [" + ex.className + "]";
+        }
+        if (ex.dataSize > 0) {
+            label += "  (" + std::to_string(ex.dataSize) + " B)";
+        }
+        packagePreviewExportLabels.push_back(label);
+        packagePreviewExportLabelsLower.push_back(toLowerStr(label));
+    }
+    packagePreviewImportLabels.reserve(packagePreview.imports.size());
+    packagePreviewImportLabelsLower.reserve(packagePreview.imports.size());
+    for (const auto& im : packagePreview.imports) {
+        std::string label = im.objectName;
+        label += "  [import]";
+        if (!im.className.empty()) {
+            label += "  [" + im.className + "]";
+        }
+        if (!im.packageName.empty()) {
+            label += "  <" + im.packageName + ">";
+        }
+        packagePreviewImportLabels.push_back(label);
+        packagePreviewImportLabelsLower.push_back(toLowerStr(label));
+    }
+}
+
+bool UI::previewNodeMatches(int index, const std::string& filter) const {
+    if (index < 0 || index >= (int)packagePreview.exports.size()) {
+        return false;
+    }
+    if (filter.empty()) {
+        return true;
+    }
+    if (index < (int)packagePreviewExportLabelsLower.size() && packagePreviewExportLabelsLower[index].find(filter) != std::string::npos) {
+        return true;
+    }
+    const std::vector<int32_t>& kids = packagePreview.children[index];
+    for (int32_t child : kids) {
+        if (previewNodeMatches(child, filter)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void UI::renderPackagePreview() {
+    ZoneScopedN("UI::renderPackagePreview");
     ImGui::SetNextWindowSize(ImVec2(560, 640), ImGuiCond_FirstUseEver);
     std::string winTitle = "Package Preview: " + packagePreviewName;
     if (ImGui::Begin(winTitle.c_str(), &packagePreviewOpen)) {
@@ -1200,6 +1467,10 @@ void UI::renderPackagePreview() {
         ImGui::Separator();
 
         std::string filter = toLowerStr(packagePreviewSearch);
+        // ensure cache is hot (in case preview was loaded before this optimization)
+        if (packagePreviewExportLabels.size() != packagePreview.exports.size() || packagePreviewImportLabels.size() != packagePreview.imports.size()) {
+            rebuildPackagePreviewCache();
+        }
 
         if (ImGui::BeginChild("pkg_preview_tree", ImVec2(0, 0), true)) {
             if (packagePreview.rootExports.empty()) {
@@ -1207,6 +1478,10 @@ void UI::renderPackagePreview() {
             } else {
                 ImGui::Indent(4.0f);
                 for (int32_t root : packagePreview.rootExports) {
+                    // cull entire subtree if filter doesn't match
+                    if (!filter.empty() && !previewNodeMatches(root, filter)) {
+                        continue;
+                    }
                     renderPackagePreviewNode(root, filter);
                 }
                 ImGui::Unindent(4.0f);
@@ -1217,20 +1492,11 @@ void UI::renderPackagePreview() {
                 ImGui::Text("Imports:");
                 ImGui::Indent(4.0f);
                 int impShown = 0;
-                for (size_t i = 0; i < packagePreview.imports.size(); ++i) {
-                    const PCCImport& im = packagePreview.imports[i];
-                    std::string label = im.objectName;
-                    label += "  [import]";
-                    if (!im.className.empty()) {
-                        label += "  [" + im.className + "]";
-                    }
-                    if (!im.packageName.empty()) {
-                        label += "  <" + im.packageName + ">";
-                    }
-                    if (!filter.empty() && toLowerStr(label).find(filter) == std::string::npos) {
+                for (size_t i = 0; i < packagePreviewImportLabels.size(); ++i) {
+                    if (!filter.empty() && packagePreviewImportLabelsLower[i].find(filter) == std::string::npos) {
                         continue;
                     }
-                    ImGui::BulletText("%s", label.c_str());
+                    ImGui::BulletText("%s", packagePreviewImportLabels[i].c_str());
                     ++impShown;
                 }
                 if (impShown == 0) {
@@ -1246,42 +1512,29 @@ void UI::renderPackagePreview() {
 
 // returns true if the node itself or any descendant matches the filter.
 bool UI::renderPackagePreviewNode(int index, const std::string& filter) {
+    ZoneScopedN("UI::renderPackagePreviewNode");
     if (index < 0 || index >= (int)packagePreview.exports.size()) {
         return false;
     }
-    const PCCExport& ex = packagePreview.exports[index];
+    const std::string& label = (index < (int)packagePreviewExportLabels.size()) ? packagePreviewExportLabels[index] : packagePreview.exports[index].objectName;
     const std::vector<int32_t>& kids = packagePreview.children[index];
-
-    std::string label = ex.objectName;
-    label += "  [export]";
-    if (!ex.className.empty()) {
-        label += "  [" + ex.className + "]";
-    }
-    if (ex.dataSize > 0) {
-        label += "  (" + std::to_string(ex.dataSize) + " B)";
-    }
-
-    bool selfMatch = filter.empty() || toLowerStr(label).find(filter) != std::string::npos;
-    bool childMatch = false;
-    for (int32_t child : kids) {
-        if (renderPackagePreviewNode(child, filter)) {
-            childMatch = true;
-        }
-    }
-
-    if (!selfMatch && !childMatch) {
-        return false;
-    }
 
     if (kids.empty()) {
         ImGui::BulletText("%s", label.c_str());
         return true;
     }
 
-    ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+    if (!filter.empty()) {
+        ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+    } else {
+        ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+    }
     if (ImGui::TreeNode((void*)(intptr_t)(index + 1), "%s", label.c_str())) {
         for (int32_t child : kids) {
-            renderPackagePreviewNode(child, filter);
+            // only recurse into matching subtrees when filtering
+            if (filter.empty() || previewNodeMatches(child, filter)) {
+                renderPackagePreviewNode(child, filter);
+            }
         }
         ImGui::TreePop();
     }

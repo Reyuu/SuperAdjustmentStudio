@@ -7,6 +7,8 @@
 #include <sstream>
 #include <windowsx.h>
 
+#include "tracy.h"
+
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 Application* Application::appInstance = nullptr;
@@ -82,6 +84,8 @@ void Application::initHooksThread() {
 }
 
 HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags) {
+    ZoneScopedN("PresentDetour");
+    FrameMark;
     Application& app = instance();
     if (app.didRequestExit.load()) {
         return app.rendererInstance.origPresent() ? app.rendererInstance.origPresent()(pSwapChain, SyncInterval, Flags) : S_OK;
@@ -141,6 +145,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
 
 HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
                                                            UINT SwapChainFlags) {
+    ZoneScopedN("ResizeBuffersDetour");
     Application& app = instance();
     if (app.didRequestExit.load()) {
         return app.rendererInstance.origResizeBuffers()
@@ -158,6 +163,7 @@ HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwap
 }
 
 LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    ZoneScopedN("WndProc");
     Application& app = instance();
     SAS_HOOK_TRY {
         if (app.ui().showUI().load()) {

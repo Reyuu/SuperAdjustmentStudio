@@ -2,6 +2,8 @@
 #define SAS_UI_H
 
 #include <atomic>
+#include <future>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -19,6 +21,8 @@ struct ClassEntry {
         std::string package;
         std::string name;
         std::string fullName;
+        std::string packageLower;
+        std::string fullNameLower;
 };
 
 struct PackageEntry {
@@ -61,6 +65,8 @@ class UI {
         void collectClasses();
         void collectAnimations(const std::string& pawnName);
         void collectPackages();
+        void collectPackagesAsync(); // non-blocking
+        void pollPackagesAsync();    // called each frame to apply finished async result
 
         void selectActor(AActor* actor);
         bool renderTransformEditor(Transform& t, const char* idPrefix);
@@ -89,6 +95,7 @@ class UI {
 
         std::atomic<bool> showUIstate{false};
         std::vector<std::string> pawnNamesVector;
+        std::vector<std::string> pawnNamesLowerVector;
         int pawnIndexInt = 0;
         std::vector<std::string> pinnedNamesVector;
 
@@ -110,11 +117,20 @@ class UI {
         int packageIndex = 0;
         char packageSearch[128] = "";
         float lastPackageRefresh = 0.0f;
+        std::future<std::vector<PackageEntry>> packagesFuture;
+        std::atomic<bool> packagesCollecting{false};
+        std::mutex packagesMutex;
 
         bool packagePreviewOpen = false;
         PCCFile packagePreview;
         std::string packagePreviewName;
         char packagePreviewSearch[128] = "";
+        std::vector<std::string> packagePreviewExportLabels;
+        std::vector<std::string> packagePreviewExportLabelsLower;
+        std::vector<std::string> packagePreviewImportLabels;
+        std::vector<std::string> packagePreviewImportLabelsLower;
+        bool previewNodeMatches(int index, const std::string& filter) const;
+        void rebuildPackagePreviewCache();
 
         Transform selectedTransform;
         Transform spawnTransform;
@@ -144,6 +160,10 @@ class UI {
         float boneLastApply = 0.0f;
 
         bool boneListTried = false;
+
+        bool showMetricsWindow = false;
+        bool showDebugLogWindow = false;
+        bool showIDStackToolWindow = false;
 
         void refreshBoneList(const std::string& pawnName);
 };

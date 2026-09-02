@@ -13,6 +13,8 @@
 #include <sstream>
 #include <unordered_map>
 
+#include "tracy.h"
+
 static UStaticMeshComponent* findStaticMeshComp(AActor* a) {
     if (!a) {
         return nullptr;
@@ -61,6 +63,7 @@ static UPrefab* findPrefabByName(const std::string& name) {
 }
 
 void PrefabManager::collectPrefabs() {
+    ZoneScopedN("Prefabs::collectPrefabs");
     std::lock_guard<std::recursive_mutex> lock(mutex);
     available.clear();
     if (!UObject::GObjObjects) {
@@ -358,8 +361,7 @@ void PrefabManager::forceUpdateMaterial() {
     }
 
     Logger->debug("forceUpdateMaterial: updated " + std::to_string(updated) + " comps for '" + entry.name + "'");
-    Application::instance().ui().toastManager.addToastNotification("Material update forced for " + (entry.name.empty() ? "unknown" : entry.name),
-                                                                   ToastTypeSuccess, 2.0);
+    Application::instance().ui().toastManager.addToastNotification("Material update forced", ToastTypeSuccess, 2.0);
 }
 
 // update the light expansion of the selected prefab entry
@@ -1039,9 +1041,9 @@ void PrefabManager::renderAvailablePrefabsPanel() {
         collectPrefabs();
         needsRefresh = false;
     }
-    ImGui::SameLine();
     // add selected prefab
     if (!selectedPrefabName.empty()) {
+        ImGui::SameLine();
         if (ImGui::Button(ICON_FA_PLUS "##prefab")) {
             std::string name = selectedPrefabName;
             Application::instance().engine().postGameThreadTask([this, name]() {
@@ -1056,6 +1058,7 @@ void PrefabManager::renderAvailablePrefabsPanel() {
     {
         ChildScope child("##prefab_template_list", ImVec2(0, 180), true);
         if (child.open) {
+            // package headers produce variable heights -> clipper would miscount; use plain loop
             std::string lastPkg;
             int shown = 0;
             for (size_t i = 0; i < available.size(); ++i) {
@@ -1069,9 +1072,8 @@ void PrefabManager::renderAvailablePrefabsPanel() {
                     ImGui::Separator();
                     lastPkg = pt.package;
                 }
-                std::ostringstream label;
-                label << pt.name << " (" << pt.archetypeCount << ")";
-                if (ImGui::Selectable((label.str() + "##" + std::to_string(i)).c_str(), pt.name == selectedPrefabName)) {
+                std::string label = pt.name + " (" + std::to_string(pt.archetypeCount) + ")";
+                if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), pt.name == selectedPrefabName)) {
                     selectedPrefabName = pt.name;
                 }
                 ++shown;
@@ -1149,6 +1151,7 @@ void PrefabManager::renderLightSpawnControls() {
 }
 
 void PrefabManager::renderUI() {
+    ZoneScopedN("Prefabs::renderUI");
     if (!ImGui::CollapsingHeader(ICON_FA_BOX_OPEN " Prefabs")) {
         return;
     }

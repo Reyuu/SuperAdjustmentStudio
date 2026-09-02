@@ -11,6 +11,8 @@
 #include "vfx.h"
 #include <LESDK/Includes.LE2.hpp>
 
+#include "tracy.h"
+
 static UBioVFXTemplate* findVFXTemplateByName(const std::string& name) {
     UBioVFXTemplate* vfxTemplate = nullptr;
     forEachOf<UBioVFXTemplate>([&](UBioVFXTemplate* vfx) {
@@ -200,6 +202,7 @@ void VFXManager::findAvailableTemplates(bool forceRefresh) {
 }
 
 void VFXManager::renderUI() {
+    ZoneScopedN("VFX::renderUI");
     if (!ImGui::CollapsingHeader(ICON_FA_FIRE " VFX")) {
         return;
     }
@@ -222,8 +225,19 @@ void VFXManager::renderUI() {
     // list available templates
     // allow user to select a template and spawn it on a selected pawn
     static std::string boneSelect;
-    std::vector<BonePoseInfo> bones;
-    Application::instance().bones().listBones(Application::instance().ui().getSelectedPawnName(), MESH_BODY, bones);
+    static std::string cachedPawnForBones;
+    static std::vector<BonePoseInfo> cachedBones;
+    {
+        std::string curPawn = Application::instance().ui().getSelectedPawnName();
+        if (curPawn != cachedPawnForBones) {
+            cachedPawnForBones = curPawn;
+            cachedBones.clear();
+            if (!curPawn.empty()) {
+                Application::instance().bones().listBones(curPawn, MESH_BODY, cachedBones);
+            }
+        }
+    }
+    std::vector<BonePoseInfo>& bones = cachedBones;
     if (showBoneSelection) {
         if (boneSelect.empty() && !bones.empty()) {
             boneSelect = bones[0].boneName;
@@ -274,17 +288,50 @@ void VFXManager::renderUI() {
     {
         ChildScope child("##vfx_available_list", ImVec2(0, 120), true);
         if (child.open) {
-            for (UBioVFXTemplate* vfxTemplate : availableTemplates) {
-                if (!vfxTemplate) {
-                    continue;
+            static std::vector<std::string> filteredNames;
+            filteredNames.clear();
+            if (filterLower.empty()) {
+                filteredNames.reserve(availableTemplates.size());
+                for (UBioVFXTemplate* vfxTemplate : availableTemplates) {
+                    if (!vfxTemplate) {
+                        continue;
+                    }
+                    filteredNames.push_back(FStringToUtf8(vfxTemplate->GetName()));
                 }
-                std::string name = FStringToUtf8(vfxTemplate->GetName());
-                std::string lowerName = toLowerStr(name);
-                if (!filterLower.empty() && lowerName.find(filterLower) == std::string::npos) {
-                    continue;
+                ImGuiListClipper clipper;
+                clipper.Begin((int)filteredNames.size());
+                while (clipper.Step()) {
+                    for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                        const std::string& name = filteredNames[n];
+                        if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
+                            selectedVFXName = name;
+                        }
+                    }
                 }
-                if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
-                    selectedVFXName = name;
+            } else {
+                for (UBioVFXTemplate* vfxTemplate : availableTemplates) {
+                    if (!vfxTemplate) {
+                        continue;
+                    }
+                    std::string name = FStringToUtf8(vfxTemplate->GetName());
+                    if (toLowerStr(name).find(filterLower) == std::string::npos) {
+                        continue;
+                    }
+                    filteredNames.push_back(name);
+                }
+                if (filteredNames.empty()) {
+                    ImGui::TextDisabled("(no matches)");
+                } else {
+                    ImGuiListClipper clipper;
+                    clipper.Begin((int)filteredNames.size());
+                    while (clipper.Step()) {
+                        for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
+                            const std::string& name = filteredNames[n];
+                            if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
+                                selectedVFXName = name;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -369,7 +416,7 @@ void VFXManager::renderUI() {
                     ss << entry.name << " on " << entry.pawnName << " at " << entry.boneName;
                     ImGui::Text("%s", ss.str().c_str());
                     ImGui::SameLine();
-                    if (ImGui::Button((std::string(ICON_FA_MINUS) + "##" + entry.name + std::to_string(i)).c_str())) {
+                    if (ImGui::Button((std::string(ICON_FA_TRASH_CAN) + "##" + entry.name + std::to_string(i)).c_str())) {
                         // capture the index and pawn name, not references, since the vector can be resized before this task runs
                         Application::instance().engine().postGameThreadTask([this, i, pawnName = entry.pawnName]() {
                             if (i < vfxEntries.size()) {

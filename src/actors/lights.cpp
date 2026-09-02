@@ -206,7 +206,7 @@ void LightManager::renderUI() {
                         selectLight(entry.actor);
                     }
                     ImGui::SameLine();
-                    if (ImGui::Button((std::string(ICON_FA_MINUS) + "##light_" + std::to_string(i)).c_str())) {
+                    if (ImGui::Button((std::string(ICON_FA_TRASH_CAN) + "##light_" + std::to_string(i)).c_str())) {
                         Application::instance().engine().postGameThreadTask([this, actor = entry.actor]() {
                             removeLight(actor);
                         });

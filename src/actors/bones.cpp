@@ -13,6 +13,8 @@
 #include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
 
+#include "tracy.h"
+
 static const int kParentSpace = 2; // EBoneSpace::BS_Parent
 
 #pragma region // Helpers
@@ -92,6 +94,7 @@ void Bones::releaseAllBonesFromPose(std::string pawn, MeshTarget target) {
 }
 
 void Bones::keepBonePoses() {
+    ZoneScopedN("Bones::keepBonePoses");
     std::vector<BonePoseInfo> posed;
     std::vector<int> pending;
     std::vector<FBoneAtom> baseAtoms;
