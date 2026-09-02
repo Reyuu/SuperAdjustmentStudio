@@ -1,7 +1,6 @@
 #include "props.h"
-#include "Common/FString.hpp"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 #include "IconsFontAwesome6.h"
-#include "LE2/Core_classes.hpp"
 #include "ui/helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Math.hpp>

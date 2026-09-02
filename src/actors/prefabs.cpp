@@ -1,4 +1,5 @@
 #include "prefabs.h"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "IconsFontAwesome6.h"
 #include "application.h"

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SAS_TRACY_H
+#define SAS_TRACY_H
 
 // tracy profiler wrapper — only active in Debug builds when SAS_TRACY_ENABLE is ON
 // in Release (or when TRACY_ENABLE not defined) all macros become no-ops
@@ -41,3 +42,5 @@
 #define SAS_ZONE_SCOPED
 #define SAS_ZONE_NAMED(name)
 #endif
+
+#endif // SAS_TRACY_H

@@ -1,4 +1,5 @@
 #include "util.h"
+#include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include <algorithm>
 #include <filesystem>
