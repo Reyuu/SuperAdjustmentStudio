@@ -55,10 +55,6 @@ set(SPDLOG_BUILD_BENCH OFF)
 set(SPDLOG_INSTALL OFF)
 add_subdirectory(thirdparty/spdlog)
 
-#   sqlite (pre-built DLL)
-message(STATUS "Adding build target: thirdparty/sqlite")
-add_subdirectory(thirdparty/sqlite)
-
 #   zlib
 message(STATUS "Adding build target: thirdparty/zlib")
 set(ZLIB_BUILD_SHARED OFF)
@@ -190,12 +186,6 @@ if(SAS_TRACY_ENABLE)
         target_compile_definitions(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:TRACY_ENABLE>)
         message(STATUS "Linking TracyClient to SuperAdjustmentStudio (Debug only, via generator expression)")
     endif()
-endif()
-
-if (TARGET sqlite)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE sqlite)
-else()
-    message(FATAL_ERROR "No sqlite target found.")
 endif()
 
 if (TARGET zlibstatic)

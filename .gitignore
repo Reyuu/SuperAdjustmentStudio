@@ -259,8 +259,6 @@ fix-sdk-layout.patch
 *.dylib
 *.dll
 !thirdparty/oo2core_8_win64.dll
-!thirdparty/sqlite/
-!thirdparty/sqlite/**
 *.so.*
 
 # Fortran module files

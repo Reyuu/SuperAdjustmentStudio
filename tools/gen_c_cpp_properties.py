@@ -12,7 +12,7 @@ inc = [root + p for p in [
     '/thirdparty/imgui', '/thirdparty/imgui/backends',
     '/thirdparty/IconFontCppHeaders', '/thirdparty/kiero',
     '/thirdparty/spdlog/include', '/thirdparty/LExSDKv2/External',
-    '/thirdparty/sqlite', '/thirdparty/zlib',
+    '/thirdparty/zlib',
     '/build/compile-commands',
 ]]
 
