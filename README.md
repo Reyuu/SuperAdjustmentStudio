@@ -48,6 +48,9 @@ Copy `SAS_SuperAdjustmentStudio.asi` to `ASI` folder in your game's location.
 
 Press `F10` to show the SAS overlay. `Right-click` outside the overlay to move your camera.
 
+## Contributing
+See [CONTRIBUTING.md](docs/contributing.md) for contribution guidelines.
+
 ## Development
 ### Prerequisites
 - MSVC Visual Studio 18 2026
@@ -89,8 +92,6 @@ To deploy the generated DLL, use `deploy.bat`. It runs `env.bat` and copies the 
 ```
 .\build.bat Debug clean && .\deploy.bat && .\compile_commands.bat
 ```
-## Contributing
-See [CONTRIBUTING.md](docs/contributing.md) for contribution guidelines.
 
 ## Attributions
 This project uses libraries from:
