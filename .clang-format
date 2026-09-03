@@ -35,5 +35,9 @@ AlignArrayOfStructures: Left
 PointerAlignment: Left
 ReferenceAlignment: Left
 
+# Includes
+SortIncludes: Never
+IncludeBlocks: Preserve
+
 # Switch Statements
 IndentCaseLabels: true

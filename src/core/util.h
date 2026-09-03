@@ -4,8 +4,8 @@
 #include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "imgui.h"
-#include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Common/Math.hpp>
 #include <numbers>
 #include <string>
 

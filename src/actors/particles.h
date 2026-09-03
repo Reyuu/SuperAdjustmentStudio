@@ -2,8 +2,8 @@
 #define SAS_PARTICLES_H
 
 #include "util.h"
-#include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Common/Math.hpp>
 #include <mutex>
 #include <set>
 

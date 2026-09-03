@@ -7,6 +7,7 @@
 
 Please treat this release as <ins>**BETA**</ins>.
 
+[![Release build](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml/badge.svg?branch=main)](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml)
 ### Features (what works)
 - transforms for all actors - position, rotation and scale
 - playing custom animations - both included in the Pawn's animation set and not

@@ -1,8 +1,8 @@
 #ifndef SAS_VFX_H
 #define SAS_VFX_H
 
-#include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Common/Math.hpp>
 #include <mutex>
 #include <set>
 

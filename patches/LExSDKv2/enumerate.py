@@ -128,12 +128,39 @@ def fix_quat(path: Path, apply: bool) -> int:
     return n
 
 
+MATH_FIX = """#pragma once
+
+#include <cmath>
+
+#if defined(SDK_TARGET_LE1)
+#include "LESDK/LE1/Core_structs.hpp"
+#elif defined(SDK_TARGET_LE3)
+#include "LESDK/LE3/Core_structs.hpp"
+#else
+#include "LESDK/LE2/Core_structs.hpp"
+#endif"""
+
+
+def fix_math(apply: bool) -> int:
+    path = SDK / "Common" / "Math.hpp"
+    text = path.read_text(encoding="utf-8")
+    if "#include <cmath>" in text:
+        return 0
+    fixed = text.replace("#pragma once", MATH_FIX, 1)
+    if fixed == text:
+        return 0
+    if apply:
+        path.write_bytes(fixed.encode("utf-8"))
+    return 1
+
+
 def main() -> None:
     apply = "--apply" in sys.argv
     holes = sum(fix_structs(f, apply) for f in sorted(SDK.glob("LE[123]/*_f_structs.hpp")))
     flags = sum(fix_flags(f, apply) for f in sorted(SDK.glob("LE[123]/*_functions.cpp")))
     quats = sum(fix_quat(f, apply) for f in sorted(SDK.glob("LE[123]/Core_functions.cpp")))
-    print(f"{holes} pad(s), {flags} flag line(s), {quats} quat fix(es) [{'applied' if apply else 'report only, use --apply'}]")
+    maths = fix_math(apply)
+    print(f"{holes} pad(s), {flags} flag line(s), {quats} quat fix(es), {maths} math fix(es) [{'applied' if apply else 'report only, use --apply'}]")
 
 
 if __name__ == "__main__":
