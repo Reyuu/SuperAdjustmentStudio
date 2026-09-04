@@ -63,6 +63,10 @@ set(ZLIB_BUILD_TESTING OFF)
 set(ZLIB_INSTALL OFF)
 add_subdirectory(thirdparty/zlib)
 
+#   nlohmann/json
+message(STATUS "Adding build target: thirdparty/json")
+add_subdirectory(thirdparty/json)
+
 #   imgui
 message(STATUS "Adding build target: thirdparty/imgui")
 # explicitly list the source files
@@ -166,6 +170,12 @@ if (TARGET kiero)
     target_link_libraries(SuperAdjustmentStudio PRIVATE kiero)
 else()
     message(FATAL_ERROR "No kiero target found. Please check the kiero submodule.")
+endif()
+
+if (TARGET nlohmann_json)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE nlohmann_json)
+else()
+    message(FATAL_ERROR "No nlohmann_json target found. Please check the json submodule.")
 endif()
 
 message(STATUS "Adding build target: thirdparty/tracy")
