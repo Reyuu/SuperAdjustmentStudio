@@ -214,6 +214,11 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                 case WM_INPUT: {
                     return 0;
                 }
+                case WM_KEYDOWN:
+                case WM_KEYUP:
+                case WM_CHAR: {
+                    return 0;
+                }
                 case WM_MOUSEACTIVATE: {
                     return MA_NOACTIVATE;
                 }
