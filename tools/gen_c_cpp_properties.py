@@ -9,12 +9,25 @@ cl = sys.argv[2].replace('\\', '\\\\')
 inc = [root + p for p in [
     '/src', '/src/ui_helpers',
     '/thirdparty/LExSDKv2/Src', '/thirdparty/LExSDKv2/Src/LESDK',
-    '/thirdparty/imgui', '/thirdparty/imgui/backends',
-    '/thirdparty/IconFontCppHeaders', '/thirdparty/kiero',
-    '/thirdparty/spdlog/include', '/thirdparty/LExSDKv2/External',
-    '/thirdparty/zlib',
+    '/thirdparty/LExSDKv2/External',
+    '/thirdparty/imgui/backends',
+    '/thirdparty/tracy/public',
     '/build/compile-commands',
 ]]
+
+# auto-discover every thirdparty package instead of hardcoding one path per package,
+# so adding/removing a submodule doesn't require touching this script
+thirdparty = os.path.join(root, 'thirdparty')
+if os.path.isdir(thirdparty):
+    for name in sorted(os.listdir(thirdparty)):
+        pkg = os.path.join(thirdparty, name)
+        if not os.path.isdir(pkg) or name.startswith('.'):
+            continue
+        inc.append(pkg.replace('\\', '/'))
+        for sub in ('include', 'public', 'single_include'):
+            subdir = os.path.join(pkg, sub)
+            if os.path.isdir(subdir):
+                inc.append(subdir.replace('\\', '/'))
 
 data = {
     "configurations": [{

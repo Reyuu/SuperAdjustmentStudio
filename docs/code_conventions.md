@@ -17,7 +17,10 @@ Filenames for source and header files should be unique across the whole repo.
 | `docs/`           | Documentation about the project.                                                      |
 | `build/`          | Build artifacts, generated only after building the project. Should NEVER be comitted. |
 
-# pragma or not to pragma
+## Variable naming
+Please do not use loaded terminology - avoid using terms that may have multiple interpretations or carry unintended connotations eg. "master", "slave", "dirty", "blacklist", "whitelist". If the term is unavoidable, it came from third-party code or established conventions, you're permitted to use it, but be aware of its implications.
+
+## pragma or not to pragma
 Do not use `#pragma once`, use C-style header guards. Other `pragma` commands are allowed, but if the behaviour varies vastly between compilers - reconsider its use.
 
 ## Indentation

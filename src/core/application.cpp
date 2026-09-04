@@ -26,6 +26,8 @@ Application::~Application() {
 bool Application::attach(ISharedProxyInterface* proxy) {
     Logger->debug("SPI attach");
     didRequestExit.store(false);
+    settingsInstance.load();
+    rendererInstance.applySettings(settingsInstance.options);
     sdkInstance.initSdkGlobals(proxy);
     hookManagerInstance.setSdkContext(&sdkInstance);
     initThread = std::thread(&Application::initHooksThread, this);
@@ -35,6 +37,9 @@ bool Application::attach(ISharedProxyInterface* proxy) {
 void Application::detach() {
     Logger->debug("SPI detach - removing hooks");
     didRequestExit.store(true);
+    if (settingsInstance.didSettingsChange()) {
+        settingsInstance.save();
+    }
     if (initThread.joinable()) {
         initThread.join();
     }
@@ -107,9 +112,16 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
         }
 
         if (app.rendererInstance.isImGuiInitialized()) {
-            SHORT ks = GetAsyncKeyState(VK_F10);
-            bool currentF10 = (ks & 0x8000) != 0;
-            if (currentF10 && !app.previousF10) {
+            const std::string& hotkeyName = app.settingsInstance.options.showOverlay;
+            static std::string lastHotkeyName;
+            static int lastHotkeyVk = VK_F10;
+            if (hotkeyName != lastHotkeyName) {
+                lastHotkeyVk = app.settingsInstance.vkFromName(hotkeyName);
+                lastHotkeyName = hotkeyName;
+            }
+            SHORT ks = GetAsyncKeyState(lastHotkeyVk);
+            bool currentHotkey = (ks & 0x8000) != 0;
+            if (currentHotkey && !app.previousHotkey) {
                 std::atomic<bool>& showUI = app.ui().showUI();
                 showUI = !showUI.load();
                 app.ui().applyUIInputState(app.gameWindowInstance);
@@ -118,7 +130,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
                 ss << "Toggle UI: visible=" << showUI.load();
                 Logger->debug(ss.str());
             }
-            app.previousF10 = currentF10;
+            app.previousHotkey = currentHotkey;
 
             app.engine().applyHUDVisibility();
 

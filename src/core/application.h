@@ -17,6 +17,7 @@
 #include "prefabs.h"
 #include "props.h"
 #include "sdk.h"
+#include "settings.h"
 #include "ui.h"
 #include "vfx.h"
 #include <atomic>
@@ -88,6 +89,9 @@ class Application {
         PrefabManager& prefabs() {
             return prefabsInstance;
         }
+        Settings& settings() {
+            return settingsInstance;
+        }
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -119,8 +123,9 @@ class Application {
         ParticleManager particleInstance;
         LightManager lightsInstance;
         PrefabManager prefabsInstance;
+        Settings settingsInstance;
 
-        bool previousF10 = false;
+        bool previousHotkey = false;
 };
 
 #endif // SAS_APPLICATION_H

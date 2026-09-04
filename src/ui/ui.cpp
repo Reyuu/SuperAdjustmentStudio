@@ -23,6 +23,7 @@
 #include "native_renderer.h"
 #include "pcc_parser.h"
 #include "props.h"
+#include "settings.h"
 #include "tracy.h"
 
 // TODO: translations (save needed strings to .po, header only utility, save as std::map?, set global language,
@@ -448,7 +449,8 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
 
     ImGui::Begin(ICON_FA_SLIDERS " SuperAdjustmentStudio " PLUGIN_VERSION, NULL, ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Debug")) {
+        ImGui::MenuItem(ICON_FA_GEAR " Settings", nullptr, &showSettingsWindow);
+        if (ImGui::BeginMenu(ICON_FA_BUG " Debug")) {
             ImGui::MenuItem("Metrics##imgui_debug_metrics", ICON_FA_CHART_SIMPLE " Metrics", &showMetricsWindow);
             ImGui::MenuItem("Debug Log##imgui_debug_log", ICON_FA_LIST " Debug Log", &showDebugLogWindow);
             ImGui::MenuItem("ID Stack##imgui_id_stack", ICON_FA_LAYER_GROUP " ID Stack", &showIDStackToolWindow);
@@ -480,6 +482,9 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     }
     if (showIDStackToolWindow) {
         ImGui::ShowIDStackToolWindow(&showIDStackToolWindow);
+    }
+    if (showSettingsWindow) {
+        Application::instance().settings().renderSettingsWindow(&showSettingsWindow);
     }
 
     toastManager.renderToastNotifications();
