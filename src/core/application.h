@@ -20,6 +20,7 @@
 #include "settings.h"
 #include "ui.h"
 #include "vfx.h"
+#include "freecam.h"
 #include <atomic>
 #include <thread>
 
@@ -76,6 +77,10 @@ class Application {
             return animationInstance;
         }
 
+        Freecam& freecam() {
+            return freecamInstance;
+        }
+
         VFXManager& vfx() {
             return vfxInstance;
         }
@@ -119,6 +124,7 @@ class Application {
         Gizmo gizmoInstance;
         Bones bonesInstance;
         Animation animationInstance;
+        Freecam freecamInstance;
         VFXManager vfxInstance;
         ParticleManager particleInstance;
         LightManager lightsInstance;

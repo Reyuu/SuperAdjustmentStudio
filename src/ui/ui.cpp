@@ -379,7 +379,10 @@ void UI::applyUIInputState(GameWindow& window) {
             }
         }
     } else {
-        Application::instance().engine().isCameraDragActive() = false;
+        // Preserve freecam drag state when closing overlay
+        if (!Application::instance().freecam().isCameraDragActive().load()) {
+            Application::instance().engine().isCameraDragActive() = false;
+        }
         ClipCursor(NULL);
         ReleaseCapture();
     }
@@ -468,6 +471,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     // DO NOT run Bones:keepBonePoses here -> SHOULD ALWAYS RUN ON GAME THREAD ABioHUD::PostRender
 
     renderControlsSection();
+    Application::instance().freecam().renderUi();
     renderSelectionSection();
     renderSpawnSection();
     renderPackagesSection();

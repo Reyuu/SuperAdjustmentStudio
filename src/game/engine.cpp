@@ -27,6 +27,7 @@ static void hkGameEngineTick(void* self, float dt) {
         }
         Application::instance().engine().drainPackageLoads();
         Application::instance().engine().drainGameThreadTasks();
+        Application::instance().freecam().assertFreecamCache();
 
         static UWorld* s_lastWorld = nullptr;
         UWorld* curWorld = (GWorld && *GWorld) ? *GWorld : nullptr;
@@ -34,6 +35,7 @@ static void hkGameEngineTick(void* self, float dt) {
             s_lastWorld = curWorld;
             if (curWorld) {
                 Application::instance().particles().removeAllParticles();
+                Application::instance().freecam().resetFreecamState();
             }
         }
     } SAS_HOOK_CATCH_VOID

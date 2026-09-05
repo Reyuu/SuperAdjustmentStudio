@@ -676,8 +676,14 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
     ABioHUD* hud = nullptr;
     AActor* actor = nullptr;
     bool drawOnTop = false;
+    bool skipPreFreecamHook = false;
 
     SAS_HOOK_TRY {
+        // Pre-call freecam hook to bypass original camera scripts if needed
+        if (Context && !skipPreFreecamHook) {
+            skipPreFreecamHook = Application::instance().freecam().preFreecamCameraHook(Context, Function);
+        }
+
         if (Context && Context->IsA(ABioHUD::StaticClass()) && Function->GetName().Equals(L"PostRender")) {
 
             hud = static_cast<ABioHUD*>(Context);
@@ -719,11 +725,19 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
         }
     } SAS_HOOK_CATCH_VOID
 
-    if (origProcessEvent) {
+    if (!skipPreFreecamHook && origProcessEvent) {
         origProcessEvent(Context, Function, Parms, Result);
     }
 
     SAS_HOOK_TRY {
+        // Post-call freecam hooks for post-process and cache updates
+        if (Context && Function) {
+            Application::instance().freecam().overrideFillCameraCache(Context, Function, Parms);
+            if (skipPreFreecamHook) {
+                Application::instance().freecam().assertFreecamCache();
+            }
+            Application::instance().freecam().observeModePostProcess(Context, Function, Parms);
+        }
         if (hud) {
             Application::instance().bones().keepBonePoses();
         }

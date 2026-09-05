@@ -133,7 +133,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             app.previousHotkey = currentHotkey;
 
             app.engine().applyHUDVisibility();
-
+            app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
             app.rendererInstance.beginRender();
 
@@ -184,13 +184,24 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
             }
             switch (uMsg) {
                 case WM_MOUSEMOVE: {
-                    if (app.engine().isCameraDragActive().load()) {
+                    if (app.freecam().isCameraDragActive().load()) {
+                        int dx = (int)GET_X_LPARAM(lParam);
+                        int dy = (int)GET_Y_LPARAM(lParam);
+                        static int lastX = dx, lastY = dy;
+                        int deltaX = dx - lastX;
+                        int deltaY = dy - lastY;
+                        lastX = dx;
+                        lastY = dy;
+                        if (deltaX != 0 || deltaY != 0) {
+                            CameraDragState state = (CameraDragState)app.freecam().cameraDragState().load();
+                            app.freecam().moveFreecam(deltaX, deltaY, state);
+                        }
                         break;
                     }
                     return 0;
                 }
                 case WM_RBUTTONDOWN: {
-                    if (app.engine().isCameraDragActive().load()) {
+                    if (app.freecam().isCameraDragActive().load()) {
                         break;
                     }
                     POINT spt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
@@ -199,12 +210,48 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     if (PtInRect(&uiRect, spt)) {
                         return 0;
                     }
-                    app.engine().isCameraDragActive() = true;
+                    // Determine camera drag state based on SHIFT/CTRL keys
+                    bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+                    bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                    CameraDragState state = CAMERA_DRAG_ORBITING;
+                    if (shiftDown && ctrlDown) {
+                        state = CAMERA_DRAG_VERTICAL_PANNING;
+                    } else if (shiftDown) {
+                        state = CAMERA_DRAG_PANNING;
+                    }
+                    app.freecam().cameraDragState() = state;
+                    app.freecam().isCameraDragActive() = true;
                     break;
                 }
                 case WM_RBUTTONUP: {
-                    app.engine().isCameraDragActive() = false;
+                    app.freecam().isCameraDragActive() = false;
+                    app.freecam().cameraDragState() = CAMERA_DRAG_INACTIVE;
                     break;
+                }
+                case WM_LBUTTONDOWN: {
+                    if (app.freecam().isCameraDragActive().load()) {
+                        return 0;
+                    }
+                    if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) == 0) {
+                        return 0;
+                    }
+                    POINT spt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+                    ClientToScreen(hWnd, &spt);
+                    RECT uiRect = app.rendererInstance.uiRect();
+                    if (PtInRect(&uiRect, spt)) {
+                        return 0;
+                    }
+                    app.freecam().cameraDragState() = CAMERA_DRAG_VERTICAL_PANNING;
+                    app.freecam().isCameraDragActive() = true;
+                    break;
+                }
+                case WM_LBUTTONUP: {
+                    if (app.freecam().isCameraDragActive().load() && (CameraDragState)app.freecam().cameraDragState().load() == CAMERA_DRAG_VERTICAL_PANNING) {
+                        app.freecam().isCameraDragActive() = false;
+                        app.freecam().cameraDragState() = CAMERA_DRAG_INACTIVE;
+                        break;
+                    }
+                    return 0;
                 }
                 case WM_RBUTTONDBLCLK: {
                     if (app.engine().isCameraDragActive().load()) {
@@ -212,8 +259,6 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     }
                     return 0;
                 }
-                case WM_LBUTTONDOWN:
-                case WM_LBUTTONUP:
                 case WM_LBUTTONDBLCLK:
                 case WM_MBUTTONDOWN:
                 case WM_MBUTTONUP:
