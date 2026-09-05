@@ -1,7 +1,7 @@
 #include "settings.h"
 #include "application.h"
 #include "logger.h"
-#include "nlohmann/json.hpp"
+#include "json.hpp"
 
 #include "IconsFontAwesome6.h"
 #include "imgui.h"
@@ -400,10 +400,11 @@ static std::string displayNameForVk(int vk) {
             return "LAUNCHMEDIA";
         case VK_LAUNCH_APP1:
             return "LAUNCHAPP1";
-        case VK_LAUNCH_APP2:
+        case VK_LAUNCH_APP2: {
             return "LAUNCHAPP2";
         default: {
             break;
+        }
         }
     }
 

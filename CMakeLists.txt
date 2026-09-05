@@ -140,6 +140,9 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/IconFontCppHeaders
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib
+    # flat nlohmann/json include: allows #include "json.hpp"
+    # (single_include version is amalgamated, so no internal <nlohmann/...> deps break)
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json/single_include/nlohmann
 )
 
 # link dependencies

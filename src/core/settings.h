@@ -1,7 +1,7 @@
 #ifndef SAS_SETTINGS_H
 #define SAS_SETTINGS_H
 
-#include "nlohmann/json.hpp"
+#include "json.hpp"
 #include <filesystem>
 #include <string>
 
