@@ -7,6 +7,8 @@
 
 Please treat this release as <ins>**BETA**</ins>.
 
+[Trello Board](https://trello.com/b/xn5xTWmX/sas)
+
 [![Release build](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml/badge.svg?branch=main)](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml)
 ### Features (what works)
 - transforms for all actors - position, rotation and scale
