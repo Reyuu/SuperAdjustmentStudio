@@ -132,7 +132,6 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             }
             app.previousHotkey = currentHotkey;
 
-            app.engine().applyHUDVisibility();
             app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
             app.rendererInstance.beginRender();

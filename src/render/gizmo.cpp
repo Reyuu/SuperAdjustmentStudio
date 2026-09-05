@@ -689,8 +689,6 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
             hud = static_cast<ABioHUD*>(Context);
             hud->FlushPersistentDebugLines();
 
-            Application::instance().engine().applyHUDVisibility();
-
             const bool uiVisible = Application::instance().ui().showUI().load();
             if (uiVisible && clickSelectState) {
                 checkClickSelect(hud);

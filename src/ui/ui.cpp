@@ -516,8 +516,7 @@ void UI::renderControlsSection() {
     bool hideGameUI = Application::instance().engine().isGameUIHidden();
     icon = hideGameUI ? ICON_FA_EYE_SLASH : ICON_FA_EYE;
     if (ImGui::Checkbox((std::string(icon) + " Hide all game UI").c_str(), &hideGameUI)) {
-        Application::instance().engine().isGameUIHidden() = hideGameUI;
-        Application::instance().engine().applyHUDVisibility();
+        Application::instance().engine().setGameUIHidden(hideGameUI);
     }
 
     ImGui::TableNextRow();
