@@ -173,6 +173,14 @@ HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwap
                : S_OK;
 }
 
+static int g_dragLastX = 0;
+static int g_dragLastY = 0;
+
+static void seedDragOrigin(int x, int y) {
+    g_dragLastX = x;
+    g_dragLastY = y;
+}
+
 LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     ZoneScopedN("WndProc");
     Application& app = instance();
@@ -186,11 +194,10 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     if (app.freecam().isCameraDragActive().load()) {
                         int dx = (int)GET_X_LPARAM(lParam);
                         int dy = (int)GET_Y_LPARAM(lParam);
-                        static int lastX = dx, lastY = dy;
-                        int deltaX = dx - lastX;
-                        int deltaY = dy - lastY;
-                        lastX = dx;
-                        lastY = dy;
+                        int deltaX = dx - g_dragLastX;
+                        int deltaY = dy - g_dragLastY;
+                        g_dragLastX = dx;
+                        g_dragLastY = dy;
                         if (deltaX != 0 || deltaY != 0) {
                             CameraDragState state = (CameraDragState)app.freecam().cameraDragState().load();
                             app.freecam().moveFreecam(deltaX, deltaY, state);
@@ -220,6 +227,7 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     }
                     app.freecam().cameraDragState() = state;
                     app.freecam().isCameraDragActive() = true;
+                    seedDragOrigin(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                     break;
                 }
                 case WM_RBUTTONUP: {
@@ -242,6 +250,7 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     }
                     app.freecam().cameraDragState() = CAMERA_DRAG_VERTICAL_PANNING;
                     app.freecam().isCameraDragActive() = true;
+                    seedDragOrigin(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
                     break;
                 }
                 case WM_LBUTTONUP: {

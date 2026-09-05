@@ -396,11 +396,12 @@ void Freecam::syncFreecamHides(bool neutral) {
     const bool self = !neutral && options.isFreecamHideSelfEnabled;
     const bool npcs = !neutral && options.isFreecamHideNPCsEnabled;
     const bool party = !neutral && options.isFreecamHidePartyEnabled;
+    const bool vehicle = !neutral && options.isFreecamHideVehicleEnabled;
     photoMode->SetPlayerHidden(self);
     photoMode->SetPartyHidden(party);
     photoMode->SetEnemiesHidden(others);
     photoMode->SetNPCsHidden(npcs);
-    photoMode->SetPartyHidden(others);
+    photoMode->SetVehicleHidden(vehicle);
 }
 
 const char* Freecam::dragModeSuffix() {
