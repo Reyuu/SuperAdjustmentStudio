@@ -218,7 +218,7 @@ void Engine::setPause(bool pause) {
 AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     if (className.empty()) {
         Logger->debug("spawnClass: empty class name");
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: empty class name", ToastTypeError, 3.0);
+        Application::instance().ui().toastManager.addToastNotification(t("ui.spawn_table.failed_empty_class_name"), ToastTypeError, 3.0);
         return nullptr;
     }
 
@@ -230,21 +230,25 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     }
     if (!cls) {
         Logger->debug("spawnClass: class not found");
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: class not found: " + className, ToastTypeError, 3.0);
+        char notFoundBuf[512];
+        snprintf(notFoundBuf, sizeof(notFoundBuf), t("ui.spawn_table.failed_class_not_found"), className.c_str());
+        Application::instance().ui().toastManager.addToastNotification(notFoundBuf, ToastTypeError, 3.0);
         return nullptr;
     }
     if (cls->ClassFlags & CLASS_Abstract) {
         std::ostringstream ss;
         ss << "spawnClass: class is abstract (ClassFlags=0x" << std::hex << cls->ClassFlags << std::dec << "), cannot spawn";
         Logger->debug(ss.str());
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: class is abstract: " + className, ToastTypeError, 3.0);
+        char abstractBuf[512];
+        snprintf(abstractBuf, sizeof(abstractBuf), t("ui.spawn_table.failed_class_abstract"), className.c_str());
+        Application::instance().ui().toastManager.addToastNotification(abstractBuf, ToastTypeError, 3.0);
         return nullptr;
     }
 
     AActor* caller = findActorByName("");
     if (!caller) {
         Logger->debug("spawnClass: no actor available to spawn from (how did this even happen?!)");
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: no actor available to spawn from", ToastTypeError, 3.0);
+        Application::instance().ui().toastManager.addToastNotification(t("ui.spawn_table.failed_no_actor_available"), ToastTypeError, 3.0);
         return nullptr;
     }
 
@@ -268,7 +272,9 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     if (!spawned) {
         Logger->debug("spawnClass: spawn returned null, dumping class diagnostics:");
         Logger->debug(diagnoseClass(className));
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: " + className + " returned null (see log)", ToastTypeError, 4.0);
+        char nullBuf[512];
+        snprintf(nullBuf, sizeof(nullBuf), t("ui.spawn_table.failed_ret_null_class"), className.c_str());
+        Application::instance().ui().toastManager.addToastNotification(nullBuf, ToastTypeError, 4.0);
         return nullptr;
     }
 

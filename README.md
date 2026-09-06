@@ -7,9 +7,11 @@
 
 Please treat this release as <ins>**BETA**</ins>.
 
-[Trello Board](https://trello.com/b/xn5xTWmX/sas)
-
+[![Crowdin](https://img.shields.io/badge/Crowdin-grey?logo=trello)](https://crowdin.com/project/superadjustmentstudio)
+[![Trello Board](https://img.shields.io/badge/Trello-SAS-blue?logo=trello)](https://trello.com/b/xn5xTWmX/sas)
 [![Release build](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml/badge.svg?branch=main)](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml)
+[![Crowdin](https://badges.crowdin.net/superadjustmentstudio/localized.svg)](https://crowdin.com/project/superadjustmentstudio)
+
 ### Features (what works)
 - transforms for all actors - position, rotation and scale
 - playing custom animations - both included in the Pawn's animation set and not
@@ -121,4 +123,4 @@ If I used your code and did not credit you, please reach out, I'll be more than 
 - [d00t](https://github.com/llamathings), [Mgamerz](https://github.com/Mgamerz) and [Cersei](https://github.com/SirCxyrtyx) - for helping me with my understanding of LExSDK
 
 ## Other things
-**I do NOT allow this mod to be reposted just for the translation to be added.** The translation handling will be implemented in the future version, when it does - I'll be more than happy to entertain pull requests with created translations.
+**I do NOT allow this mod to be reposted just for the translation to be added.** The translation handling is implemented. Translation happens on Crowdin, contact me if you want to contribute!

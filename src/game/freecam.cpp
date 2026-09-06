@@ -421,7 +421,7 @@ const char* Freecam::dragModeSuffix() {
 }
 
 void Freecam::renderUi() {
-    if (!ImGui::CollapsingHeader(ICON_FA_CAMERA " Freecam")) {
+    if (!ImGui::CollapsingHeader((std::string(ICON_FA_CAMERA " ") + t("ui.freecam")).c_str())) {
         return;
     }
 
@@ -464,15 +464,19 @@ void Freecam::renderUi() {
     };
 
     bool enabled = freecamWantedState.load();
-    if (ImGui::Checkbox(ICON_FA_VIDEO " Enable freecam (photo camera)", &enabled)) {
+    if (ImGui::Checkbox((std::string(ICON_FA_VIDEO " ") + t("ui.freecam_table.enable")).c_str(), &enabled)) {
         setFreecamEnabled(enabled);
     }
 
     ImGui::PushItemWidth(-100);
-    rawSlider("Move speed##freecam_speed", options.freecamMoveSpeed, SETTINGS_FREECAM_MOVE_SPEED_MIN, SETTINGS_FREECAM_MOVE_SPEED_MAX, false);
-    rawSlider("Field of view##freecam_fov", options.freecamFOV, SETTINGS_FREECAM_FOV_MIN, SETTINGS_FREECAM_FOV_MAX, false);
-    slider("Roll##freecam_roll", options.freecamRoll, SETTINGS_FREECAM_ROLL_MIN, SETTINGS_FREECAM_ROLL_MAX, false);
-    if (ImGui::Checkbox(ICON_FA_WAND_SPARKLES " Photo adjustments##freecam_adjust", &options.isFreecamAdjustEnabled)) {
+    rawSlider((std::string(t("ui.freecam_table.move_speed")) + "##freecam_speed").c_str(), options.freecamMoveSpeed, SETTINGS_FREECAM_MOVE_SPEED_MIN,
+              SETTINGS_FREECAM_MOVE_SPEED_MAX, false);
+    rawSlider((std::string(t("ui.freecam_table.fov")) + "##freecam_fov").c_str(), options.freecamFOV, SETTINGS_FREECAM_FOV_MIN, SETTINGS_FREECAM_FOV_MAX,
+              false);
+    slider((std::string(t("ui.freecam_table.roll")) + "##freecam_roll").c_str(), options.freecamRoll, SETTINGS_FREECAM_ROLL_MIN, SETTINGS_FREECAM_ROLL_MAX,
+           false);
+    if (ImGui::Checkbox((std::string(ICON_FA_WAND_SPARKLES " ") + t("ui.freecam_table.photo_adjust") + "##freecam_adjust").c_str(),
+                        &options.isFreecamAdjustEnabled)) {
         app.settings().markChanged();
         app.engine().postGameThreadTask([]() {
             Application::instance().freecam().requestFreecamSeed();
@@ -481,41 +485,52 @@ void Freecam::renderUi() {
     }
     if (options.isFreecamAdjustEnabled) {
         ImGui::Indent();
-        ImGui::SeparatorText("Lens");
-        toggle("Depth of field##freecam_dof", options.isFreecamDofEnabled);
+        ImGui::SeparatorText(t("ui.freecam_table.lens"));
+        toggle((std::string(t("ui.freecam_table.dof")) + "##freecam_dof").c_str(), options.isFreecamDofEnabled);
         if (options.isFreecamDofEnabled) {
-            rawSlider("Focus distance##freecam_dofdist", options.freecamDofDistance, SETTINGS_FREECAM_DOF_DISTANCE_MIN, SETTINGS_FREECAM_DOF_DISTANCE_MAX);
-            rawSlider("Focus inner radius##freecam_dofinner", options.freecamDofInnerRadius, SETTINGS_FREECAM_DOF_INNER_RADIUS_MIN,
-                      SETTINGS_FREECAM_DOF_INNER_RADIUS_MAX);
-            rawSlider("F-stop##freecam_doffstop", options.freecamDofFStop, SETTINGS_FREECAM_DOF_FSTOP_MIN, SETTINGS_FREECAM_DOF_FSTOP_MAX);
-            slider("DOF intensity##freecam_dofint", options.freecamDofIntensity, SETTINGS_FREECAM_DOF_INTENSITY_MIN, SETTINGS_FREECAM_DOF_INTENSITY_MAX);
+            rawSlider((std::string(t("ui.freecam_table.focus_dist")) + "##freecam_dofdist").c_str(), options.freecamDofDistance,
+                      SETTINGS_FREECAM_DOF_DISTANCE_MIN, SETTINGS_FREECAM_DOF_DISTANCE_MAX);
+            rawSlider((std::string(t("ui.freecam_table.focus_inn_rad")) + "##freecam_dofinner").c_str(), options.freecamDofInnerRadius,
+                      SETTINGS_FREECAM_DOF_INNER_RADIUS_MIN, SETTINGS_FREECAM_DOF_INNER_RADIUS_MAX);
+            rawSlider((std::string(t("ui.freecam_table.fstop")) + "##freecam_doffstop").c_str(), options.freecamDofFStop, SETTINGS_FREECAM_DOF_FSTOP_MIN,
+                      SETTINGS_FREECAM_DOF_FSTOP_MAX);
+            slider((std::string(t("ui.freecam_table.dof_intensity")) + "##freecam_dofint").c_str(), options.freecamDofIntensity,
+                   SETTINGS_FREECAM_DOF_INTENSITY_MIN, SETTINGS_FREECAM_DOF_INTENSITY_MAX);
         }
-        ImGui::SeparatorText("Bloom");
-        toggle("Enable##freecam_bloomon", options.isFreecamBloomEnabled);
-        slider("Bloom threshold##freecam_bloomthr", options.freecamBloomThreshold, SETTINGS_FREECAM_BLOOM_THRESHOLD_MIN, SETTINGS_FREECAM_BLOOM_THRESHOLD_MAX);
-        slider("Bloom intensity##freecam_bloomint", options.freecamBloomScale, SETTINGS_FREECAM_BLOOM_SCALE_MIN, SETTINGS_FREECAM_BLOOM_SCALE_MAX);
-        ImGui::SeparatorText("Color");
-        toggle("Enable##freecam_coloron", options.isFreecamColorEnabled);
-        slider("Contrast##freecam_contrast", options.freecamContrast, SETTINGS_FREECAM_CONTRAST_MIN, SETTINGS_FREECAM_CONTRAST_MAX);
-        slider("Brightness##freecam_bright", options.freecamBright, SETTINGS_FREECAM_COLOR_MIN, SETTINGS_FREECAM_COLOR_MAX, true, true);
-        slider("Saturation##freecam_sat", options.freecamSat, SETTINGS_FREECAM_SATURATION_MIN, SETTINGS_FREECAM_SATURATION_MAX);
+        ImGui::SeparatorText(t("ui.freecam_table.bloom"));
+        toggle((std::string(t("ui.freecam_table.enable_bloom")) + "##freecam_bloomon").c_str(), options.isFreecamBloomEnabled);
+        slider((std::string(t("ui.freecam_table.bloom_threshold")) + "##freecam_bloomthr").c_str(), options.freecamBloomThreshold,
+               SETTINGS_FREECAM_BLOOM_THRESHOLD_MIN, SETTINGS_FREECAM_BLOOM_THRESHOLD_MAX);
+        slider((std::string(t("ui.freecam_table.bloom_intensity")) + "##freecam_bloomint").c_str(), options.freecamBloomScale, SETTINGS_FREECAM_BLOOM_SCALE_MIN,
+               SETTINGS_FREECAM_BLOOM_SCALE_MAX);
+        ImGui::SeparatorText(t("ui.freecam_table.color"));
+        toggle((std::string(t("ui.freecam_table.enable_color")) + "##freecam_coloron").c_str(), options.isFreecamColorEnabled);
+        slider((std::string(t("ui.freecam_table.contrast")) + "##freecam_contrast").c_str(), options.freecamContrast, SETTINGS_FREECAM_CONTRAST_MIN,
+               SETTINGS_FREECAM_CONTRAST_MAX);
+        slider((std::string(t("ui.freecam_table.brightness")) + "##freecam_bright").c_str(), options.freecamBright, SETTINGS_FREECAM_COLOR_MIN,
+               SETTINGS_FREECAM_COLOR_MAX, true, true);
+        slider((std::string(t("ui.freecam_table.saturation")) + "##freecam_sat").c_str(), options.freecamSat, SETTINGS_FREECAM_SATURATION_MIN,
+               SETTINGS_FREECAM_SATURATION_MAX);
         ImGui::PopItemWidth();
-        ImGui::SeparatorText("Hide");
-        toggle("Player##freecam_hideplayer", options.isFreecamHideSelfEnabled);
-        toggle("Party##freecam_hideparty", options.isFreecamHidePartyEnabled);
-        toggle("Other pawns (NPCs, enemies)##freecam_hideothers", options.isFreecamHideOthersEnabled);
-        toggle("Vehicles##freecam_hidevehicle", options.isFreecamHideVehicleEnabled);
+        ImGui::SeparatorText(t("ui.freecam_table.hide"));
+        toggle((std::string(t("ui.freecam_table.player")) + "##freecam_hideplayer").c_str(), options.isFreecamHideSelfEnabled);
+        toggle((std::string(t("ui.freecam_table.party")) + "##freecam_hideparty").c_str(), options.isFreecamHidePartyEnabled);
+        toggle((std::string(t("ui.freecam_table.other_pawns")) + "##freecam_hideothers").c_str(), options.isFreecamHideOthersEnabled);
+        toggle((std::string(t("ui.freecam_table.vehicles")) + "##freecam_hidevehicle").c_str(), options.isFreecamHideVehicleEnabled);
         ImGui::Unindent();
     } else {
         ImGui::PopItemWidth();
     }
-    if (ImGui::Button(ICON_FA_LOCATION_ARROW " Reset to player##freecam_reset")) {
+    if (ImGui::Button((std::string(ICON_FA_LOCATION_ARROW " ") + t("ui.freecam_table.reset_to_player") + "##freecam_reset").c_str())) {
         app.engine().postGameThreadTask([]() {
             Application::instance().freecam().resetFreecamToPlayer();
         });
     }
-    const char* state = isFreecamActive() ? (freecamWanted().load() ? "free" : "disabling...") : (freecamWanted().load() ? "enabling..." : "attached");
-    ImGui::TextDisabled("Status: %s%s", state, dragModeSuffix());
-    ImGui::TextDisabled("RMB look - SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit");
+    const std::string state = isFreecamActive() ? (freecamWanted().load() ? Translation::instance().translate("ui.freecam_table.status_state.free")
+                                                                          : Translation::instance().translate("ui.freecam_table.status_state.disabling"))
+                                                : (freecamWanted().load() ? Translation::instance().translate("ui.freecam_table.status_state.enabling")
+                                                                          : Translation::instance().translate("ui.freecam_table.status_state.attached"));
+    ImGui::TextDisabled(t("ui.freecam_table.status"), state.c_str(), dragModeSuffix());
+    ImGui::TextDisabled(t("ui.freecam_table.instructions"));
     ImGui::Unindent();
 }

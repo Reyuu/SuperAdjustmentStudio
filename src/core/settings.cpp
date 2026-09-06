@@ -2,6 +2,7 @@
 #include "application.h"
 #include "logger.h"
 #include "json.hpp"
+#include "translation.h"
 
 #include "IconsFontAwesome6.h"
 #include "imgui.h"
@@ -398,13 +399,14 @@ static std::string displayNameForVk(int vk) {
             return "LAUNCHMAIL";
         case VK_LAUNCH_MEDIA_SELECT:
             return "LAUNCHMEDIA";
-        case VK_LAUNCH_APP1:
+        case VK_LAUNCH_APP1: {
             return "LAUNCHAPP1";
         case VK_LAUNCH_APP2: {
             return "LAUNCHAPP2";
-        default: {
-            break;
+            default: {
+                break;
         }
+            }
         }
     }
 
@@ -505,7 +507,7 @@ std::string Settings::nameFromVk(int vk) {
 
 void Settings::renderSettingsWindow(bool* open) {
     ImGui::SetNextWindowSize(ImVec2(420, 400), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin(ICON_FA_GEAR " Settings", open)) {
+    if (!ImGui::Begin((std::string(ICON_FA_GEAR " ") + t("ui.settings")).c_str(), open)) {
         ImGui::End();
         return;
     }
@@ -526,7 +528,7 @@ void Settings::renderSettingsWindow(bool* open) {
         }
     }
 
-    ImGui::Text("Language:");
+    ImGui::Text(t("ui.settings_table.language"));
     ImGui::PushItemWidth(-100);
     std::string langPreview = SUPPORTED_LANGUAGES[langIndex][1] + " (" + SUPPORTED_LANGUAGES[langIndex][0] + ")";
     if (ImGui::BeginCombo("##settings_lang", langPreview.c_str())) {
@@ -535,6 +537,8 @@ void Settings::renderSettingsWindow(bool* open) {
             std::string label = SUPPORTED_LANGUAGES[i][1] + " (" + SUPPORTED_LANGUAGES[i][0] + ")##" + std::to_string(i);
             if (ImGui::Selectable(label.c_str(), selected)) {
                 opts.language = SUPPORTED_LANGUAGES[i][0];
+                Translation::instance().setLanguage(opts.language);
+                Translation::instance().loadTranslations();
                 markChanged();
             }
             if (selected) {
@@ -545,11 +549,11 @@ void Settings::renderSettingsWindow(bool* open) {
     }
     ImGui::PopItemWidth();
     if (opts.language != "en") {
-        ImGui::TextDisabled("Only English is translated for now; the choice is saved for later.");
+        ImGui::TextDisabled(t("ui.settings_table.only_english_note"));
     }
 
     int fontSize = opts.fontSize;
-    ImGui::Text("Font size:");
+    ImGui::Text(t("ui.settings_table.font_size"));
     ImGui::PushItemWidth(-100);
     if (ImGui::SliderInt("##settings_font", &fontSize, SETTINGS_FONT_SIZE_MIN, SETTINGS_FONT_SIZE_MAX)) {
         opts.fontSize = std::clamp(fontSize, SETTINGS_FONT_SIZE_MIN, SETTINGS_FONT_SIZE_MAX);
@@ -566,7 +570,7 @@ void Settings::renderSettingsWindow(bool* open) {
             break;
         }
     }
-    ImGui::Text("Theme:");
+    ImGui::Text(t("ui.settings_table.theme"));
     ImGui::PushItemWidth(-100);
     if (ImGui::BeginCombo("##settings_theme", SUPPORTED_THEMES[themeIndex].label)) {
         for (int i = 0; i < themeCount; ++i) {
@@ -613,7 +617,7 @@ void Settings::renderSettingsWindow(bool* open) {
             break;
         }
     }
-    ImGui::Text("Overlay hotkey");
+    ImGui::Text(t("ui.settings_table.overlay_hotkey"));
     ImGui::PushItemWidth(-100);
     if (hotkeyIndex < (int)allHotkeys.size() && ImGui::BeginCombo("##settings_hotkey", allHotkeys[hotkeyIndex].c_str())) {
         for (int i = 0; i < (int)allHotkeys.size(); ++i) {
@@ -631,20 +635,22 @@ void Settings::renderSettingsWindow(bool* open) {
     ImGui::PopItemWidth();
 
     if (didSettingsChange()) {
-        ImGui::TextDisabled("(unsaved changes)");
+        ImGui::TextDisabled(t("ui.settings_table.unsaved_changes"));
     }
     if (ImGui::Button(ICON_FA_FLOPPY_DISK "##settings_save")) {
         if (save()) {
-            toasts.addToastNotification("Settings saved", ToastTypeSuccess, 2.0f);
+            toasts.addToastNotification(t("ui.settings_table.saved"), ToastTypeSuccess, 2.0f);
         } else {
-            toasts.addToastNotification("Failed to save settings (check log)", ToastTypeError, 3.0f);
+            toasts.addToastNotification(t("ui.settings_table.failed_saved"), ToastTypeError, 3.0f);
         }
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_ARROW_RIGHT_TO_BRACKET "##settings_revert")) {
         revert();
+        Translation::instance().setLanguage(opts.language);
+        Translation::instance().loadTranslations();
         Application::instance().renderer().applySettings(opts);
-        toasts.addToastNotification("Settings reverted", ToastTypeInfo, 2.0f);
+        toasts.addToastNotification(t("ui.settings_table.reverted"), ToastTypeInfo, 2.0f);
     }
 
     ImGui::End();

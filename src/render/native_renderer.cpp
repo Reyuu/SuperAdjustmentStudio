@@ -6,6 +6,7 @@
 #include "kiero.h"
 #include "logger.h"
 #include "settings.h"
+#include "translation.h"
 #include <algorithm>
 #include <sstream>
 #include <windows.h>
@@ -378,6 +379,15 @@ static void setupImGuiStyle(const std::string& theme) {
 }
 
 bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
+    if (Translation::instance().startup) {
+        Translation::instance().startup = false;
+        Translation::instance().loadTranslations();
+        SettingOptions& options = Settings::instance().options;
+        if (options.language.empty()) {
+            options.language = "en";
+        }
+        Translation::instance().setLanguage(options.language);
+    }
     if (isImGuiInitializedBool) {
         return true;
     }

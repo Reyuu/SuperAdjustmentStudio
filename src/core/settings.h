@@ -6,15 +6,15 @@
 #include <string>
 
 inline const std::string SUPPORTED_LANGUAGES[][2] = {
-    {"en", "English" },
-    {"fr", "français"},
-    {"de", "Deutsch" },
-    {"es", "Español" },
-    {"it", "Italiano"},
-    {"pl", "Polski"  },
-    {"jp", "日本語"  },
-    {"cn", "中文"    },
-    {"tw", "繁體中文"}
+    {"en",    "English" },
+    {"fr",    "français"},
+    {"de",    "Deutsch" },
+    {"es-ES", "Español" },
+    {"it",    "Italiano"},
+    {"pl",    "Polski"  },
+    {"ja",    "日本語"  },
+    {"zh-CN", "中文"    },
+    {"zh-TW", "繁體中文"}
 };
 
 struct ThemeEntry {
@@ -25,8 +25,8 @@ struct ThemeEntry {
 inline const ThemeEntry SUPPORTED_THEMES[] = {
     {"default",  "Default (dark)"     },
     {"dark",     "ImGui Dark (dark)"  },
-    {"paper",    "Paper & Ink (light)"},
     {"maroon",   "Maroon (dark)"      },
+    {"paper",    "Paper & Ink (light)"},
     {"spectrum", "Spectrum (light)"   },
 };
 

@@ -20,6 +20,7 @@
 #include "settings.h"
 #include "ui.h"
 #include "vfx.h"
+#include "translation.h"
 #include "freecam.h"
 #include <atomic>
 #include <thread>
@@ -97,6 +98,11 @@ class Application {
         Settings& settings() {
             return settingsInstance;
         }
+
+        Translation& translation() {
+            return translationInstance;
+        }
+
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -130,6 +136,7 @@ class Application {
         LightManager lightsInstance;
         PrefabManager prefabsInstance;
         Settings settingsInstance;
+        Translation translationInstance;
 
         bool previousHotkey = false;
 };

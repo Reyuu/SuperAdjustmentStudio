@@ -362,7 +362,7 @@ void PrefabManager::forceUpdateMaterial() {
     }
 
     Logger->debug("forceUpdateMaterial: updated " + std::to_string(updated) + " comps for '" + entry.name + "'");
-    Application::instance().ui().toastManager.addToastNotification("Material update forced", ToastTypeSuccess, 2.0);
+    Application::instance().ui().toastManager.addToastNotification(t("ui.prefabs_table.material_forced"), ToastTypeSuccess, 2.0);
 }
 
 // update the light expansion of the selected prefab entry
@@ -450,7 +450,7 @@ void PrefabManager::spawnPrefabLight(const Transform& t, int entryIdx) {
 void PrefabManager::spawnCornerLights() {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     if (selectedActive < 0 || selectedActive >= (int)prefabEntries.size()) {
-        Application::instance().ui().toastManager.addToastNotification("Select another object to be able to spawn the prefab!", ToastTypeError, 2.0);
+        Application::instance().ui().toastManager.addToastNotification(t("ui.prefabs_table.select_another"), ToastTypeError, 2.0);
         return;
     }
 
@@ -485,13 +485,13 @@ void PrefabManager::spawnCornerLights() {
         t.scale[0] = t.scale[1] = t.scale[2] = 1;
         spawnPrefabLight(t, idx);
     }
-    Application::instance().ui().toastManager.addToastNotification("Spawned 8 corner lights for the selected object", ToastTypeSuccess, 2.0);
+    Application::instance().ui().toastManager.addToastNotification(t("ui.prefabs_table.spawned_8"), ToastTypeSuccess, 2.0);
 }
 
 void PrefabManager::spawnFaceLights() {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     if (selectedActive < 0 || selectedActive >= (int)prefabEntries.size()) {
-        Application::instance().ui().toastManager.addToastNotification("Select a spawned prefab first!", ToastTypeError, 2.0);
+        Application::instance().ui().toastManager.addToastNotification(t("ui.prefabs_table.select_spawned"), ToastTypeError, 2.0);
         return;
     }
     PrefabEntry& entry = prefabEntries[selectedActive];
@@ -524,7 +524,7 @@ void PrefabManager::spawnFaceLights() {
         t.scale[0] = t.scale[1] = t.scale[2] = 1;
         spawnPrefabLight(t, idx);
     }
-    Application::instance().ui().toastManager.addToastNotification("Spawned 6 face lights for the selected object", ToastTypeSuccess, 2.0);
+    Application::instance().ui().toastManager.addToastNotification(t("ui.prefabs_table.spawned_6"), ToastTypeSuccess, 2.0);
 }
 
 void PrefabManager::spawnLightsByConfig(LightConfig cfg) {
@@ -639,7 +639,7 @@ void PrefabManager::spawnPrefab(const std::string& name) {
 
     if (spawnedActors.empty()) {
         Logger->debug("spawnPrefab: prefab produced no actors: " + name);
-        Application::instance().ui().toastManager.addToastNotification("Spawn produced no actors (see log)! " + name, ToastTypeError, 4.0);
+        Application::instance().ui().toastManager.addToastNotification(t("ui.prefabs_table.spawn_no_actors"), ToastTypeError, 4.0);
         return;
     }
 
@@ -651,9 +651,13 @@ void PrefabManager::spawnPrefab(const std::string& name) {
     selectedActive = (int)prefabEntries.size() - 1;
 
     Application::instance().ui().selectActor(spawnedActors[0]);
-    std::ostringstream ss;
-    ss << "Spawned prefab " << FStringToUtf8(prefab->GetName()) << " (" << spawnedActors.size() << " actor" << (spawnedActors.size() == 1 ? "" : "s") << ")";
-    Application::instance().ui().toastManager.addToastNotification(ss.str(), ToastTypeSuccess, 2.0);
+    char spawnBuf[256];
+    if (spawnedActors.size() == 1) {
+        snprintf(spawnBuf, sizeof(spawnBuf), t("ui.prefabs_table.spawn_success_1"), (int)spawnedActors.size());
+    } else {
+        snprintf(spawnBuf, sizeof(spawnBuf), t("ui.prefabs_table.spawn_success_n"), (int)spawnedActors.size());
+    }
+    Application::instance().ui().toastManager.addToastNotification(spawnBuf, ToastTypeSuccess, 2.0);
     Logger->debug("spawnPrefab: '" + name + "' spawned " + std::to_string(spawnedActors.size()) + " actors");
 
     // auto-spawn 8 corner lights
@@ -795,7 +799,7 @@ void PrefabManager::updateActivePrefabs() {
 
 // "Lights" collapsing header: bulk brightness/radius/color/expansion controls + per-light row
 void PrefabManager::renderLightsPanel(const std::vector<PrefabEntry>& entries, int selActive) {
-    if (!ImGui::CollapsingHeader(ICON_FA_LIGHTBULB " Attached lights")) {
+    if (!ImGui::CollapsingHeader((std::string(ICON_FA_LIGHTBULB " ") + t("ui.prefabs_table.attached_lights")).c_str())) {
         return;
     }
     if (selActive < 0 || selActive >= (int)entries.size() || entries[selActive].lights.empty()) {
@@ -804,7 +808,7 @@ void PrefabManager::renderLightsPanel(const std::vector<PrefabEntry>& entries, i
 
     ImGui::Indent();
 
-    ImGui::Text("Lights for %s: %d", entries[selActive].name.c_str(), (int)entries[selActive].lights.size());
+    ImGui::Text(t("ui.prefabs_table.lights for %s: %d"), entries[selActive].name.c_str(), (int)entries[selActive].lights.size());
     renderLightBulkControls(entries, selActive);
     renderLightExpansionControl();
     for (size_t lightIndex = 0; lightIndex < entries[selActive].lights.size(); ++lightIndex) {
@@ -825,7 +829,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
             }
         }
     }
-    if (ImGui::DragFloat("Brightness (all)", &allB, 0.1f, 0.0f, 20.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.brightness_all"), &allB, 0.1f, 0.0f, 20.0f)) {
         lightBrightness = allB;
         int sa = selActive;
         float b = allB;
@@ -852,7 +856,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
             nudgeLights(sa);
         });
     }
-    if (ImGui::DragFloat("Radius (all)", &allR, 10.0f, 0.0f, 3000.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.radius_all"), &allR, 10.0f, 0.0f, 3000.0f)) {
         lightRadius = allR;
         int sa = selActive;
         float r = allR;
@@ -876,7 +880,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
             nudgeLights(sa);
         });
     }
-    if (ImGui::ColorEdit3("Color (all)", lightColor)) {
+    if (ImGui::ColorEdit3(t("ui.prefabs_table.color_all"), lightColor)) {
         int sa = selActive;
         float r = lightColor[0], g = lightColor[1], b2 = lightColor[2];
         Application::instance().engine().postGameThreadTask([this, sa, r, g, b2]() {
@@ -903,7 +907,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
 // Expansion slider; throttled while dragging, final update on release
 void PrefabManager::renderLightExpansionControl() {
     float curExp = lightExpansion;
-    if (ImGui::DragFloat("Expansion (all)", &curExp, 5.0f, -200.0f, 500.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.expansion_all"), &curExp, 5.0f, -200.0f, 500.0f)) {
         lightExpansion = curExp;
         if (ImGui::GetTime() - lastExpansionUpdate > 0.25f) {
             lastExpansionUpdate = ImGui::GetTime();
@@ -986,11 +990,11 @@ void PrefabManager::renderLightRow(AActor* light, size_t lightIndex) {
     ImGui::SameLine();
     ImGui::Text("%s", FStringToUtf8(light->GetName()).c_str());
     ImGui::SameLine();
-    if (ImGui::Button(("Select##lightSel" + std::to_string(lightIndex)).c_str())) {
+    if (ImGui::Button((std::string(t("ui.prefabs_table.select")) + "##lightSel" + std::to_string(lightIndex)).c_str())) {
         Application::instance().ui().selectActor(light);
     }
     ImGui::SameLine();
-    if (ImGui::Button(("Delete##light" + std::to_string(lightIndex)).c_str())) {
+    if (ImGui::Button((std::string(t("ui.prefabs_table.delete")) + "##light" + std::to_string(lightIndex)).c_str())) {
         std::string lName = FStringToUtf8(light->GetName());
         Application::instance().engine().postGameThreadTask([this, lName]() {
             // same mechanism as Target menu: Engine::removeActor handles spawnedNames + Destroy
@@ -1031,7 +1035,7 @@ void PrefabManager::renderLightRow(AActor* light, size_t lightIndex) {
 
 void PrefabManager::renderAvailablePrefabsPanel() {
     ImGui::Separator();
-    ImGui::Text("Available prefabs:");
+    ImGui::Text(t("ui.prefabs_table.available_prefabs"));
     ImGui::PushItemWidth(-100);
     ImGui::InputText("##prefab_search", searchFilter, sizeof(searchFilter));
     ImGui::PopItemWidth();
@@ -1053,9 +1057,9 @@ void PrefabManager::renderAvailablePrefabsPanel() {
         }
     }
 
-    ImGui::Text("Selected prefab:");
+    ImGui::Text(t("ui.prefabs_table.selected_prefab"));
     ImGui::SameLine();
-    ImGui::Text("%s", selectedPrefabName.empty() ? "(none)" : selectedPrefabName.c_str());
+    ImGui::Text("%s", selectedPrefabName.empty() ? t("ui.prefabs_table.none") : selectedPrefabName.c_str());
     {
         ChildScope child("##prefab_template_list", ImVec2(0, 180), true);
         if (child.open) {
@@ -1080,7 +1084,7 @@ void PrefabManager::renderAvailablePrefabsPanel() {
                 ++shown;
             }
             if (shown == 0) {
-                ImGui::TextDisabled("(no prefabs match)");
+                ImGui::TextDisabled(t("ui.prefabs_table.no_matches"));
             }
         }
     }
@@ -1097,7 +1101,7 @@ void PrefabManager::renderActivePrefabsPanel(const std::vector<PrefabEntry>& ent
 
         ImGui::Separator();
         if (entries.empty()) {
-            ImGui::TextDisabled("(no active prefabs)");
+            ImGui::TextDisabled(t("ui.prefabs_table.no_active"));
         } else {
             for (size_t i = 0; i < entries.size(); ++i) {
                 const PrefabEntry& entry = entries[i];
@@ -1133,7 +1137,7 @@ void PrefabManager::renderActivePrefabsPanel(const std::vector<PrefabEntry>& ent
 
 void PrefabManager::renderMaterialControls() {
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_GEARS " Force update material")) {
+    if (ImGui::Button((std::string(ICON_FA_GEARS " ") + t("ui.prefabs_table.force_update")).c_str())) {
         Application::instance().engine().postGameThreadTask([this]() {
             forceUpdateMaterial();
         });
@@ -1141,19 +1145,22 @@ void PrefabManager::renderMaterialControls() {
 }
 
 void PrefabManager::renderLightSpawnControls() {
-    const char* lightConfigNames[] = {"Corner lights", "Face lights", "Corner and face lights (heavy)"};
+    const std::string cfg0 = Translation::instance().translate("ui.prefabs_table.corner_lights");
+    const std::string cfg1 = Translation::instance().translate("ui.prefabs_table.face_lights");
+    const std::string cfg2 = Translation::instance().translate("ui.prefabs_table.corner_and_face_lights");
+    const char* lightConfigNames[] = {cfg0.c_str(), cfg1.c_str(), cfg2.c_str()};
     int cfg = (int)selectedLightConfig;
-    if (ImGui::Combo("Light config", &cfg, lightConfigNames, 3)) {
+    if (ImGui::Combo(t("ui.prefabs_table.light_config"), &cfg, lightConfigNames, 3)) {
         selectedLightConfig = (LightConfig)cfg;
     }
-    if (ImGui::Button(ICON_FA_PLUS " Spawn lights")) {
+    if (ImGui::Button((std::string(ICON_FA_PLUS " ") + t("ui.prefabs_table.spawn_lights")).c_str())) {
         spawnLightsByConfig(selectedLightConfig);
     }
 }
 
 void PrefabManager::renderUI() {
     ZoneScopedN("Prefabs::renderUI");
-    if (!ImGui::CollapsingHeader(ICON_FA_BOX_OPEN " Prefabs")) {
+    if (!ImGui::CollapsingHeader((std::string(ICON_FA_BOX_OPEN " ") + t("ui.prefabs")).c_str())) {
         return;
     }
 
@@ -1167,7 +1174,7 @@ void PrefabManager::renderUI() {
     renderAvailablePrefabsPanel();
 
     ImGui::Separator();
-    ImGui::Text("Active:");
+    ImGui::Text(t("ui.prefabs_table.active"));
     std::vector<PrefabEntry> entries;
     int selActive;
     {

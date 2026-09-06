@@ -203,7 +203,7 @@ void VFXManager::findAvailableTemplates(bool forceRefresh) {
 
 void VFXManager::renderUI() {
     ZoneScopedN("VFX::renderUI");
-    if (!ImGui::CollapsingHeader(ICON_FA_FIRE " VFX")) {
+    if (!ImGui::CollapsingHeader((std::string(ICON_FA_FIRE " ") + t("ui.vfx")).c_str())) {
         return;
     }
 
@@ -242,7 +242,7 @@ void VFXManager::renderUI() {
         if (boneSelect.empty() && !bones.empty()) {
             boneSelect = bones[0].boneName;
         }
-        ImGui::Text("Bone:");
+        ImGui::Text(t("ui.vfx_table.bone"));
         ImGui::PushItemWidth(-100);
         if (ImGui::BeginCombo("##vfx_bone", boneSelect.c_str())) {
             for (const BonePoseInfo& b : bones) {
@@ -259,7 +259,7 @@ void VFXManager::renderUI() {
     }
 
     ImGui::Separator();
-    ImGui::Text("Available VFX:");
+    ImGui::Text(t("ui.vfx_table.available_vfx"));
     ImGui::Text(ICON_FA_MAGNIFYING_GLASS);
     ImGui::SameLine();
     ImGui::PushItemWidth(-100);
@@ -320,7 +320,7 @@ void VFXManager::renderUI() {
                     filteredNames.push_back(name);
                 }
                 if (filteredNames.empty()) {
-                    ImGui::TextDisabled("(no matches)");
+                    ImGui::TextDisabled(t("ui.vfx_table.no_matches"));
                 } else {
                     ImGuiListClipper clipper;
                     clipper.Begin((int)filteredNames.size());
@@ -342,7 +342,7 @@ void VFXManager::renderUI() {
     ImGui::BeginTable("##vfx_table", 2);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    if (ImGui::Checkbox(ICON_FA_CAMERA " Ignore camera movement##vfx_ignore_cam", &ignoreCameraMovement)) {
+    if (ImGui::Checkbox((std::string(ICON_FA_CAMERA " ") + t("ui.vfx_table.ignore_cam_movement") + "##vfx_ignore_cam").c_str(), &ignoreCameraMovement)) {
         // apply/restore the camera-shake setting on all currently active VFX
         Application::instance().engine().postGameThreadTask([this]() {
             std::lock_guard<std::mutex> lock(vfxMtx);
@@ -362,7 +362,7 @@ void VFXManager::renderUI() {
     }
     ImGui::TableNextColumn();
 
-    if (ImGui::Checkbox(ICON_FA_REPEAT " Loop##vfx_loop", &loopVFX)) {
+    if (ImGui::Checkbox((std::string(ICON_FA_REPEAT " ") + t("ui.vfx_table.loop") + "##vfx_loop").c_str(), &loopVFX)) {
         // apply/restore looping on all currently active VFX
         Application::instance().engine().postGameThreadTask([this]() {
             std::lock_guard<std::mutex> lock(vfxMtx);
@@ -378,22 +378,22 @@ void VFXManager::renderUI() {
     }
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::Checkbox(ICON_FA_BONE " Show bone selection##vfx_bone_selection", &showBoneSelection);
+    ImGui::Checkbox((std::string(ICON_FA_BONE " ") + t("ui.vfx_table.bone_sel_show") + "##vfx_bone_selection").c_str(), &showBoneSelection);
     ImGui::EndTable();
 
     ImGui::PushItemWidth(-100);
-    ImGui::Text("Loop delay:");
+    ImGui::Text(t("ui.vfx_table.loop_delay"));
     ImGui::DragFloat("##vfx_loop_delay", &loopDelayVFX, 0.1f, 0.0f, 60.0f, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::PushItemWidth(-100);
-    ImGui::Text("Playback duration:");
+    ImGui::Text(t("ui.vfx_table.playback_dur"));
     ImGui::DragFloat("##vfx_duration_drag", &vfxDuration, 0.1f, 0.1f, 60.0f, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::Separator();
 
-    ImGui::Text("Active:");
+    ImGui::Text(t("ui.vfx_table.active"));
     {
         ChildScope childActive("##vfx_active_list", ImVec2(0, 220), true);
         if (childActive.open) {
@@ -408,7 +408,7 @@ void VFXManager::renderUI() {
             }
             ImGui::Separator();
             if (vfxEntries.empty()) {
-                ImGui::TextDisabled("(no active VFX)");
+                ImGui::TextDisabled(t("ui.vfx_table.no_active"));
             } else {
                 for (size_t i = 0; i < vfxEntries.size(); ++i) {
                     VFXEntry& entry = vfxEntries[i];
