@@ -4,6 +4,7 @@
 #include "IconsFontAwesome6.h"
 #include "application.h"
 #include "imgui.h"
+#include "ui/helpers/labels.h"
 #include "ui/helpers/raii_guards.h"
 #include "util.h"
 #include <algorithm>
@@ -223,31 +224,27 @@ void LightManager::renderUI() {
         ImGui::Text(t("ui.lights_table.selected"));
         bool changed = false;
         if (ImGui::CollapsingHeader(t("ui.lights_table.light"))) {
-            changed = ImGui::ColorEdit3((std::string(t("ui.lights_table.color")) + "##light").c_str(), selectedSettings.color) || changed;
-            changed = ImGui::DragFloat((std::string(t("ui.lights_table.intensity")) + "##light").c_str(), &selectedSettings.brightness, 0.1f, 0.0f, 100.0f) ||
-                      changed;
+            labelAbove((std::string(t("ui.lights_table.color")) + "##light").c_str());
+            changed = ImGui::ColorEdit3("##light", selectedSettings.color) || changed;
+            labelAbove((std::string(t("ui.lights_table.intensity")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light", &selectedSettings.brightness, 0.1f, 0.0f, 100.0f) || changed;
             changed = ImGui::Checkbox((std::string(t("ui.lights_table.enabled")) + "##light").c_str(), &selectedSettings.enabled) || changed;
         }
 
         if (selectedSettings.isPoint && ImGui::CollapsingHeader(t("ui.lights_table.shape"))) {
-            changed =
-                ImGui::DragFloat((std::string(t("ui.lights_table.radius")) + "##light").c_str(), &selectedSettings.radius, 1.0f, 0.0f, 10000.0f) || changed;
-            changed =
-                ImGui::DragFloat((std::string(t("ui.lights_table.falloff")) + "##light").c_str(), &selectedSettings.falloffExponent, 0.05f, 0.0f, 16.0f) ||
-                changed;
-            changed = ImGui::DragFloat((std::string(t("ui.lights_table.shadow_radius_mult")) + "##light").c_str(), &selectedSettings.shadowRadiusMultiplier,
-                                       0.05f, 0.0f, 16.0f) ||
-                      changed;
+            labelAbove((std::string(t("ui.lights_table.radius")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light", &selectedSettings.radius, 1.0f, 0.0f, 10000.0f) || changed;
+            labelAbove((std::string(t("ui.lights_table.falloff")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light", &selectedSettings.falloffExponent, 0.05f, 0.0f, 16.0f) || changed;
+            labelAbove((std::string(t("ui.lights_table.shadow_radius_mult")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light", &selectedSettings.shadowRadiusMultiplier, 0.05f, 0.0f, 16.0f) || changed;
             if (selectedSettings.isSpot) {
-                changed = ImGui::DragFloat((std::string(t("ui.lights_table.inner_cone_angle")) + "##light").c_str(), &selectedSettings.innerConeAngle, 0.5f,
-                                           0.0f, 89.0f) ||
-                          changed;
-                changed = ImGui::DragFloat((std::string(t("ui.lights_table.outer_cone_angle")) + "##light").c_str(), &selectedSettings.outerConeAngle, 0.5f,
-                                           0.0f, 89.0f) ||
-                          changed;
-                changed = ImGui::DragFloat((std::string(t("ui.lights_table.light_shaft_cone")) + "##light").c_str(), &selectedSettings.lightShaftConeAngle,
-                                           0.5f, 0.0f, 89.0f) ||
-                          changed;
+                labelAbove((std::string(t("ui.lights_table.inner_cone_angle")) + "##light").c_str());
+                changed = ImGui::DragFloat("##light", &selectedSettings.innerConeAngle, 0.5f, 0.0f, 89.0f) || changed;
+                labelAbove((std::string(t("ui.lights_table.outer_cone_angle")) + "##light").c_str());
+                changed = ImGui::DragFloat("##light", &selectedSettings.outerConeAngle, 0.5f, 0.0f, 89.0f) || changed;
+                labelAbove((std::string(t("ui.lights_table.light_shaft_cone")) + "##light").c_str());
+                changed = ImGui::DragFloat("##light", &selectedSettings.lightShaftConeAngle, 0.5f, 0.0f, 89.0f) || changed;
             }
         }
 
@@ -267,30 +264,25 @@ void LightManager::renderUI() {
             const char* modeItems[] = {mode0.c_str(), mode1.c_str(), mode2.c_str()};
             changed = ImGui::Checkbox((std::string(t("ui.lights_table.cast_shadows")) + "##light").c_str(), &selectedSettings.castShadows) || changed;
             changed = ImGui::Checkbox((std::string(t("ui.lights_table.cast_dyn_shadow")) + "##light").c_str(), &selectedSettings.castDynamicShadows) || changed;
-            changed = ImGui::Combo((std::string(t("ui.lights_table.projection_technique")) + "##light").c_str(), &selectedSettings.shadowProjectionTechnique,
-                                   projectionItems, IM_ARRAYSIZE(projectionItems)) ||
-                      changed;
-            changed = ImGui::Combo((std::string(t("ui.lights_table.filter_quality")) + "##light").c_str(), &selectedSettings.shadowFilterQuality, qualityItems,
-                                   IM_ARRAYSIZE(qualityItems)) ||
-                      changed;
-            changed = ImGui::Combo((std::string(t("ui.lights_table.mode")) + "##light").c_str(), &selectedSettings.lightShadowMode, modeItems,
-                                   IM_ARRAYSIZE(modeItems)) ||
-                      changed;
+            labelAbove((std::string(t("ui.lights_table.projection_technique")) + "##light").c_str());
+            changed = ImGui::Combo("##light", &selectedSettings.shadowProjectionTechnique, projectionItems, IM_ARRAYSIZE(projectionItems)) || changed;
+            labelAbove((std::string(t("ui.lights_table.filter_quality")) + "##light").c_str());
+            changed = ImGui::Combo("##light", &selectedSettings.shadowFilterQuality, qualityItems, IM_ARRAYSIZE(qualityItems)) || changed;
+            labelAbove((std::string(t("ui.lights_table.mode")) + "##light").c_str());
+            changed = ImGui::Combo("##light", &selectedSettings.lightShadowMode, modeItems, IM_ARRAYSIZE(modeItems)) || changed;
         }
 
         if (ImGui::CollapsingHeader(t("ui.lights_table.boom_and_shafts"))) {
             changed =
                 ImGui::Checkbox((std::string(t("ui.lights_table.render_light_shafts")) + "##light").c_str(), &selectedSettings.renderLightShafts) || changed;
-            changed =
-                ImGui::DragFloat((std::string(t("ui.lights_table.bloom_scale")) + "##light").c_str(), &selectedSettings.bloomScale, 0.01f, 0.0f, 100.0f) ||
-                changed;
-            changed = ImGui::DragFloat((std::string(t("ui.lights_table.bloom_threshold")) + "##light").c_str(), &selectedSettings.bloomThreshold, 0.01f, 0.0f,
-                                       100.0f) ||
-                      changed;
-            changed = ImGui::DragFloat((std::string(t("ui.lights_table.bloom_sceen_threshold")) + "##light").c_str(),
-                                       &selectedSettings.bloomScreenBlendThreshold, 0.01f, 0.0f, 100.0f) ||
-                      changed;
-            changed = ImGui::ColorEdit3((std::string(t("ui.lights_table.bloom_tint")) + "##light").c_str(), selectedSettings.bloomTint) || changed;
+            labelAbove((std::string(t("ui.lights_table.bloom_scale")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light", &selectedSettings.bloomScale, 0.01f, 0.0f, 100.0f) || changed;
+            labelAbove((std::string(t("ui.lights_table.bloom_threshold")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light", &selectedSettings.bloomThreshold, 0.01f, 0.0f, 100.0f) || changed;
+            labelAbove((std::string(t("ui.lights_table.bloom_sceen_threshold")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light", &selectedSettings.bloomScreenBlendThreshold, 0.01f, 0.0f, 100.0f) || changed;
+            labelAbove((std::string(t("ui.lights_table.bloom_tint")) + "##light").c_str());
+            changed = ImGui::ColorEdit3("##light", selectedSettings.bloomTint) || changed;
         }
 
         if (changed) {

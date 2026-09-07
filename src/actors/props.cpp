@@ -2,6 +2,7 @@
 #include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 #include "IconsFontAwesome6.h"
 #include "translation.h"
+#include "ui/helpers/labels.h"
 #include "ui/helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Math.hpp>
@@ -530,6 +531,10 @@ void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, 
             ImGui::TextDisabled("%s: %s", e.name.c_str(), e.detail.c_str());
             return;
         }
+    }
+    if (e.type != PT_BOOL) {
+        labelAbove(label.c_str());
+        label = "##p" + id;
     }
 
     bool changed = false;
