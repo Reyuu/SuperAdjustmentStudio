@@ -99,8 +99,9 @@ static void** d8Vtbl(void* obj) {
 }
 
 bool Mouse::d8FreezeIfUI(DWORD cbData, LPVOID lpvData, const char* variant) {
-    bool dragging = Application::instance().engine().isCameraDragActive().load() || Application::instance().freecam().isCameraDragActive().load();
-    if (Application::instance().ui().showUI().load() && !dragging) {
+    const bool dragging = Application::instance().engine().isCameraDragActive().load() || Application::instance().freecam().isCameraDragActive().load();
+    const bool nativeOrbit = dragging && !Application::instance().freecam().freecamWanted().load();
+    if (Application::instance().ui().showUI().load() && !nativeOrbit) {
         Application::instance().engine().freezeLook(true);
         if (lpvData) {
             memset(lpvData, 0, cbData); // fill with zeros, so the game does not have anything to read
@@ -151,8 +152,9 @@ HRESULT Mouse::hookD8GetDeviceState(void* This, DWORD cbData, LPVOID lpvData, bo
 
 HRESULT Mouse::hookD8GetDeviceData(void* This, DWORD cbObjectData, void* rgdod, DWORD* pdwInOut, DWORD dwFlags, bool isW) {
     SAS_HOOK_TRY {
-        bool dragging = Application::instance().engine().isCameraDragActive().load() || Application::instance().freecam().isCameraDragActive().load();
-        if (Application::instance().ui().showUI().load() && !dragging) {
+        const bool dragging = Application::instance().engine().isCameraDragActive().load() || Application::instance().freecam().isCameraDragActive().load();
+        const bool nativeOrbit = dragging && !Application::instance().freecam().freecamWanted().load();
+        if (Application::instance().ui().showUI().load() && !nativeOrbit) {
             Application::instance().engine().freezeLook(true);
             if (pdwInOut) {
                 *pdwInOut = 0;

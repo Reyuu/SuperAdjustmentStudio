@@ -191,6 +191,7 @@ static void seedDragOrigin(int x, int y) {
 LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     ZoneScopedN("WndProc");
     Application& app = instance();
+    static bool dragPassthrough = false;
     SAS_HOOK_TRY {
         if (app.ui().showUI().load()) {
             if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam)) {
@@ -209,7 +210,10 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                             CameraDragState state = (CameraDragState)app.freecam().cameraDragState().load();
                             app.freecam().moveFreecam(deltaX, deltaY, state);
                         }
-                        break;
+                        if (dragPassthrough) {
+                            break; // native orbit: game tracks the cursor
+                        }
+                        return 0;
                     }
                     return 0;
                 }
@@ -235,12 +239,29 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     app.freecam().cameraDragState() = state;
                     app.freecam().isCameraDragActive() = true;
                     seedDragOrigin(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-                    break;
+                    dragPassthrough = !app.freecam().freecamWanted().load();
+                    {
+                        std::ostringstream ss;
+                        ss << "wndProc: RMB drag start mode=" << (int)state << (dragPassthrough ? " passthrough" : " consumed");
+                        Logger->debug(ss.str());
+                    }
+                    if (dragPassthrough) {
+                        break;
+                    }
+                    return 0;
                 }
                 case WM_RBUTTONUP: {
+                    if (!app.freecam().isCameraDragActive().load()) {
+                        break;
+                    }
+                    const bool pass = dragPassthrough;
+                    dragPassthrough = false;
                     app.freecam().isCameraDragActive() = false;
                     app.freecam().cameraDragState() = CAMERA_DRAG_INACTIVE;
-                    break;
+                    if (pass) {
+                        break;
+                    }
+                    return 0;
                 }
                 case WM_LBUTTONDOWN: {
                     if (app.freecam().isCameraDragActive().load()) {
@@ -258,13 +279,17 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     app.freecam().cameraDragState() = CAMERA_DRAG_VERTICAL_PANNING;
                     app.freecam().isCameraDragActive() = true;
                     seedDragOrigin(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-                    break;
+                    dragPassthrough = false;
+                    Logger->debug("wndProc: LMB lift drag start, consumed");
+                    return 0;
                 }
                 case WM_LBUTTONUP: {
                     if (app.freecam().isCameraDragActive().load() && (CameraDragState)app.freecam().cameraDragState().load() == CAMERA_DRAG_VERTICAL_PANNING) {
                         app.freecam().isCameraDragActive() = false;
                         app.freecam().cameraDragState() = CAMERA_DRAG_INACTIVE;
-                        break;
+                        dragPassthrough = false;
+                        Logger->debug("wndProc: LMB lift drag end, consumed");
+                        return 0;
                     }
                     return 0;
                 }
