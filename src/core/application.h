@@ -22,6 +22,7 @@
 #include "vfx.h"
 #include "translation.h"
 #include "freecam.h"
+#include "photo_overlay.h"
 #include <atomic>
 #include <thread>
 
@@ -95,6 +96,10 @@ class Application {
         PrefabManager& prefabs() {
             return prefabsInstance;
         }
+        PhotoOverlay& photoOverlay() {
+            return photoOverlayInstance;
+        }
+
         Settings& settings() {
             return settingsInstance;
         }
@@ -136,6 +141,7 @@ class Application {
         LightManager lightsInstance;
         PrefabManager prefabsInstance;
         Settings settingsInstance;
+        PhotoOverlay photoOverlayInstance;
         Translation translationInstance;
 
         bool previousHotkey = false;

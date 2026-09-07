@@ -532,5 +532,6 @@ void Freecam::renderUi() {
                                                                           : Translation::instance().translate("ui.freecam_table.status_state.attached"));
     ImGui::TextDisabled(t("ui.freecam_table.status"), state.c_str(), dragModeSuffix());
     ImGui::TextDisabled(t("ui.freecam_table.instructions"));
+    Application::instance().photoOverlay().renderUi();
     ImGui::Unindent();
 }

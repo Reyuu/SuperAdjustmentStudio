@@ -86,6 +86,18 @@ target_include_directories(imgui PUBLIC
 )
 target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD=0)
 
+#   implot
+message(STATUS "Adding build target: thirdparty/implot")
+file(GLOB IMPLOT_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot/implot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot/implot_items.cpp
+)
+add_library(implot STATIC ${IMPLOT_SOURCES})
+target_include_directories(implot PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
+)
+
 #   kiero (D3D11 swapchain hooking, bundles MinHook for the actual detour)
 message(STATUS "Adding build target: thirdparty/kiero")
 
@@ -138,6 +150,7 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/IconFontCppHeaders
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib
     # flat nlohmann/json include: allows #include "json.hpp"
@@ -167,6 +180,12 @@ if (TARGET imgui)
     target_link_libraries(SuperAdjustmentStudio PRIVATE imgui)
 else()
     message(FATAL_ERROR "No imgui target found. Please check the imgui submodule.")
+endif()
+
+if (TARGET implot)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE implot)
+else()
+    message(FATAL_ERROR "No implot target found. Please check the implot submodule.")
 endif()
 
 if (TARGET kiero)

@@ -246,6 +246,31 @@
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
             },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
+            },
             "particles": "Particles",
             "particles_table": {
                 "available": "Available particles:",
@@ -544,6 +569,31 @@
                     "attached": "attached"
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
+            },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -844,6 +894,31 @@
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
             },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
+            },
             "particles": "Particles",
             "particles_table": {
                 "available": "Available particles:",
@@ -1142,6 +1217,31 @@
                     "attached": "attached"
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
+            },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -1442,6 +1542,31 @@
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
             },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
+            },
             "particles": "Particles",
             "particles_table": {
                 "available": "Available particles:",
@@ -1740,6 +1865,31 @@
                     "attached": "attached"
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
+            },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -2040,6 +2190,31 @@
                 },
                 "instructions": "PPM rozglądanie, SHIFT+PPM przesuwaj kamerę, SHIFT+LPM podnieś kamerę (najpierw przytrzymaj SHIFT); kiedy wolna kamera wyłączona = orbitowanie natywne"
             },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
+            },
             "particles": "Cząsteczki",
             "particles_table": {
                 "available": "Dostępne cząsteczki:",
@@ -2339,6 +2514,31 @@
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
             },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
+            },
             "particles": "Particles",
             "particles_table": {
                 "available": "Available particles:",
@@ -2637,6 +2837,31 @@
                     "attached": "attached"
                 },
                 "instructions": "RMB look, SHIFT+RMB pan, SHIFT+LMB lift (hold SHIFT first); freecam off = native orbit"
+            },
+            "photo": "Photo guides",
+            "photo_table": {
+                "enable": "Show composition guides",
+                "hint": "Guides stay visible when the SAS overlay is hidden.",
+                "grid": "Grid:",
+                "aspect_ratio": "Aspect mask:",
+                "mask_opacity": "Mask opacity:",
+                "line_width": "Line color / thickness:",
+                "center_dot": "Center dot",
+                "safe_frame": "Safe frame (90%)",
+                "readout": "Readout label",
+                "histogram": "Histogram (RGB)",
+                "clip_lo": "Shadow threshold:",
+                "clip_hi": "Highlight threshold:",
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+            },
+            "filter": "Screen filter",
+            "filter_table": {
+                "enable": "Apply screen filter",
+                "hint": "Drawn into the frame, visible on screenshots.",
+                "tint": "Tint color / strength:",
+                "vignette": "Vignette:",
+                "grain": "Film grain intensity:",
+                "grain_opacity": "Film grain opacity:"
             },
             "particles": "Particles",
             "particles_table": {

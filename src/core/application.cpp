@@ -4,6 +4,7 @@
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
 #include "imgui.h"
+#include "implot.h"
 #include <sstream>
 #include <windowsx.h>
 
@@ -48,8 +49,10 @@ void Application::detach() {
 
     if (rendererInstance.isImGuiInitialized()) {
         gameWindowInstance.restoreAll();
+        photoOverlayInstance.shutdown();
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
         rendererInstance.shutdown();
     }
@@ -135,6 +138,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
             app.rendererInstance.beginRender();
+            app.photoOverlay().sample(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context());
 
             ImGui_ImplDX11_NewFrame();
             app.mouse().cursorPassthrough() = true;
@@ -142,6 +146,9 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             app.mouse().cursorPassthrough() = false;
 
             ImGui::NewFrame();
+            if (app.photoOverlay().isActive()) {
+                app.photoOverlay().render(app.rendererInstance.device());
+            }
             if (app.ui().showUI().load()) {
                 app.ui().renderOverlayContents(app.rendererInstance);
             }

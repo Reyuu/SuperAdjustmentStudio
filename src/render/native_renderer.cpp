@@ -3,6 +3,7 @@
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
 #include "imgui.h"
+#include "implot.h"
 #include "kiero.h"
 #include "logger.h"
 #include "settings.h"
@@ -419,6 +420,7 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     setupImGuiStyle(themeValue);
 
     ImGuiIO& io = ImGui::GetIO();
