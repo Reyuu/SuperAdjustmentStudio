@@ -439,7 +439,7 @@
                 "failed_class_abstract": "Spawn failed: class is abstract: %s",
                 "failed_no_actor_available": "Failed to spawn; no actor available.",
                 "failed_ret_null": "Failed to spawn; returned null. Check log for details.",
-                "failed_ret_null_class": "Spawn failed: %s returned null. Check log for details."
+                "failed_ret_null_class": "Spawn failed: %s returned null (see log)"
             },
             "game_pkg": "Game packages",
             "game_pkg_table": {
@@ -763,7 +763,7 @@
                 "failed_class_abstract": "Spawn failed: class is abstract: %s",
                 "failed_no_actor_available": "Failed to spawn; no actor available.",
                 "failed_ret_null": "Failed to spawn; returned null. Check log for details.",
-                "failed_ret_null_class": "Spawn failed: %s returned null. Check log for details."
+                "failed_ret_null_class": "Spawn failed: %s returned null (see log)"
             },
             "game_pkg": "Game packages",
             "game_pkg_table": {
@@ -1087,7 +1087,7 @@
                 "failed_class_abstract": "Spawn failed: class is abstract: %s",
                 "failed_no_actor_available": "Failed to spawn; no actor available.",
                 "failed_ret_null": "Failed to spawn; returned null. Check log for details.",
-                "failed_ret_null_class": "Spawn failed: %s returned null. Check log for details."
+                "failed_ret_null_class": "Spawn failed: %s returned null (see log)"
             },
             "game_pkg": "Game packages",
             "game_pkg_table": {
@@ -1411,7 +1411,7 @@
                 "failed_class_abstract": "Spawn failed: class is abstract: %s",
                 "failed_no_actor_available": "Failed to spawn; no actor available.",
                 "failed_ret_null": "Failed to spawn; returned null. Check log for details.",
-                "failed_ret_null_class": "Spawn failed: %s returned null. Check log for details."
+                "failed_ret_null_class": "Spawn failed: %s returned null (see log)"
             },
             "game_pkg": "Game packages",
             "game_pkg_table": {
@@ -1735,7 +1735,7 @@
                 "failed_class_abstract": "Spawn failed: class is abstract: %s",
                 "failed_no_actor_available": "Failed to spawn; no actor available.",
                 "failed_ret_null": "Failed to spawn; returned null. Check log for details.",
-                "failed_ret_null_class": "Spawn failed: %s returned null. Check log for details."
+                "failed_ret_null_class": "Spawn failed: %s returned null (see log)"
             },
             "game_pkg": "Game packages",
             "game_pkg_table": {
@@ -2059,7 +2059,7 @@
                 "failed_class_abstract": "Nie udało się stworzyć; klasa jest abstrakcyjna: %s",
                 "failed_no_actor_available": "Nie udało się stworzyć; aktor niedostępny.",
                 "failed_ret_null": "Nie udało się stworzyć; zwrócono wartość null. Sprawdź log, aby uzyskać szczegółowe informacje.",
-                "failed_ret_null_class": "Nie udało się stworzyć; %s zwrócił wartość null. Sprawdź log, aby uzyskać szczegółowe informacje."
+                "failed_ret_null_class": "Spawn nie powiódł się: %s zwrócił null (zobacz log)"
             },
             "game_pkg": "Pakiety gry",
             "game_pkg_table": {
@@ -2086,7 +2086,7 @@
             "vfx_table": {
                 "bone": "Kość:",
                 "available_vfx": "Dostępne efekty wizualne:",
-                "no_matches": "(bez dopasowań)",
+                "no_matches": "(brak dopasowań)",
                 "ignore_cam_movement": "Ignoruj ruchy kamery",
                 "loop": "Pętla",
                 "bone_sel_show": "Pokaż wybór kości",
@@ -2383,7 +2383,7 @@
                 "failed_class_abstract": "Spawn failed: class is abstract: %s",
                 "failed_no_actor_available": "Failed to spawn; no actor available.",
                 "failed_ret_null": "Failed to spawn; returned null. Check log for details.",
-                "failed_ret_null_class": "Spawn failed: %s returned null. Check log for details."
+                "failed_ret_null_class": "Spawn failed: %s returned null (see log)"
             },
             "game_pkg": "Game packages",
             "game_pkg_table": {
@@ -2707,7 +2707,7 @@
                 "failed_class_abstract": "Spawn failed: class is abstract: %s",
                 "failed_no_actor_available": "Failed to spawn; no actor available.",
                 "failed_ret_null": "Failed to spawn; returned null. Check log for details.",
-                "failed_ret_null_class": "Spawn failed: %s returned null. Check log for details."
+                "failed_ret_null_class": "Spawn failed: %s returned null (see log)"
             },
             "game_pkg": "Game packages",
             "game_pkg_table": {
