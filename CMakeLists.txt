@@ -55,10 +55,6 @@ set(SPDLOG_BUILD_BENCH OFF)
 set(SPDLOG_INSTALL OFF)
 add_subdirectory(thirdparty/spdlog)
 
-#   sqlite (pre-built DLL)
-message(STATUS "Adding build target: thirdparty/sqlite")
-add_subdirectory(thirdparty/sqlite)
-
 #   zlib
 message(STATUS "Adding build target: thirdparty/zlib")
 set(ZLIB_BUILD_SHARED OFF)
@@ -66,6 +62,10 @@ set(ZLIB_BUILD_STATIC ON)
 set(ZLIB_BUILD_TESTING OFF)
 set(ZLIB_INSTALL OFF)
 add_subdirectory(thirdparty/zlib)
+
+#   nlohmann/json
+message(STATUS "Adding build target: thirdparty/json")
+add_subdirectory(thirdparty/json)
 
 #   imgui
 message(STATUS "Adding build target: thirdparty/imgui")
@@ -85,6 +85,18 @@ target_include_directories(imgui PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui/backends
 )
 target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD=0)
+
+#   implot
+message(STATUS "Adding build target: thirdparty/implot")
+file(GLOB IMPLOT_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot/implot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot/implot_items.cpp
+)
+add_library(implot STATIC ${IMPLOT_SOURCES})
+target_include_directories(implot PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
+)
 
 #   kiero (D3D11 swapchain hooking, bundles MinHook for the actual detour)
 message(STATUS "Adding build target: thirdparty/kiero")
@@ -138,8 +150,12 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/LExSDKv2/Src/LESDK
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/implot
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/IconFontCppHeaders
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/zlib
+    # flat nlohmann/json include: allows #include "json.hpp"
+    # (single_include version is amalgamated, so no internal <nlohmann/...> deps break)
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/json/single_include/nlohmann
 )
 
 # link dependencies
@@ -166,10 +182,22 @@ else()
     message(FATAL_ERROR "No imgui target found. Please check the imgui submodule.")
 endif()
 
+if (TARGET implot)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE implot)
+else()
+    message(FATAL_ERROR "No implot target found. Please check the implot submodule.")
+endif()
+
 if (TARGET kiero)
     target_link_libraries(SuperAdjustmentStudio PRIVATE kiero)
 else()
     message(FATAL_ERROR "No kiero target found. Please check the kiero submodule.")
+endif()
+
+if (TARGET nlohmann_json)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE nlohmann_json)
+else()
+    message(FATAL_ERROR "No nlohmann_json target found. Please check the json submodule.")
 endif()
 
 message(STATUS "Adding build target: thirdparty/tracy")
@@ -190,12 +218,6 @@ if(SAS_TRACY_ENABLE)
         target_compile_definitions(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:TRACY_ENABLE>)
         message(STATUS "Linking TracyClient to SuperAdjustmentStudio (Debug only, via generator expression)")
     endif()
-endif()
-
-if (TARGET sqlite)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE sqlite)
-else()
-    message(FATAL_ERROR "No sqlite target found.")
 endif()
 
 if (TARGET zlibstatic)

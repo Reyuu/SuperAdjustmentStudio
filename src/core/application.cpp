@@ -4,6 +4,7 @@
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
 #include "imgui.h"
+#include "implot.h"
 #include <sstream>
 #include <windowsx.h>
 
@@ -26,6 +27,8 @@ Application::~Application() {
 bool Application::attach(ISharedProxyInterface* proxy) {
     Logger->debug("SPI attach");
     didRequestExit.store(false);
+    settingsInstance.load();
+    rendererInstance.applySettings(settingsInstance.options);
     sdkInstance.initSdkGlobals(proxy);
     hookManagerInstance.setSdkContext(&sdkInstance);
     initThread = std::thread(&Application::initHooksThread, this);
@@ -35,6 +38,9 @@ bool Application::attach(ISharedProxyInterface* proxy) {
 void Application::detach() {
     Logger->debug("SPI detach - removing hooks");
     didRequestExit.store(true);
+    if (settingsInstance.didSettingsChange()) {
+        settingsInstance.save();
+    }
     if (initThread.joinable()) {
         initThread.join();
     }
@@ -43,8 +49,10 @@ void Application::detach() {
 
     if (rendererInstance.isImGuiInitialized()) {
         gameWindowInstance.restoreAll();
+        photoOverlayInstance.shutdown();
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
         rendererInstance.shutdown();
     }
@@ -107,9 +115,16 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
         }
 
         if (app.rendererInstance.isImGuiInitialized()) {
-            SHORT ks = GetAsyncKeyState(VK_F10);
-            bool currentF10 = (ks & 0x8000) != 0;
-            if (currentF10 && !app.previousF10) {
+            const std::string& hotkeyName = app.settingsInstance.options.showOverlay;
+            static std::string lastHotkeyName;
+            static int lastHotkeyVk = VK_F10;
+            if (hotkeyName != lastHotkeyName) {
+                lastHotkeyVk = app.settingsInstance.vkFromName(hotkeyName);
+                lastHotkeyName = hotkeyName;
+            }
+            SHORT ks = GetAsyncKeyState(lastHotkeyVk);
+            bool currentHotkey = (ks & 0x8000) != 0;
+            if (currentHotkey && !app.previousHotkey) {
                 std::atomic<bool>& showUI = app.ui().showUI();
                 showUI = !showUI.load();
                 app.ui().applyUIInputState(app.gameWindowInstance);
@@ -118,12 +133,12 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
                 ss << "Toggle UI: visible=" << showUI.load();
                 Logger->debug(ss.str());
             }
-            app.previousF10 = currentF10;
+            app.previousHotkey = currentHotkey;
 
-            app.engine().applyHUDVisibility();
-
+            app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
             app.rendererInstance.beginRender();
+            app.photoOverlay().sample(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context());
 
             ImGui_ImplDX11_NewFrame();
             app.mouse().cursorPassthrough() = true;
@@ -131,6 +146,9 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             app.mouse().cursorPassthrough() = false;
 
             ImGui::NewFrame();
+            if (app.photoOverlay().isActive()) {
+                app.photoOverlay().render(app.rendererInstance.device());
+            }
             if (app.ui().showUI().load()) {
                 app.ui().renderOverlayContents(app.rendererInstance);
             }
@@ -162,9 +180,18 @@ HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwap
                : S_OK;
 }
 
+static int g_dragLastX = 0;
+static int g_dragLastY = 0;
+
+static void seedDragOrigin(int x, int y) {
+    g_dragLastX = x;
+    g_dragLastY = y;
+}
+
 LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     ZoneScopedN("WndProc");
     Application& app = instance();
+    static bool dragPassthrough = false;
     SAS_HOOK_TRY {
         if (app.ui().showUI().load()) {
             if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam)) {
@@ -172,13 +199,26 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
             }
             switch (uMsg) {
                 case WM_MOUSEMOVE: {
-                    if (app.engine().isCameraDragActive().load()) {
-                        break;
+                    if (app.freecam().isCameraDragActive().load()) {
+                        int dx = (int)GET_X_LPARAM(lParam);
+                        int dy = (int)GET_Y_LPARAM(lParam);
+                        int deltaX = dx - g_dragLastX;
+                        int deltaY = dy - g_dragLastY;
+                        g_dragLastX = dx;
+                        g_dragLastY = dy;
+                        if (deltaX != 0 || deltaY != 0) {
+                            CameraDragState state = (CameraDragState)app.freecam().cameraDragState().load();
+                            app.freecam().moveFreecam(deltaX, deltaY, state);
+                        }
+                        if (dragPassthrough) {
+                            break; // native orbit: game tracks the cursor
+                        }
+                        return 0;
                     }
                     return 0;
                 }
                 case WM_RBUTTONDOWN: {
-                    if (app.engine().isCameraDragActive().load()) {
+                    if (app.freecam().isCameraDragActive().load()) {
                         break;
                     }
                     POINT spt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
@@ -187,12 +227,71 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     if (PtInRect(&uiRect, spt)) {
                         return 0;
                     }
-                    app.engine().isCameraDragActive() = true;
-                    break;
+                    // Determine camera drag state based on SHIFT/CTRL keys
+                    bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+                    bool ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                    CameraDragState state = CAMERA_DRAG_ORBITING;
+                    if (shiftDown && ctrlDown) {
+                        state = CAMERA_DRAG_VERTICAL_PANNING;
+                    } else if (shiftDown) {
+                        state = CAMERA_DRAG_PANNING;
+                    }
+                    app.freecam().cameraDragState() = state;
+                    app.freecam().isCameraDragActive() = true;
+                    seedDragOrigin(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                    dragPassthrough = !app.freecam().freecamWanted().load();
+                    {
+                        std::ostringstream ss;
+                        ss << "wndProc: RMB drag start mode=" << (int)state << (dragPassthrough ? " passthrough" : " consumed");
+                        Logger->debug(ss.str());
+                    }
+                    if (dragPassthrough) {
+                        break;
+                    }
+                    return 0;
                 }
                 case WM_RBUTTONUP: {
-                    app.engine().isCameraDragActive() = false;
-                    break;
+                    if (!app.freecam().isCameraDragActive().load()) {
+                        break;
+                    }
+                    const bool pass = dragPassthrough;
+                    dragPassthrough = false;
+                    app.freecam().isCameraDragActive() = false;
+                    app.freecam().cameraDragState() = CAMERA_DRAG_INACTIVE;
+                    if (pass) {
+                        break;
+                    }
+                    return 0;
+                }
+                case WM_LBUTTONDOWN: {
+                    if (app.freecam().isCameraDragActive().load()) {
+                        return 0;
+                    }
+                    if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) == 0) {
+                        return 0;
+                    }
+                    POINT spt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+                    ClientToScreen(hWnd, &spt);
+                    RECT uiRect = app.rendererInstance.uiRect();
+                    if (PtInRect(&uiRect, spt)) {
+                        return 0;
+                    }
+                    app.freecam().cameraDragState() = CAMERA_DRAG_VERTICAL_PANNING;
+                    app.freecam().isCameraDragActive() = true;
+                    seedDragOrigin(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                    dragPassthrough = false;
+                    Logger->debug("wndProc: LMB lift drag start, consumed");
+                    return 0;
+                }
+                case WM_LBUTTONUP: {
+                    if (app.freecam().isCameraDragActive().load() && (CameraDragState)app.freecam().cameraDragState().load() == CAMERA_DRAG_VERTICAL_PANNING) {
+                        app.freecam().isCameraDragActive() = false;
+                        app.freecam().cameraDragState() = CAMERA_DRAG_INACTIVE;
+                        dragPassthrough = false;
+                        Logger->debug("wndProc: LMB lift drag end, consumed");
+                        return 0;
+                    }
+                    return 0;
                 }
                 case WM_RBUTTONDBLCLK: {
                     if (app.engine().isCameraDragActive().load()) {
@@ -200,8 +299,6 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     }
                     return 0;
                 }
-                case WM_LBUTTONDOWN:
-                case WM_LBUTTONUP:
                 case WM_LBUTTONDBLCLK:
                 case WM_MBUTTONDOWN:
                 case WM_MBUTTONUP:
@@ -212,6 +309,11 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                 case WM_MOUSEWHEEL:
                 case WM_MOUSEHWHEEL:
                 case WM_INPUT: {
+                    return 0;
+                }
+                case WM_KEYDOWN:
+                case WM_KEYUP:
+                case WM_CHAR: {
                     return 0;
                 }
                 case WM_MOUSEACTIVATE: {

@@ -164,6 +164,7 @@ class UI {
         bool showMetricsWindow = false;
         bool showDebugLogWindow = false;
         bool showIDStackToolWindow = false;
+        bool showSettingsWindow = false;
 
         void refreshBoneList(const std::string& pawnName);
 };

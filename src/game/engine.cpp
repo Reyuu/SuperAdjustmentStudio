@@ -27,6 +27,7 @@ static void hkGameEngineTick(void* self, float dt) {
         }
         Application::instance().engine().drainPackageLoads();
         Application::instance().engine().drainGameThreadTasks();
+        Application::instance().freecam().assertFreecamCache();
 
         static UWorld* s_lastWorld = nullptr;
         UWorld* curWorld = (GWorld && *GWorld) ? *GWorld : nullptr;
@@ -34,6 +35,7 @@ static void hkGameEngineTick(void* self, float dt) {
             s_lastWorld = curWorld;
             if (curWorld) {
                 Application::instance().particles().removeAllParticles();
+                Application::instance().freecam().resetFreecamState();
             }
         }
     } SAS_HOOK_CATCH_VOID
@@ -216,7 +218,7 @@ void Engine::setPause(bool pause) {
 AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     if (className.empty()) {
         Logger->debug("spawnClass: empty class name");
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: empty class name", ToastTypeError, 3.0);
+        Application::instance().ui().toastManager.addToastNotification(t("ui.spawn_table.failed_empty_class_name"), ToastTypeError, 3.0);
         return nullptr;
     }
 
@@ -228,21 +230,25 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     }
     if (!cls) {
         Logger->debug("spawnClass: class not found");
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: class not found: " + className, ToastTypeError, 3.0);
+        char notFoundBuf[512];
+        snprintf(notFoundBuf, sizeof(notFoundBuf), t("ui.spawn_table.failed_class_not_found"), className.c_str());
+        Application::instance().ui().toastManager.addToastNotification(notFoundBuf, ToastTypeError, 3.0);
         return nullptr;
     }
     if (cls->ClassFlags & CLASS_Abstract) {
         std::ostringstream ss;
         ss << "spawnClass: class is abstract (ClassFlags=0x" << std::hex << cls->ClassFlags << std::dec << "), cannot spawn";
         Logger->debug(ss.str());
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: class is abstract: " + className, ToastTypeError, 3.0);
+        char abstractBuf[512];
+        snprintf(abstractBuf, sizeof(abstractBuf), t("ui.spawn_table.failed_class_abstract"), className.c_str());
+        Application::instance().ui().toastManager.addToastNotification(abstractBuf, ToastTypeError, 3.0);
         return nullptr;
     }
 
     AActor* caller = findActorByName("");
     if (!caller) {
         Logger->debug("spawnClass: no actor available to spawn from (how did this even happen?!)");
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: no actor available to spawn from", ToastTypeError, 3.0);
+        Application::instance().ui().toastManager.addToastNotification(t("ui.spawn_table.failed_no_actor_available"), ToastTypeError, 3.0);
         return nullptr;
     }
 
@@ -266,7 +272,9 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     if (!spawned) {
         Logger->debug("spawnClass: spawn returned null, dumping class diagnostics:");
         Logger->debug(diagnoseClass(className));
-        Application::instance().ui().toastManager.addToastNotification("Spawn failed: " + className + " returned null (see log)", ToastTypeError, 4.0);
+        char nullBuf[512];
+        snprintf(nullBuf, sizeof(nullBuf), t("ui.spawn_table.failed_ret_null_class"), className.c_str());
+        Application::instance().ui().toastManager.addToastNotification(nullBuf, ToastTypeError, 4.0);
         return nullptr;
     }
 
@@ -488,12 +496,97 @@ void Engine::setFloat(const std::string& targetName, bool enable) {
 }
 
 void Engine::applyHUDVisibility() {
+    if (!isGameUIHiddenState && savedPanelVisibility.empty() && savedModeVisibility.empty() && savedHudVisibility.empty() && savedPoiHidden.empty() &&
+        savedPoiCompHidden.empty() && savedFlareActive.empty() && savedSelectionTargetable.empty()) {
+        return;
+    }
     if (isGameUIHiddenState) {
         forEachOf<UBioSFPanel>([this](UBioSFPanel* p) {
             if (savedPanelVisibility.find(p) == savedPanelVisibility.end()) {
                 savedPanelVisibility.emplace(p, p->IsVisible != 0);
             }
             p->SetMovieVisibility(false);
+        });
+        forEachOf<USFXGameModeBase>([this](USFXGameModeBase* m) {
+            if (savedModeVisibility.find(m) == savedModeVisibility.end()) {
+                savedModeVisibility.emplace(m, HudModeFlags{m->bShowHUD != 0, m->bShowSelection != 0, m->bShowDamageIndicators != 0, m->bShowRadar != 0,
+                                                            m->bShowReticles != 0, m->bShowSubtitle != 0, m->bAllowMessageUI != 0});
+            }
+            m->bShowHUD = 0;
+            m->bShowSelection = 0;
+            m->bShowDamageIndicators = 0;
+            m->bShowRadar = 0;
+            m->bShowReticles = 0;
+            m->bShowSubtitle = 0;
+            m->bAllowMessageUI = 0;
+        });
+        forEachOf<AHUD>([this](AHUD* h) {
+            if (savedHudVisibility.find(h) == savedHudVisibility.end()) {
+                savedHudVisibility.emplace(h, (unsigned char)((h->bShowHUD ? 1 : 0) | (h->bShowGameHUD ? 2 : 0)));
+            }
+            h->bShowHUD = 0;
+            h->bShowGameHUD = 0;
+        });
+        forEachOf<ASFXPointOfInterest>([this](ASFXPointOfInterest* poi) {
+            if (savedPoiHidden.find(poi) == savedPoiHidden.end()) {
+                savedPoiHidden.emplace(poi, poi->bHidden != 0);
+            }
+            poi->SetHidden(true);
+            UActorComponent** data = poi->Components.GetData();
+            const int n = (int)poi->Components.Count();
+            for (int i = 0; i < n; ++i) {
+                UActorComponent* comp = data[i];
+                if (!comp || !comp->IsA(UPrimitiveComponent::StaticClass())) {
+                    continue;
+                }
+                UPrimitiveComponent* prim = static_cast<UPrimitiveComponent*>(comp);
+                auto found = savedPoiCompHidden.find(prim);
+                if (found == savedPoiCompHidden.end()) {
+                    savedPoiCompHidden.emplace(prim, prim->HiddenGame != 0);
+                }
+                prim->HiddenGame = 1;
+                prim->SetHidden(true);
+            }
+        });
+        forEachOf<ULensFlareComponent>([this](ULensFlareComponent* f) {
+            if (savedFlareActive.find(f) == savedFlareActive.end()) {
+                savedFlareActive.emplace(f, f->bIsActive != 0);
+            }
+            f->SetIsActive(false);
+            f->SetHidden(true);
+        });
+        forEachOf<USFXSelectionModule>([this](USFXSelectionModule* m) {
+            if (savedSelectionTargetable.find(m) == savedSelectionTargetable.end()) {
+                savedSelectionTargetable.emplace(m, (unsigned char)((m->m_bTargetable ? 1 : 0) | (m->m_bCombatTargetable ? 2 : 0)));
+            }
+            m->SetTargetable(false);
+            m->SetCombatTargetable(false);
+        });
+        forEachOf<UBioPlayerSelection>([](UBioPlayerSelection* s) {
+            s->m_oCurrentSelectionTarget = nullptr;
+            s->m_oPendingSelectionTarget = nullptr;
+            s->m_oLastSelectionTarget = nullptr;
+            if (s->SelectionFlareComp) {
+                s->SelectionFlareComp->SetIsActive(false);
+                s->SelectionFlareComp->SetHidden(true);
+            }
+        });
+        forEachOf<UPrimitiveComponent>([this](UPrimitiveComponent* prim) {
+            std::string compName = FStringToString(prim->GetName());
+            std::string compClass = FStringToString(prim->Class->GetName());
+            bool shouldHide = (
+                // compName.find("Flare") != std::string::npos || compName.find("Selection") != std::string::npos ||
+                compName.find("Bracket") != std::string::npos || compName.find("Indicator") != std::string::npos ||
+                compName.find("Marker") != std::string::npos || compName.find("Reticle") != std::string::npos
+                // compClass.find("Particle") != std::string::npos || compClass.find("Sprite") != std::string::npos
+            );
+            if (shouldHide) {
+                if (savedPoiCompHidden.find(prim) == savedPoiCompHidden.end()) {
+                    savedPoiCompHidden.emplace(prim, prim->HiddenGame != 0);
+                }
+                prim->HiddenGame = 1;
+                prim->SetHidden(true);
+            }
         });
     } else {
         for (auto it = savedPanelVisibility.begin(); it != savedPanelVisibility.end();) {
@@ -502,7 +595,63 @@ void Engine::applyHUDVisibility() {
             }
             it = savedPanelVisibility.erase(it);
         }
+        for (auto it = savedModeVisibility.begin(); it != savedModeVisibility.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->bShowHUD = it->second.hud;
+                it->first->bShowSelection = it->second.selection;
+                it->first->bShowDamageIndicators = it->second.damage;
+                it->first->bShowRadar = it->second.radar;
+                it->first->bShowReticles = it->second.reticles;
+                it->first->bShowSubtitle = it->second.subtitles;
+                it->first->bAllowMessageUI = it->second.messages;
+            }
+            it = savedModeVisibility.erase(it);
+        }
+        for (auto it = savedHudVisibility.begin(); it != savedHudVisibility.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->bShowHUD = (it->second & 1) != 0;
+                it->first->bShowGameHUD = (it->second & 2) != 0;
+            }
+            it = savedHudVisibility.erase(it);
+        }
+        for (auto it = savedPoiHidden.begin(); it != savedPoiHidden.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->SetHidden(it->second);
+            }
+            it = savedPoiHidden.erase(it);
+        }
+        for (auto it = savedPoiCompHidden.begin(); it != savedPoiCompHidden.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->HiddenGame = it->second;
+                it->first->SetHidden(!it->second);
+            }
+            it = savedPoiCompHidden.erase(it);
+        }
+        for (auto it = savedFlareActive.begin(); it != savedFlareActive.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->SetIsActive(it->second);
+                it->first->SetHidden(!it->second);
+            }
+            it = savedFlareActive.erase(it);
+        }
+        for (auto it = savedSelectionTargetable.begin(); it != savedSelectionTargetable.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->SetTargetable((it->second & 1) != 0);
+                it->first->SetCombatTargetable((it->second & 2) != 0);
+            }
+            it = savedSelectionTargetable.erase(it);
+        }
     }
+}
+
+void Engine::setGameUIHidden(bool hidden) {
+    isGameUIHiddenState = hidden;
+    postGameThreadTask([this, hidden]() {
+        if (isGameUIHiddenState != hidden) {
+            return;
+        }
+        applyHUDVisibility();
+    });
 }
 
 void Engine::freezeLook(bool freeze) {

@@ -7,9 +7,13 @@
 
 Please treat this release as <ins>**BETA**</ins>.
 
+[![Crowdin](https://img.shields.io/badge/Crowdin-grey?logo=trello)](https://crowdin.com/project/superadjustmentstudio)
+[![Trello Board](https://img.shields.io/badge/Trello-SAS-blue?logo=trello)](https://trello.com/b/xn5xTWmX/sas)
 [![Release build](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml/badge.svg?branch=main)](https://github.com/Reyuu/SuperAdjustmentStudio/actions/workflows/cmake-build-release.yml)
+[![Crowdin](https://badges.crowdin.net/superadjustmentstudio/localized.svg)](https://crowdin.com/project/superadjustmentstudio)
+
 ### Features (what works)
-- transforms for all actors - position, rotation and scale
+- transforms for all actors - position, rotation and scale 
 - playing custom animations - both included in the Pawn's animation set and not
 - direct bone posing - you're able to pause current animation and manipulate each single bone on the SkeletalMesh via offsets (trust me, absolute mode is VERY sensitive)
 - basic edits of Actor components (for example, you're able to manipulate the brightness of a spotlight!)
@@ -22,9 +26,10 @@ Please treat this release as <ins>**BETA**</ins>.
 - spawning particles! ✨
 - assign VFX to objects
 - manual package loading and preview - allows you to load additional content into the game (you have to know where a specific prefab/animation is located)
+- freecam - it can be used as a replacement to the game's default photo mode! It even works in conversations! 📷
+- photo utilities - grid overlay, basic photo adjustments and histogram
 
 ### Known issues (what doesn't work)
-- hiding all game UI - only kinda broken
 - after animation is played back and the character reset - animations can stay broken, the solution is to play and then reset the animation again
 - trying to spawn some objects will do nothing, hang the game or crash to desktop, no matter the properties (seems like engine limitation?? or I'm just stupid)
 - scaling the bones in non-uniform manner can give weird results (the scale is forced to be uniform by extension)
@@ -33,7 +38,6 @@ Please treat this release as <ins>**BETA**</ins>.
 
 ### TODO (what I work on)
 - documentation
-- translation handling
 - improving the search
 - handling other properties (Components)
 - UI settings along with customizable keybinds
@@ -47,6 +51,11 @@ Please treat this release as <ins>**BETA**</ins>.
 Copy `SAS_SuperAdjustmentStudio.asi` to `ASI` folder in your game's location.
 
 Press `F10` to show the SAS overlay. `Right-click` outside the overlay to move your camera.
+
+In **Freecam**:
+- `Right-click` to orbit the camera (rotate around the focal point)
+- `SHIFT + Right-click` to pan the camera (move it left, right, forward and backward)
+- `SHIFT + Left-click` to lift the camera (move it up and down)
 
 ## Contributing
 See [CONTRIBUTING.md](docs/contributing.md) for contribution guidelines.
@@ -119,4 +128,4 @@ If I used your code and did not credit you, please reach out, I'll be more than 
 - [d00t](https://github.com/llamathings), [Mgamerz](https://github.com/Mgamerz) and [Cersei](https://github.com/SirCxyrtyx) - for helping me with my understanding of LExSDK
 
 ## Other things
-**I do NOT allow this mod to be reposted just for the translation to be added.** The translation handling will be implemented in the future version, when it does - I'll be more than happy to entertain pull requests with created translations.
+**I do NOT allow this mod to be reposted just for the translation to be added.** Translation happens on Crowdin, contact me if you want to contribute!

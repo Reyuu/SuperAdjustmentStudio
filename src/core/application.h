@@ -17,8 +17,12 @@
 #include "prefabs.h"
 #include "props.h"
 #include "sdk.h"
+#include "settings.h"
 #include "ui.h"
 #include "vfx.h"
+#include "translation.h"
+#include "freecam.h"
+#include "photo_overlay.h"
 #include <atomic>
 #include <thread>
 
@@ -75,6 +79,10 @@ class Application {
             return animationInstance;
         }
 
+        Freecam& freecam() {
+            return freecamInstance;
+        }
+
         VFXManager& vfx() {
             return vfxInstance;
         }
@@ -88,6 +96,18 @@ class Application {
         PrefabManager& prefabs() {
             return prefabsInstance;
         }
+        PhotoOverlay& photoOverlay() {
+            return photoOverlayInstance;
+        }
+
+        Settings& settings() {
+            return settingsInstance;
+        }
+
+        Translation& translation() {
+            return translationInstance;
+        }
+
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -115,12 +135,16 @@ class Application {
         Gizmo gizmoInstance;
         Bones bonesInstance;
         Animation animationInstance;
+        Freecam freecamInstance;
         VFXManager vfxInstance;
         ParticleManager particleInstance;
         LightManager lightsInstance;
         PrefabManager prefabsInstance;
+        Settings settingsInstance;
+        PhotoOverlay photoOverlayInstance;
+        Translation translationInstance;
 
-        bool previousF10 = false;
+        bool previousHotkey = false;
 };
 
 #endif // SAS_APPLICATION_H

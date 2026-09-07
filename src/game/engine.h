@@ -19,6 +19,16 @@ struct PackageLoadTask {
         std::function<void()> onLoaded;
 };
 
+struct HudModeFlags {
+        bool hud;
+        bool selection;
+        bool damage;
+        bool radar;
+        bool reticles;
+        bool subtitles;
+        bool messages;
+};
+
 class Engine {
 
     public:
@@ -54,6 +64,7 @@ class Engine {
         void setFloat(const std::string& targetName, bool enable);
 
         void applyHUDVisibility();
+        void setGameUIHidden(bool hidden);
         void freezeLook(bool freeze);
 
         void initTickHook(HookManager& hookManager, SDKContext& sdk);
@@ -82,6 +93,13 @@ class Engine {
         bool floatOldBlockRigidBody = false;
 
         std::unordered_map<UBioSFPanel*, bool> savedPanelVisibility;
+
+        std::unordered_map<USFXGameModeBase*, HudModeFlags> savedModeVisibility;
+        std::unordered_map<AHUD*, unsigned char> savedHudVisibility;
+        std::unordered_map<ASFXPointOfInterest*, bool> savedPoiHidden;
+        std::unordered_map<UPrimitiveComponent*, bool> savedPoiCompHidden;
+        std::unordered_map<ULensFlareComponent*, bool> savedFlareActive;
+        std::unordered_map<USFXSelectionModule*, unsigned char> savedSelectionTargetable;
 };
 
 #endif // SAS_ENGINE_H

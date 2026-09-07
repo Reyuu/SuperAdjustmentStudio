@@ -120,4 +120,26 @@ static FVector RotateVector(const FVector& v, const FRotator& r) {
     return out;
 }
 
+static std::string FStringToString(const FString& fstr) {
+    std::string result = "";
+    for (int i = 0; i < fstr.Length(); ++i) {
+        result += static_cast<char>(fstr.Chars()[i]);
+    }
+    return result;
+}
+
+constexpr float DegreesToRadians = std::numbers::pi_v<float> / 180.0f;
+constexpr float MaxInPitchRadians = 89.0f * DegreesToRadians;
+
+inline FVector RotateAboutUnit(FVector v, FVector axis, float angleRadians) {
+    const float c = cosf(angleRadians);
+    const float s = sinf(angleRadians);
+    return v * c + Cross(axis, v) * s + axis * Dot(axis, v) * (1.0f - c);
+}
+
+inline FMatrix ViewBasisFromRotatorRoll(const FRotator& r, int rollUnit) {
+    return MatrixCompose(FVector{0.0f, 0.0f, 0.0f}, FVector{1.0f, 1.0f, 1.0f}, UnrealRotationUnitsToRadians(r.Pitch), UnrealRotationUnitsToRadians(r.Yaw),
+                         UnrealRotationUnitsToRadians(rollUnit));
+}
+
 #endif // SAS_UTIL_H

@@ -8,6 +8,7 @@
 #include <atomic>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <string>
 #include <windows.h>
 
 typedef HRESULT(STDMETHODCALLTYPE* PresentFn)(IDXGISwapChain*, UINT SyncInterval, UINT Flags);
@@ -62,10 +63,14 @@ class NativeRenderer {
         ResizeBuffersFn origResizeBuffers() const {
             return origResizeBuffersPointer;
         }
+        float fontScale() const {
+            return fontScaleValue;
+        }
 
         // functionality
         //   imgui context + win32/dx11 backend initialization from the live swapchain.
         bool initImGuiInGame(IDXGISwapChain* pSwapChain);
+        void applySettings(const struct SettingOptions& options);
         //  resolve the D3D11 swapchain vtable via kiero and detour Present/ResizeBuffers.
         bool installHooks(PresentFn presentDetour, ResizeBuffersFn resizeBuffersDetour);
         //  restore the original vtable entries and tear kiero down.
@@ -91,6 +96,9 @@ class NativeRenderer {
 
         PresentFn origPresentPointer = nullptr;
         ResizeBuffersFn origResizeBuffersPointer = nullptr;
+
+        float fontScaleValue = 1.0f;
+        std::string themeValue = "default";
 };
 
 #endif // SAS_NATIVE_RENDERER_H

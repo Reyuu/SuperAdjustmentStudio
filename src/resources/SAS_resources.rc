@@ -1,3 +1,5 @@
 #define IDR_FA_FONT 101
+#define IDR_TRANSLATIONS 102
 
 IDR_FA_FONT RCDATA "fa-solid-900.ttf"
+IDR_TRANSLATIONS RCDATA "translations.json"

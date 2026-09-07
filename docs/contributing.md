@@ -20,6 +20,11 @@ When submitting issues, please provide clear and detailed information to help us
 
 I appreciate your efforts in reporting issues and helping improve the project.
 
+### AI usage
+Using AI to submit code or documentation contributions is allowed, but you must ensure that the output is accurate, relevant, and adheres to the project's coding standards and guidelines. Always review and verify AI-generated content before submitting it.
+
+If I catch someone not knowing what thier code does or blindly submitting AI-generated content without review, their contributions are going to be rejected and **all** of their pull requests will be closed.
+
 ### Code of Conduct
 We do not have one at the moment, but we expect all contributors to behave respectfully and professionally while interacting with the project and its community.
 

@@ -1,6 +1,8 @@
 #include "props.h"
 #include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 #include "IconsFontAwesome6.h"
+#include "translation.h"
+#include "ui/helpers/labels.h"
 #include "ui/helpers/toast_notifications.h"
 #include "util.h"
 #include <LESDK/Common/Math.hpp>
@@ -530,6 +532,10 @@ void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, 
             return;
         }
     }
+    if (e.type != PT_BOOL) {
+        labelAbove(label.c_str());
+        label = "##p" + id;
+    }
 
     bool changed = false;
     switch (e.type) {
@@ -661,7 +667,7 @@ void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, 
                                     }
                                 }
                             } catch (...) {
-                                ImGui::TextDisabled("(error reading element %d)", idx);
+                                ImGui::TextDisabled(t("ui.properties_table.error_reading"), idx);
                             }
                             ImGui::PopID();
                         }
@@ -669,7 +675,7 @@ void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, 
                         if (writeObject && arr) {
                             ImGui::PushID((std::string("add") + id).c_str());
                             if (arrNum == 0) {
-                                ImGui::TextDisabled("(array empty)");
+                                ImGui::TextDisabled(t("ui.properties_table.array_empty"));
                             }
                             if (arr->ArrayMax > arr->ArrayNum) {
                                 if (ImGui::Button(ICON_FA_PLUS)) {
@@ -690,13 +696,13 @@ void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, 
                                     arr->ArrayNum++;
                                 }
                             } else if (arrNum > 0) {
-                                ImGui::TextDisabled("(array full)");
+                                ImGui::TextDisabled(t("ui.properties_table.array_full"));
                             }
                             ImGui::PopID();
                         }
                     }
                 } catch (...) {
-                    ImGui::TextDisabled("(error reading array elements)");
+                    ImGui::TextDisabled(t("ui.properties_table.error_reading_elements"));
                 }
                 ImGui::TreePop();
             }
@@ -772,7 +778,7 @@ void Properties::renderPropertyEntry(UObject* readObject, UObject* writeObject, 
                 }
             }
             ImGui::SameLine();
-            ImGui::TextDisabled("(%s) - click to edit", e.detail.c_str());
+            ImGui::TextDisabled(t("ui.properties_table.click_to_edit"), e.detail.c_str());
             break;
         }
     }
@@ -911,21 +917,21 @@ void Properties::renderStructWindows() {
             try {
                 structWindows[i].winPos = ImGui::GetWindowPos();
                 structWindows[i].winSize = ImGui::GetWindowSize();
-                ImGui::Text("Struct path: %s", path.c_str());
+                ImGui::Text(t("ui.properties_table.struct_path"), path.c_str());
                 if (structType) {
-                    ImGui::TextDisabled("type %s", FStringToUtf8(structType->GetName()).c_str());
+                    ImGui::TextDisabled(t("ui.properties_table.type"), FStringToUtf8(structType->GetName()).c_str());
                 }
                 ImGui::Separator();
 
                 if (!structType || !readObject) {
-                    ImGui::TextDisabled("invalid struct or object (has the target changed?)");
+                    ImGui::TextDisabled(t("ui.properties_table.invalid_struct"));
                 } else {
                     std::vector<PropertyEntry> structProps;
                     collectStructFields(structType, readObject, offset, structProps);
                     renderPropertyTable(readObject, writeObject, structProps, "", path, id);
                 }
             } catch (...) {
-                ImGui::TextDisabled("(error reading struct fields)");
+                ImGui::TextDisabled(t("ui.properties_table.error_reading_structs"));
             }
             ImGui::End();
         }

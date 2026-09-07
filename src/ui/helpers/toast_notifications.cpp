@@ -1,4 +1,5 @@
 #include "toast_notifications.h"
+#include "translation.h"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -54,19 +55,19 @@ void ToastNotificationManager::renderToastNotifications() {
         ImVec4 color = toastNotificationColor(t.type);
         switch (t.type) {
             case ToastTypeSuccess: {
-                ImGui::TextColored(color, "%s Success", icon);
+                ImGui::TextColored(color, t("toast.success"), icon);
                 break;
             }
             case ToastTypeInfo: {
-                ImGui::TextColored(color, "%s Info", icon);
+                ImGui::TextColored(color, t("toast.info"), icon);
                 break;
             }
             case ToastTypeWarning: {
-                ImGui::TextColored(color, "%s Warning", icon);
+                ImGui::TextColored(color, t("toast.warning"), icon);
                 break;
             }
             case ToastTypeError: {
-                ImGui::TextColored(color, "%s Error", icon);
+                ImGui::TextColored(color, t("toast.error"), icon);
                 break;
             }
         }
