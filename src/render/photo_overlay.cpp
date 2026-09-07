@@ -34,6 +34,35 @@ void PhotoOverlay::render(ID3D11Device* device) {
 
     const ImU32 color = ImGui::GetColorU32(ImVec4(lineColor[0], lineColor[1], lineColor[2], lineColor[3]));
 
+    if (filterState) {
+        if (tintStrength > 0.0f) {
+            dl->AddRectFilled(ImVec2(0, 0), size, ImGui::GetColorU32(ImVec4(tintColor[0], tintColor[1], tintColor[2], tintStrength * 0.5f)));
+        }
+        if (grainIntensity > 0.0f && grainOpacity > 0.0f) {
+            unsigned int seed = (unsigned int)ImGui::GetFrameCount() * 2654443741u;
+            const int n = (int)(grainIntensity * 2200.0f);
+            const int wi = (int)width;
+            const int hi = (int)height;
+            for (int i = 0; i < n; ++i) {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                const float x = (seed % wi);
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                const float y = (seed % hi);
+                const float v = (seed >> 7) & 1;
+                int a = (int)((70 + (seed & 100)) * grainOpacity);
+                a = a > 255 ? 255 : a;
+                dl->AddRectFilled(ImVec2(x, y), ImVec2(x + 2.5f, y + 2.5f), v ? IM_COL32(255, 255, 255, a) : IM_COL32(0, 0, 0, a));
+            }
+        }
+    }
+    if (!enabledState) {
+        return;
+    }
+
     if ((int)aspectRatio > 0 && (int)aspectRatio < ASPECT_RATIO_COUNT) {
         const float ratio = ASPECT_RATIOS[(int)aspectRatio][0] / ASPECT_RATIOS[(int)aspectRatio][1];
         float tw = width;
@@ -111,35 +140,6 @@ void PhotoOverlay::render(ID3D11Device* device) {
     }
     if (centerDot) {
         dl->AddCircle(ImVec2(width / 2.0f, height / 2.0f), lineThickness, color);
-    }
-    if (filterState) {
-        if (tintStrength > 0.0f) {
-            dl->AddRectFilled(ImVec2(0, 0), size, ImGui::GetColorU32(ImVec4(tintColor[0], tintColor[1], tintColor[2], tintStrength * 0.5f)));
-        }
-        if (grainIntensity > 0.0f && grainOpacity > 0.0f) {
-            unsigned int seed = (unsigned int)ImGui::GetFrameCount() * 2654443741u;
-            const int n = (int)(grainIntensity * 2200.0f);
-            const int wi = (int)width;
-            const int hi = (int)height;
-            for (int i = 0; i < n; ++i) {
-                // Generate a pseudo-random position for the grain
-                seed ^= seed << 13;
-                seed ^= seed >> 17;
-                seed ^= seed << 5;
-                const float x = (seed % wi);
-                seed ^= seed << 13;
-                seed ^= seed >> 17;
-                seed ^= seed << 5;
-                const float y = (seed % hi);
-                const float v = (seed >> 7) & 1;
-                int a = (int)((70 + (seed & 100)) * grainOpacity);
-                a = a > 255 ? 255 : a;
-                dl->AddRectFilled(ImVec2(x, y), ImVec2(x + 2.5f, y + 2.5f), v ? IM_COL32(255, 255, 255, a) : IM_COL32(0, 0, 0, a));
-            }
-        }
-    }
-    if (!enabledState) {
-        return;
     }
     if (readout) {
         char buf[128];
