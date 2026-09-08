@@ -44,7 +44,7 @@ class ParticleManager {
         std::vector<ParticleEntry> particleEntries;
         std::set<UParticleSystem*, ParticleTemplateNameLess> availableTemplates;
         std::mutex particleMtx;
-        bool loopParticles = false;
+        bool loopParticles = SETTINGS_TOGGLE_OFF;
         float loopDelayParticles = SETTINGS_FX_LOOP_DELAY_DEFAULT;
         float particleDuration = SETTINGS_FX_DURATION_DEFAULT;
 };

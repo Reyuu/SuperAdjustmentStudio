@@ -125,17 +125,17 @@ class PhotoOverlay {
         void shutdown();
 
     private:
-        bool enabledState = false;
+        bool enabledState = SETTINGS_TOGGLE_OFF;
         PhotoOverlayGrid gridIndex = GRID_NONE;
         AspectRatio aspectRatio = ASPECT_RATIO_NONE;
         float maskOpacity = SETTINGS_PHOTO_MASK_OPACITY_DEFAULT;
-        float lineColor[4] = {1.0f, 1.0f, 1.0f, 0.85f};
+        float lineColor[4] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B, SETTINGS_PHOTO_LINE_ALPHA_DEFAULT};
         float lineThickness = SETTINGS_PHOTO_LINE_THICKNESS_DEFAULT;
-        bool centerDot = false;
-        bool safeFrame = false;
-        bool readout = false;
+        bool centerDot = SETTINGS_TOGGLE_OFF;
+        bool safeFrame = SETTINGS_TOGGLE_OFF;
+        bool readout = SETTINGS_TOGGLE_OFF;
 
-        bool histogram = false;
+        bool histogram = SETTINGS_TOGGLE_OFF;
         static constexpr int HIST_BINS = 64;
         static constexpr int HIST_EVERY = 10;
         float histR[HIST_BINS] = {};
@@ -152,8 +152,8 @@ class PhotoOverlay {
         unsigned histH = 0;
         int histFmt = 0;
 
-        bool filterState = false;
-        float tintColor[3] = {1.0f, 1.0f, 1.0f};
+        bool filterState = SETTINGS_TOGGLE_OFF;
+        float tintColor[3] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B};
         float tintStrength = SETTINGS_PHOTO_TINT_STRENGTH_DEFAULT;
         float grainIntensity = SETTINGS_PHOTO_GRAIN_INTENSITY_DEFAULT;
         float grainOpacity = SETTINGS_PHOTO_GRAIN_OPACITY_DEFAULT;

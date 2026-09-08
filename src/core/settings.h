@@ -141,6 +141,23 @@ inline constexpr float SETTINGS_FX_DURATION_DEFAULT = 10.0f;
 inline constexpr float SETTINGS_FX_DURATION_MIN = 0.1f;
 inline constexpr float SETTINGS_FX_DURATION_MAX = 60.0f;
 
+inline constexpr bool SETTINGS_TOGGLE_OFF = false;
+inline constexpr bool SETTINGS_LIGHT_ENABLED_DEFAULT = true;
+inline constexpr bool SETTINGS_LIGHT_CAST_SHADOWS_DEFAULT = true;
+inline constexpr bool SETTINGS_LIGHT_CAST_DYNAMIC_SHADOWS_DEFAULT = true;
+inline constexpr bool SETTINGS_LIGHT_RENDER_SHAFTS_DEFAULT = false;
+
+inline constexpr float SETTINGS_COLOR_WHITE_R = 1.0f;
+inline constexpr float SETTINGS_COLOR_WHITE_G = 1.0f;
+inline constexpr float SETTINGS_COLOR_WHITE_B = 1.0f;
+inline constexpr float SETTINGS_PHOTO_LINE_ALPHA_DEFAULT = 0.85f;
+
+inline constexpr int SETTINGS_PHOTO_GRID_DEFAULT = 0;
+inline constexpr int SETTINGS_PHOTO_ASPECT_DEFAULT = 0;
+inline constexpr int SETTINGS_LIGHT_SHADOW_PROJ_DEFAULT = 0;
+inline constexpr int SETTINGS_LIGHT_SHADOW_FILTER_DEFAULT = 0;
+inline constexpr int SETTINGS_LIGHT_SHADOW_MODE_DEFAULT = 0;
+
 struct SettingOptions {
         std::string language = "en";
         int fontSize = SETTINGS_FONT_SIZE_DEFAULT;
@@ -163,16 +180,16 @@ struct SettingOptions {
         float freecamSat = SETTINGS_FREECAM_SAT_DEFAULT;
         float freecamMoveSpeed = SETTINGS_FREECAM_MOVE_SPEED_DEFAULT;
 
-        bool isFreecamAdjustEnabled = false;
-        bool isFreecamDofEnabled = false;
-        bool isFreecamBloomEnabled = false;
-        bool isFreecamColorEnabled = false;
+        bool isFreecamAdjustEnabled = SETTINGS_TOGGLE_OFF;
+        bool isFreecamDofEnabled = SETTINGS_TOGGLE_OFF;
+        bool isFreecamBloomEnabled = SETTINGS_TOGGLE_OFF;
+        bool isFreecamColorEnabled = SETTINGS_TOGGLE_OFF;
 
-        bool isFreecamHideOthersEnabled = false;
-        bool isFreecamHideSelfEnabled = false;
-        bool isFreecamHidePartyEnabled = false;
-        bool isFreecamHideNPCsEnabled = false;
-        bool isFreecamHideVehicleEnabled = false;
+        bool isFreecamHideOthersEnabled = SETTINGS_TOGGLE_OFF;
+        bool isFreecamHideSelfEnabled = SETTINGS_TOGGLE_OFF;
+        bool isFreecamHidePartyEnabled = SETTINGS_TOGGLE_OFF;
+        bool isFreecamHideNPCsEnabled = SETTINGS_TOGGLE_OFF;
+        bool isFreecamHideVehicleEnabled = SETTINGS_TOGGLE_OFF;
 };
 
 class Settings {

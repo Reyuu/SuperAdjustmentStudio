@@ -44,11 +44,11 @@ class VFXManager {
         std::vector<VFXEntry> vfxEntries;
         std::set<UBioVFXTemplate*, VFXTemplateNameLess> availableTemplates;
         std::mutex vfxMtx;
-        bool ignoreCameraMovement = false;
-        bool loopVFX = false;
+        bool ignoreCameraMovement = SETTINGS_TOGGLE_OFF;
+        bool loopVFX = SETTINGS_TOGGLE_OFF;
         float loopDelayVFX = SETTINGS_FX_LOOP_DELAY_DEFAULT;
         float vfxDuration = SETTINGS_FX_DURATION_DEFAULT;
-        bool showBoneSelection = false;
+        bool showBoneSelection = SETTINGS_TOGGLE_OFF;
 };
 
 #endif // SAS_VFX_H

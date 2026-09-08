@@ -78,6 +78,6 @@ struct PrefabManager {
         float lightExpansion = SETTINGS_PREFAB_EXPANSION_DEFAULT;
         float lightBrightness = SETTINGS_PREFAB_BRIGHTNESS_DEFAULT;
         float lightRadius = SETTINGS_PREFAB_RADIUS_DEFAULT;
-        float lightColor[3] = {1.0f, 1.0f, 1.0f};
+        float lightColor[3] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B};
 };
 #endif // SAS_PREFABS_H

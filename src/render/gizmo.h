@@ -3,6 +3,7 @@
 
 #include "hook_manager.h"
 #include "sdk.h"
+#include "settings.h"
 #include "util.h"
 #include <string>
 #include <vector>
@@ -54,11 +55,11 @@ class Gizmo {
         void processEvent(UObject* Context, UFunction* Function, void* Parms, void* Result);
 
     private:
-        bool showGizmoState = false;
-        bool drawTracerState = false;
-        bool debugAlwaysOnTopState = false;
-        bool highlightSelectedState = false;
-        bool clickSelectState = false;
+        bool showGizmoState = SETTINGS_TOGGLE_OFF;
+        bool drawTracerState = SETTINGS_TOGGLE_OFF;
+        bool debugAlwaysOnTopState = SETTINGS_TOGGLE_OFF;
+        bool highlightSelectedState = SETTINGS_TOGGLE_OFF;
+        bool clickSelectState = SETTINGS_TOGGLE_OFF;
 
         // original UObject::ProcessEvent, to forward after batching
         ProcessEventFn origProcessEvent = nullptr;
