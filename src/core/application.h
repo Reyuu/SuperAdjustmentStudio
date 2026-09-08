@@ -145,6 +145,7 @@ class Application {
         Translation translationInstance;
 
         bool previousHotkey = false;
+        bool hotkeyCaptureFinished = false;
 };
 
 #endif // SAS_APPLICATION_H

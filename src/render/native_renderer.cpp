@@ -383,7 +383,7 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
     if (Translation::instance().startup) {
         Translation::instance().startup = false;
         Translation::instance().loadTranslations();
-        SettingOptions& options = Settings::instance().options;
+        SettingsOptions& options = Settings::instance().options;
         if (options.language.empty()) {
             options.language = "en";
         }
@@ -488,7 +488,7 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
     return true;
 }
 
-void NativeRenderer::applySettings(const SettingOptions& options) {
+void NativeRenderer::applySettings(const SettingsOptions& options) {
     const float scale = std::clamp((float)options.fontSize / SETTINGS_FONT_BASE_PX, SETTINGS_FONT_SCALE_MIN, SETTINGS_FONT_SCALE_MAX);
     fontScaleValue = scale;
     themeValue = options.theme;

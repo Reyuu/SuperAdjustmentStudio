@@ -117,23 +117,35 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
         if (app.rendererInstance.isImGuiInitialized()) {
             const std::string& hotkeyName = app.settingsInstance.options.showOverlay;
             static std::string lastHotkeyName;
-            static int lastHotkeyVk = VK_F10;
+            static OverlayHotkey lastHotkey{false, false, false, VK_F10};
             if (hotkeyName != lastHotkeyName) {
-                lastHotkeyVk = app.settingsInstance.vkFromName(hotkeyName);
+                OverlayHotkey parsed{};
+                if (Settings::tryParseHotkey(hotkeyName, &parsed)) {
+                    lastHotkey = parsed;
+                }
                 lastHotkeyName = hotkeyName;
             }
-            SHORT ks = GetAsyncKeyState(lastHotkeyVk);
-            bool currentHotkey = (ks & 0x8000) != 0;
-            if (currentHotkey && !app.previousHotkey) {
+            bool firing = false;
+            if (!app.settings().capturingHotkey) {
+                bool controlState = false;
+                bool altState = false;
+                bool shiftState = false;
+                Settings::queryModdifiers(&controlState, &altState, &shiftState);
+                const bool mainDown = (GetAsyncKeyState(lastHotkey.key) & 0x8000) != 0;
+                firing = mainDown && (controlState == lastHotkey.ctrl) && (altState == lastHotkey.alt) && (shiftState == lastHotkey.shift);
+            }
+            const bool suppressHotkey = app.hotkeyCaptureFinished;
+            app.hotkeyCaptureFinished = false;
+            if (firing && !app.previousHotkey && !app.settings().capturingHotkey && !suppressHotkey) {
                 std::atomic<bool>& showUI = app.ui().showUI();
                 showUI = !showUI.load();
                 app.ui().applyUIInputState(app.gameWindowInstance);
 
-                std::ostringstream ss;
-                ss << "Toggle UI: visible=" << showUI.load();
-                Logger->debug(ss.str());
+                std::ostringstream oss;
+                oss << "Overlay hotkey pressed, toggling UI to " << (showUI.load() ? "shown" : "hidden");
+                Logger->debug(oss.str());
             }
-            app.previousHotkey = currentHotkey;
+            app.previousHotkey = firing;
 
             app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
@@ -146,12 +158,14 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             app.mouse().cursorPassthrough() = false;
 
             ImGui::NewFrame();
+            const bool wasCapturingHotkey = app.settings().capturingHotkey;
             if (app.photoOverlay().isActive()) {
                 app.photoOverlay().render(app.rendererInstance.device());
             }
             if (app.ui().showUI().load()) {
                 app.ui().renderOverlayContents(app.rendererInstance);
             }
+            app.hotkeyCaptureFinished = wasCapturingHotkey && !app.settings().capturingHotkey;
             ImGui::EndFrame();
             ImGui::Render();
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

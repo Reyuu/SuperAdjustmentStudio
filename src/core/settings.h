@@ -158,7 +158,7 @@ inline constexpr int SETTINGS_LIGHT_SHADOW_PROJ_DEFAULT = 0;
 inline constexpr int SETTINGS_LIGHT_SHADOW_FILTER_DEFAULT = 0;
 inline constexpr int SETTINGS_LIGHT_SHADOW_MODE_DEFAULT = 0;
 
-struct SettingOptions {
+struct SettingsOptions {
         std::string language = "en";
         int fontSize = SETTINGS_FONT_SIZE_DEFAULT;
         std::string theme = "default";
@@ -192,6 +192,14 @@ struct SettingOptions {
         bool isFreecamHideVehicleEnabled = SETTINGS_TOGGLE_OFF;
 };
 
+struct OverlayHotkey {
+    public:
+        bool ctrl = SETTINGS_TOGGLE_OFF;
+        bool alt = SETTINGS_TOGGLE_OFF;
+        bool shift = SETTINGS_TOGGLE_OFF;
+        int key = 0x79; // F10 by default
+};
+
 class Settings {
     public:
         Settings();
@@ -204,7 +212,7 @@ class Settings {
             return settingsInstance != nullptr;
         }
 
-        SettingOptions options;
+        SettingsOptions options;
 
         void loadFromJson(const nlohmann::json& j);
         nlohmann::json toJson() const;
@@ -231,11 +239,19 @@ class Settings {
 
         void renderSettingsWindow(bool* open);
 
+        static bool isModifierKey(int vk);
+        static void queryModdifiers(bool* ctrl, bool* alt, bool* shift);
+        static bool tryParseHotkey(const std::string& str, OverlayHotkey* hotkey);
+        static std::string formatHotkey(const OverlayHotkey& hotkey);
+
         static bool tryVkFromName(const std::string& name, int* vkOut);
         static int vkFromName(const std::string& name);
         static std::string nameFromVk(int vk);
 
+        bool capturingHotkey = false;
+
     private:
+        bool capturePrevDown[256] = {};
         static const char* configFileName() {
             return "settings.json";
         }

@@ -213,7 +213,7 @@ void Freecam::assertFreecamCache() {
         return;
     }
 
-    SettingOptions& options = Application::instance().settings().options;
+    SettingsOptions& options = Application::instance().settings().options;
     std::lock_guard<std::mutex> lock(freecamMutex);
 
     FRotator rot = offsets.rotation;
@@ -282,7 +282,7 @@ void Freecam::moveFreecam(int dx, int dy, CameraDragState& state) {
     if (!freecamWantedState.load() || !freecamHasPOV || !freecamCamera) {
         return;
     }
-    SettingOptions options = Application::instance().settings().options;
+    SettingsOptions options = Application::instance().settings().options;
     std::lock_guard<std::mutex> lock(freecamMutex);
     switch (state) {
         case CAMERA_DRAG_ORBITING: {
@@ -316,7 +316,7 @@ void Freecam::cacheLivePP(const FPostProcessSettings& pp) {
 }
 
 void Freecam::seedSlidersFromLive() {
-    SettingOptions& options = Application::instance().settings().options;
+    SettingsOptions& options = Application::instance().settings().options;
     options.freecamBloomThreshold = ppLive.bloomThreshold;
     options.freecamBloomScale = ppLive.bloomScale;
     options.freecamDofDistance = ppLive.dofDistance;
@@ -331,7 +331,7 @@ FVector Freecam::dofFocusPoint(float distance) {
     return offsets.position + viewForward * distance;
 }
 
-void Freecam::applyDofPP(FPostProcessSettings& pp, const SettingOptions& options) {
+void Freecam::applyDofPP(FPostProcessSettings& pp, const SettingsOptions& options) {
     SAS_PP_SET(pp.bOverride_EnableDOF, pp.bEnableDOF, 1);
     SAS_PP_SET(pp.bOverride_DOF_FocusDistance, pp.DOF_FocusDistance, options.freecamDofDistance);
     SAS_PP_SET(pp.bOverride_DOF_FocusInnerRadius, pp.DOF_FocusInnerRadius, options.freecamDofInnerRadius);
@@ -341,13 +341,13 @@ void Freecam::applyDofPP(FPostProcessSettings& pp, const SettingOptions& options
                std::clamp(options.freecamDofIntensity / SETTINGS_FREECAM_DOF_INTENSITY_DIV, 0.0f, 1.0f));
 }
 
-void Freecam::applyBloomPP(FPostProcessSettings& pp, const SettingOptions& options) {
+void Freecam::applyBloomPP(FPostProcessSettings& pp, const SettingsOptions& options) {
     SAS_PP_SET(pp.bOverride_EnableBloom, pp.bEnableBloom, 1);
     SAS_PP_SET(pp.bOverride_Bloom_Threshold, pp.Bloom_Threshold, options.freecamBloomThreshold);
     SAS_PP_SET(pp.bOverride_Bloom_Scale, pp.Bloom_Scale, options.freecamBloomScale);
 }
 
-void Freecam::applyColorPP(FPostProcessSettings& pp, const SettingOptions& options) {
+void Freecam::applyColorPP(FPostProcessSettings& pp, const SettingsOptions& options) {
     SAS_PP_SET(pp.bOverride_Scene_HighLights, pp.Scene_HighLights, gray(options.freecamContrast));
     SAS_PP_SET(pp.bOverride_Scene_MidTones, pp.Scene_MidTones, gray(options.freecamBright));
     SAS_PP_SET(pp.bOverride_Scene_Shadows, pp.Scene_Shadows,
@@ -370,7 +370,7 @@ void Freecam::observeModePostProcess(UObject* context, UFunction* function, void
         seedSlidersFromLive();
     }
 
-    SettingOptions options = Application::instance().settings().options;
+    SettingsOptions options = Application::instance().settings().options;
 
     if (!options.isFreecamAdjustEnabled) {
         return;
@@ -392,7 +392,7 @@ void Freecam::syncFreecamHides(bool neutral) {
         return;
     }
 
-    SettingOptions options = Application::instance().settings().options;
+    SettingsOptions options = Application::instance().settings().options;
 
     const bool others = !neutral && options.isFreecamHideOthersEnabled;
     const bool self = !neutral && options.isFreecamHideSelfEnabled;
@@ -429,7 +429,7 @@ void Freecam::renderUi() {
 
     ImGui::Indent();
     auto& app = Application::instance();
-    SettingOptions& options = app.settings().options;
+    SettingsOptions& options = app.settings().options;
 
     auto pushLook = [&app]() {
         app.engine().postGameThreadTask([]() {

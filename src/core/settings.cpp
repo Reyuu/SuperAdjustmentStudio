@@ -95,21 +95,16 @@ void Settings::clampAndValidate() {
     }
 
     options.fontSize = std::clamp(options.fontSize, SETTINGS_FONT_SIZE_MIN, SETTINGS_FONT_SIZE_MAX);
-    int vk = VK_F10;
-    if (!tryVkFromName(options.showOverlay, &vk)) {
+    OverlayHotkey hotkey;
+    if (!Settings::tryParseHotkey(options.showOverlay, &hotkey) || Settings::nameFromVk(hotkey.key).empty()) {
         options.showOverlay = "F10";
     } else {
-        const std::string canonical = nameFromVk(vk);
-        if (canonical.empty()) {
-            options.showOverlay = "F10";
-        } else {
-            options.showOverlay = canonical;
-        }
+        options.showOverlay = Settings::formatHotkey(hotkey);
     }
 }
 
 void Settings::loadFromJson(const nlohmann::json& j) {
-    SettingOptions next = options;
+    SettingsOptions next = options;
     if (j.contains("language") && j["language"].is_string()) {
         next.language = j["language"].get<std::string>();
     }
@@ -353,17 +348,18 @@ static std::string displayNameForVk(int vk) {
             return "MEDIASTOP";
         case VK_MEDIA_PLAY_PAUSE:
             return "MEDIAPLAYPAUSE";
-        case VK_LAUNCH_MAIL:
+        case VK_LAUNCH_MAIL: {
             return "LAUNCHMAIL";
         case VK_LAUNCH_MEDIA_SELECT: {
             return "LAUNCHMEDIA";
-        case VK_LAUNCH_APP1: {
-            return "LAUNCHAPP1";
-            case VK_LAUNCH_APP2: {
-                return "LAUNCHAPP2";
-                default: {
-                    break;
+            case VK_LAUNCH_APP1: {
+                return "LAUNCHAPP1";
+                case VK_LAUNCH_APP2: {
+                    return "LAUNCHAPP2";
+                    default: {
+                        break;
         }
+                    }
                 }
             }
         }
@@ -384,6 +380,78 @@ static std::string displayNameForVk(int vk) {
         return {};
     }
     return normalizeKeyName(buf);
+}
+
+bool Settings::isModifierKey(int vk) {
+    return vk == VK_SHIFT || vk == VK_LSHIFT || vk == VK_RSHIFT || vk == VK_CONTROL || vk == VK_LCONTROL || vk == VK_RCONTROL || vk == VK_MENU ||
+           vk == VK_LMENU || vk == VK_RMENU;
+}
+
+void Settings::queryModdifiers(bool* ctrl, bool* alt, bool* shift) {
+    if (ctrl) {
+        *ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+    }
+    if (alt) {
+        *alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+    }
+    if (shift) {
+        *shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+    }
+}
+
+bool Settings::tryParseHotkey(const std::string& text, OverlayHotkey* hotkey) {
+    OverlayHotkey hotkeyOut;
+    std::string token;
+    std::istringstream iss(text);
+    std::vector<std::string> tokens;
+    while (std::getline(iss, token, '+')) {
+        std::string t = trimUpper(token);
+        if (!t.empty()) {
+            tokens.push_back(t);
+        }
+    }
+
+    if (tokens.empty()) {
+        return false;
+    }
+    for (size_t i = 0; i + 1 < tokens.size(); ++i) {
+        if (tokens[i] == "CTRL" || tokens[i] == "CONTROL") {
+            hotkeyOut.ctrl = true;
+        } else if (tokens[i] == "ALT" || tokens[i] == "MENU") {
+            hotkeyOut.alt = true;
+        } else if (tokens[i] == "SHIFT") {
+            hotkeyOut.shift = true;
+        }
+    }
+    int vk = 0;
+    if (!tryVkFromName(tokens.back(), &vk)) {
+        return false;
+    }
+    if (isModifierKey(vk) || vk == VK_LWIN || vk == VK_RWIN || vk == VK_ESCAPE) {
+        return false;
+    }
+    hotkeyOut.key = vk;
+    if (hotkey) {
+        *hotkey = hotkeyOut;
+    }
+    return true;
+}
+
+std::string Settings::formatHotkey(const OverlayHotkey& hotkey) {
+    std::string result;
+    if (hotkey.ctrl) {
+        result += "Ctrl+";
+    }
+    if (hotkey.alt) {
+        result += "Alt+";
+    }
+    if (hotkey.shift) {
+        result += "Shift+";
+    }
+    if (hotkey.key != 0) {
+        result += displayNameForVk(hotkey.key);
+    }
+    return result;
 }
 
 static std::unordered_map<std::string, int> buildVkNameTable() {
@@ -471,7 +539,7 @@ void Settings::renderSettingsWindow(bool* open) {
         return;
     }
 
-    SettingOptions& opts = options;
+    SettingsOptions& opts = options;
     auto& toasts = Application::instance().ui().toastManager;
 
     int langCount = 0;
@@ -547,49 +615,75 @@ void Settings::renderSettingsWindow(bool* open) {
     }
     ImGui::PopItemWidth();
 
-    static const std::vector<std::string> allHotkeys = [] {
-        std::vector<std::string> out;
-        for (int n = 1; n <= 24; ++n) {
-            out.push_back("F" + std::to_string(n));
-        }
-        for (int vk = 0x08; vk <= 0xFF; ++vk) {
-            if (vk >= VK_F1 && vk <= VK_F24) {
-                continue;
-            }
-            std::string nm = Settings::nameFromVk(vk);
-            if (nm.empty()) {
-                continue;
-            }
-            int round = 0;
-            if (!Settings::tryVkFromName(nm, &round) || round != vk) {
-                continue;
-            }
-            out.push_back(nm);
-        }
-        std::sort(out.begin() + 24, out.end());
-        return out;
-    }();
-    int hotkeyIndex = 0;
-    for (int i = 0; i < (int)allHotkeys.size(); ++i) {
-        if (opts.showOverlay == allHotkeys[i]) {
-            hotkeyIndex = i;
-            break;
-        }
-    }
     ImGui::Text(t("ui.settings_table.overlay_hotkey"));
     ImGui::PushItemWidth(-100);
-    if (hotkeyIndex < (int)allHotkeys.size() && ImGui::BeginCombo("##settings_hotkey", allHotkeys[hotkeyIndex].c_str())) {
-        for (int i = 0; i < (int)allHotkeys.size(); ++i) {
-            const bool selected = (i == hotkeyIndex);
-            if (ImGui::Selectable((allHotkeys[i] + "##" + std::to_string(i)).c_str(), selected)) {
-                opts.showOverlay = allHotkeys[i];
-                markChanged();
+    {
+        SettingsOptions& o = opts;
+        if (!capturingHotkey) {
+            ImGui::TextUnformatted(o.showOverlay.c_str());
+            ImGui::SameLine();
+            if (ImGui::Button(t("ui.settings_table.capture_hotkey"))) {
+                capturingHotkey = true;
+                for (int i = 0; i < 256; ++i) {
+                    capturePrevDown[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
+                }
             }
-            if (selected) {
-                ImGui::SetItemDefaultFocus();
+        } else {
+            ImGui::TextUnformatted(t("ui.settings_table.capturing_hotkey"));
+            ImGui::SameLine();
+            if (ImGui::Button(t("ui.settings_table.cancel_hotkey"))) {
+                capturingHotkey = false;
+            } else {
+                bool cur[256];
+                for (int i = 0; i < 256; ++i) {
+                    cur[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
+                }
+
+                auto edge = [&](int key) {
+                    return cur[key] && !capturePrevDown[key];
+                };
+
+                if (edge(VK_ESCAPE)) {
+                    capturingHotkey = false;
+                } else {
+                    // ignore certain keys when capturing hotkey
+                    // modifiers are captured separately and should be ignored here
+                    static const int keysSkip[] = {VK_SHIFT, VK_LSHIFT,  VK_RSHIFT,  VK_CONTROL, VK_LCONTROL, VK_RCONTROL, VK_MENU, VK_LMENU,
+                                                   VK_RMENU, VK_CAPITAL, VK_NUMLOCK, VK_SCROLL,  VK_LWIN,     VK_RWIN,     VK_APPS, VK_ESCAPE};
+                    auto skippable = [&](int key) {
+                        for (int k : keysSkip) {
+                            if (k == key) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
+                    for (int vk = 0x08; vk <= 0xFF; ++vk) {
+                        if (skippable(vk)) {
+                            continue;
+                        }
+                        if (!edge(vk)) {
+                            continue;
+                        }
+
+                        bool controlState;
+                        bool shiftState;
+                        bool altState;
+
+                        Settings::queryModdifiers(&controlState, &altState, &shiftState);
+                        OverlayHotkey hk{controlState, altState, shiftState, vk};
+                        o.showOverlay = Settings::formatHotkey(hk);
+                        markChanged();
+                        capturingHotkey = false;
+                        break;
+                    }
+                }
+                for (int i = 0; i < 256; ++i) {
+                    capturePrevDown[i] = cur[i];
+                }
             }
         }
-        ImGui::EndCombo();
     }
     ImGui::PopItemWidth();
 

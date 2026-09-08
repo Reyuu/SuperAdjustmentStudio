@@ -13,7 +13,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)",
+                "cancel_hotkey": "Cancel"
             },
             "debug": "Debug",
             "metrics": "Metrics",
