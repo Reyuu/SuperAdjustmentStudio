@@ -383,12 +383,12 @@ void VFXManager::renderUI() {
 
     ImGui::PushItemWidth(-100);
     ImGui::Text(t("ui.vfx_table.loop_delay"));
-    ImGui::DragFloat("##vfx_loop_delay", &loopDelayVFX, 0.1f, 0.0f, 60.0f, "%.1f");
+    ImGui::DragFloat("##vfx_loop_delay", &loopDelayVFX, 0.1f, SETTINGS_FX_LOOP_DELAY_MIN, SETTINGS_FX_LOOP_DELAY_MAX, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::PushItemWidth(-100);
     ImGui::Text(t("ui.vfx_table.playback_dur"));
-    ImGui::DragFloat("##vfx_duration_drag", &vfxDuration, 0.1f, 0.1f, 60.0f, "%.1f");
+    ImGui::DragFloat("##vfx_duration_drag", &vfxDuration, 0.1f, SETTINGS_FX_DURATION_MIN, SETTINGS_FX_DURATION_MAX, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::Separator();

@@ -6,6 +6,7 @@
 #include <LESDK/Common/Math.hpp>
 #include <mutex>
 #include <set>
+#include "settings.h"
 
 struct ParticleEntry {
     public:
@@ -44,7 +45,7 @@ class ParticleManager {
         std::set<UParticleSystem*, ParticleTemplateNameLess> availableTemplates;
         std::mutex particleMtx;
         bool loopParticles = false;
-        float loopDelayParticles = 0.0f;
-        float particleDuration = 10.0f;
+        float loopDelayParticles = SETTINGS_FX_LOOP_DELAY_DEFAULT;
+        float particleDuration = SETTINGS_FX_DURATION_DEFAULT;
 };
 #endif // SAS_PARTICLES_H

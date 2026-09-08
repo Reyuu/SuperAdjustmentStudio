@@ -829,7 +829,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
             }
         }
     }
-    if (ImGui::DragFloat(t("ui.prefabs_table.brightness_all"), &allB, 0.1f, 0.0f, 20.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.brightness_all"), &allB, 0.1f, SETTINGS_PREFAB_BRIGHTNESS_MIN, SETTINGS_PREFAB_BRIGHTNESS_MAX)) {
         lightBrightness = allB;
         int sa = selActive;
         float b = allB;
@@ -856,7 +856,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
             nudgeLights(sa);
         });
     }
-    if (ImGui::DragFloat(t("ui.prefabs_table.radius_all"), &allR, 10.0f, 0.0f, 3000.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.radius_all"), &allR, 10.0f, SETTINGS_PREFAB_RADIUS_MIN, SETTINGS_PREFAB_RADIUS_MAX)) {
         lightRadius = allR;
         int sa = selActive;
         float r = allR;
@@ -907,7 +907,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
 // Expansion slider; throttled while dragging, final update on release
 void PrefabManager::renderLightExpansionControl() {
     float curExp = lightExpansion;
-    if (ImGui::DragFloat(t("ui.prefabs_table.expansion_all"), &curExp, 5.0f, -200.0f, 500.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.expansion_all"), &curExp, 5.0f, SETTINGS_PREFAB_EXPANSION_MIN, SETTINGS_PREFAB_EXPANSION_MAX)) {
         lightExpansion = curExp;
         if (ImGui::GetTime() - lastExpansionUpdate > 0.25f) {
             lastExpansionUpdate = ImGui::GetTime();

@@ -5,6 +5,7 @@
 #include <d3d11.h>
 #include <cmath>
 #include <numbers>
+#include "settings.h"
 
 constexpr int PHOTO_OVERLAY_GRID_COUNT = 7;
 typedef enum PhotoOverlayGrid {
@@ -127,9 +128,9 @@ class PhotoOverlay {
         bool enabledState = false;
         PhotoOverlayGrid gridIndex = GRID_NONE;
         AspectRatio aspectRatio = ASPECT_RATIO_NONE;
-        float maskOpacity = 0.6f;
+        float maskOpacity = SETTINGS_PHOTO_MASK_OPACITY_DEFAULT;
         float lineColor[4] = {1.0f, 1.0f, 1.0f, 0.85f};
-        float lineThickness = 1.5f;
+        float lineThickness = SETTINGS_PHOTO_LINE_THICKNESS_DEFAULT;
         bool centerDot = false;
         bool safeFrame = false;
         bool readout = false;
@@ -144,8 +145,8 @@ class PhotoOverlay {
         int histTick = 0;
         float clipLo = 0.0f;
         float clipHi = 0.0f;
-        int clipLoThr = 8;
-        int clipHiThr = 247;
+        int clipLoThr = SETTINGS_PHOTO_CLIP_LO_DEFAULT;
+        int clipHiThr = SETTINGS_PHOTO_CLIP_HI_DEFAULT;
         ID3D11Texture2D* histogramTexture = nullptr;
         unsigned histW = 0;
         unsigned histH = 0;
@@ -153,9 +154,9 @@ class PhotoOverlay {
 
         bool filterState = false;
         float tintColor[3] = {1.0f, 1.0f, 1.0f};
-        float tintStrength = 0.0f;
-        float grainIntensity = 0.0f;
-        float grainOpacity = 1.0f;
+        float tintStrength = SETTINGS_PHOTO_TINT_STRENGTH_DEFAULT;
+        float grainIntensity = SETTINGS_PHOTO_GRAIN_INTENSITY_DEFAULT;
+        float grainOpacity = SETTINGS_PHOTO_GRAIN_OPACITY_DEFAULT;
 };
 
 #endif // SAS_PHOTO_OVERLAY_H

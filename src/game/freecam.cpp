@@ -337,7 +337,8 @@ void Freecam::applyDofPP(FPostProcessSettings& pp, const SettingOptions& options
     SAS_PP_SET(pp.bOverride_DOF_FocusInnerRadius, pp.DOF_FocusInnerRadius, options.freecamDofInnerRadius);
     SAS_PP_SET(pp.bOverride_DOF_FocusPosition, pp.DOF_FocusPosition, dofFocusPoint(options.freecamDofDistance));
     SAS_PP_SET(pp.bOverride_DOF_FStop, pp.DOF_FStop, options.freecamDofFStop);
-    SAS_PP_SET(pp.bOverride_DOF_MaxFarBlurAmount, pp.DOF_MaxFarBlurAmount, std::clamp(options.freecamDofIntensity / 4.0f, 0.0f, 1.0f));
+    SAS_PP_SET(pp.bOverride_DOF_MaxFarBlurAmount, pp.DOF_MaxFarBlurAmount,
+               std::clamp(options.freecamDofIntensity / SETTINGS_FREECAM_DOF_INTENSITY_DIV, 0.0f, 1.0f));
 }
 
 void Freecam::applyBloomPP(FPostProcessSettings& pp, const SettingOptions& options) {
@@ -349,7 +350,8 @@ void Freecam::applyBloomPP(FPostProcessSettings& pp, const SettingOptions& optio
 void Freecam::applyColorPP(FPostProcessSettings& pp, const SettingOptions& options) {
     SAS_PP_SET(pp.bOverride_Scene_HighLights, pp.Scene_HighLights, gray(options.freecamContrast));
     SAS_PP_SET(pp.bOverride_Scene_MidTones, pp.Scene_MidTones, gray(options.freecamBright));
-    SAS_PP_SET(pp.bOverride_Scene_Shadows, pp.Scene_Shadows, gray(std::clamp(2.0f - options.freecamContrast, 0.0f, 2.0f)));
+    SAS_PP_SET(pp.bOverride_Scene_Shadows, pp.Scene_Shadows,
+               gray(std::clamp(SETTINGS_FREECAM_CONTRAST_PIVOT - options.freecamContrast, SETTINGS_FREECAM_COLOR_MIN, SETTINGS_FREECAM_COLOR_MAX)));
     SAS_PP_SET(pp.bOverride_Scene_Desaturation, pp.Scene_Desaturation, std::clamp(1.0f - options.freecamSat, 0.0f, 1.0f));
 }
 

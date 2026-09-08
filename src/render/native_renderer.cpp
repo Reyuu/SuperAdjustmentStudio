@@ -489,7 +489,7 @@ bool NativeRenderer::initImGuiInGame(IDXGISwapChain* pSwapChain) {
 }
 
 void NativeRenderer::applySettings(const SettingOptions& options) {
-    const float scale = std::clamp((float)options.fontSize / SETTINGS_FONT_BASE_PX, 0.5f, 3.0f);
+    const float scale = std::clamp((float)options.fontSize / SETTINGS_FONT_BASE_PX, SETTINGS_FONT_SCALE_MIN, SETTINGS_FONT_SCALE_MAX);
     fontScaleValue = scale;
     themeValue = options.theme;
     if (!isImGuiInitializedBool) {

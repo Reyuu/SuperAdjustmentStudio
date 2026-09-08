@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include "settings.h"
 
 // ME2 -> no public runtime for instancing UPrefab assets
 struct PrefabTemplate {
@@ -74,9 +75,9 @@ struct PrefabManager {
         float lastMaterialUpdate = 0.0f;
         AActor* pendingMaterialActor = nullptr;
         bool needsRefresh = false;
-        float lightExpansion = 95.0f;
-        float lightBrightness = 0.4f;
-        float lightRadius = 350.0f;
+        float lightExpansion = SETTINGS_PREFAB_EXPANSION_DEFAULT;
+        float lightBrightness = SETTINGS_PREFAB_BRIGHTNESS_DEFAULT;
+        float lightRadius = SETTINGS_PREFAB_RADIUS_DEFAULT;
         float lightColor[3] = {1.0f, 1.0f, 1.0f};
 };
 #endif // SAS_PREFABS_H

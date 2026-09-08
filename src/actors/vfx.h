@@ -5,6 +5,7 @@
 #include <LESDK/Common/Math.hpp>
 #include <mutex>
 #include <set>
+#include "settings.h"
 
 struct VFXEntry {
     public:
@@ -45,8 +46,8 @@ class VFXManager {
         std::mutex vfxMtx;
         bool ignoreCameraMovement = false;
         bool loopVFX = false;
-        float loopDelayVFX = 0.0f;
-        float vfxDuration = 10.0f;
+        float loopDelayVFX = SETTINGS_FX_LOOP_DELAY_DEFAULT;
+        float vfxDuration = SETTINGS_FX_DURATION_DEFAULT;
         bool showBoneSelection = false;
 };
 

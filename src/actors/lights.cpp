@@ -227,24 +227,26 @@ void LightManager::renderUI() {
             labelAbove((std::string(t("ui.lights_table.color")) + "##light").c_str());
             changed = ImGui::ColorEdit3("##light", selectedSettings.color) || changed;
             labelAbove((std::string(t("ui.lights_table.intensity")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.brightness, 0.1f, 0.0f, 100.0f) || changed;
+            changed = ImGui::DragFloat("##light", &selectedSettings.brightness, 0.1f, SETTINGS_LIGHT_BRIGHTNESS_MIN, SETTINGS_LIGHT_BRIGHTNESS_MAX) || changed;
             changed = ImGui::Checkbox((std::string(t("ui.lights_table.enabled")) + "##light").c_str(), &selectedSettings.enabled) || changed;
         }
 
         if (selectedSettings.isPoint && ImGui::CollapsingHeader(t("ui.lights_table.shape"))) {
             labelAbove((std::string(t("ui.lights_table.radius")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.radius, 1.0f, 0.0f, 10000.0f) || changed;
+            changed = ImGui::DragFloat("##light", &selectedSettings.radius, 1.0f, SETTINGS_LIGHT_RADIUS_MIN, SETTINGS_LIGHT_RADIUS_MAX) || changed;
             labelAbove((std::string(t("ui.lights_table.falloff")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.falloffExponent, 0.05f, 0.0f, 16.0f) || changed;
+            changed = ImGui::DragFloat("##light", &selectedSettings.falloffExponent, 0.05f, SETTINGS_LIGHT_FALLOFF_MIN, SETTINGS_LIGHT_FALLOFF_MAX) || changed;
             labelAbove((std::string(t("ui.lights_table.shadow_radius_mult")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.shadowRadiusMultiplier, 0.05f, 0.0f, 16.0f) || changed;
+            changed = ImGui::DragFloat("##light", &selectedSettings.shadowRadiusMultiplier, 0.05f, SETTINGS_LIGHT_SHADOW_RADIUS_MULT_MIN,
+                                       SETTINGS_LIGHT_SHADOW_RADIUS_MULT_MAX) ||
+                      changed;
             if (selectedSettings.isSpot) {
                 labelAbove((std::string(t("ui.lights_table.inner_cone_angle")) + "##light").c_str());
-                changed = ImGui::DragFloat("##light", &selectedSettings.innerConeAngle, 0.5f, 0.0f, 89.0f) || changed;
+                changed = ImGui::DragFloat("##light", &selectedSettings.innerConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
                 labelAbove((std::string(t("ui.lights_table.outer_cone_angle")) + "##light").c_str());
-                changed = ImGui::DragFloat("##light", &selectedSettings.outerConeAngle, 0.5f, 0.0f, 89.0f) || changed;
+                changed = ImGui::DragFloat("##light", &selectedSettings.outerConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
                 labelAbove((std::string(t("ui.lights_table.light_shaft_cone")) + "##light").c_str());
-                changed = ImGui::DragFloat("##light", &selectedSettings.lightShaftConeAngle, 0.5f, 0.0f, 89.0f) || changed;
+                changed = ImGui::DragFloat("##light", &selectedSettings.lightShaftConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
             }
         }
 
@@ -276,11 +278,12 @@ void LightManager::renderUI() {
             changed =
                 ImGui::Checkbox((std::string(t("ui.lights_table.render_light_shafts")) + "##light").c_str(), &selectedSettings.renderLightShafts) || changed;
             labelAbove((std::string(t("ui.lights_table.bloom_scale")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.bloomScale, 0.01f, 0.0f, 100.0f) || changed;
+            changed = ImGui::DragFloat("##light", &selectedSettings.bloomScale, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) || changed;
             labelAbove((std::string(t("ui.lights_table.bloom_threshold")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.bloomThreshold, 0.01f, 0.0f, 100.0f) || changed;
+            changed = ImGui::DragFloat("##light", &selectedSettings.bloomThreshold, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) || changed;
             labelAbove((std::string(t("ui.lights_table.bloom_sceen_threshold")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.bloomScreenBlendThreshold, 0.01f, 0.0f, 100.0f) || changed;
+            changed =
+                ImGui::DragFloat("##light", &selectedSettings.bloomScreenBlendThreshold, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) || changed;
             labelAbove((std::string(t("ui.lights_table.bloom_tint")) + "##light").c_str());
             changed = ImGui::ColorEdit3("##light", selectedSettings.bloomTint) || changed;
         }

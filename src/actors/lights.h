@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include "settings.h"
 
 // tried to implement pointlight, but pointlight is a bitch to spawn.
 
@@ -17,20 +18,20 @@ struct LightEntry {
 struct LightSettings {
         bool enabled = true;
         float color[3] = {1.0f, 1.0f, 1.0f};
-        float brightness = 1.0f;
-        float radius = 1024.0f;
-        float falloffExponent = 2.0f;
+        float brightness = SETTINGS_LIGHT_BRIGHTNESS_DEFAULT;
+        float radius = SETTINGS_LIGHT_RADIUS_DEFAULT;
+        float falloffExponent = SETTINGS_LIGHT_FALLOFF_DEFAULT;
 
-        float innerConeAngle = 0.0f;
-        float outerConeAngle = 44.0f;
-        float lightShaftConeAngle = 0.0f;
+        float innerConeAngle = SETTINGS_LIGHT_CONE_INNER_DEFAULT;
+        float outerConeAngle = SETTINGS_LIGHT_CONE_OUTER_DEFAULT;
+        float lightShaftConeAngle = SETTINGS_LIGHT_CONE_INNER_DEFAULT;
 
-        float bloomScale = 0.0f;
-        float bloomThreshold = 0.0f;
-        float bloomScreenBlendThreshold = 0.0f;
+        float bloomScale = SETTINGS_LIGHT_BLOOM_DEFAULT;
+        float bloomThreshold = SETTINGS_LIGHT_BLOOM_DEFAULT;
+        float bloomScreenBlendThreshold = SETTINGS_LIGHT_BLOOM_DEFAULT;
         float bloomTint[3] = {1.0f, 1.0f, 1.0f};
 
-        float shadowRadiusMultiplier = 1.0f;
+        float shadowRadiusMultiplier = SETTINGS_LIGHT_SHADOW_RADIUS_MULT_DEFAULT;
         int shadowProjectionTechnique = 0;
         int shadowFilterQuality = 0;
         int lightShadowMode = 0;

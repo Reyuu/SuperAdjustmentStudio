@@ -322,11 +322,11 @@ void PhotoOverlay::renderUi() {
         ImGui::Combo("##photo_aspect_ratio", reinterpret_cast<int*>(&aspectRatio), aspectRatioLabels(), ASPECT_RATIO_COUNT);
         if (aspectRatio > 0) {
             ImGui::Text(t("ui.photo_table.mask_opacity"));
-            ImGui::SliderFloat("##photo_mask_opacity", &maskOpacity, 0.0f, 1.0f);
+            ImGui::SliderFloat("##photo_mask_opacity", &maskOpacity, SETTINGS_PHOTO_MASK_OPACITY_MIN, SETTINGS_PHOTO_MASK_OPACITY_MAX);
         }
         ImGui::Text(t("ui.photo_table.line_width"));
         ImGui::ColorEdit4("##photo_line_color", lineColor);
-        ImGui::SliderFloat("##photo_line_width", &lineThickness, 0.0f, 5.0f);
+        ImGui::SliderFloat("##photo_line_width", &lineThickness, SETTINGS_PHOTO_LINE_THICKNESS_MIN, SETTINGS_PHOTO_LINE_THICKNESS_MAX);
         ImGui::PopItemWidth();
 
         ImGui::Checkbox(t("ui.photo_table.center_dot"), &centerDot);
@@ -339,9 +339,9 @@ void PhotoOverlay::renderUi() {
         }
         if (histogram) {
             ImGui::Text(t("ui.photo_table.clip_lo"));
-            ImGui::SliderInt("##photo_clip_lo", &clipLoThr, 0, 255);
+            ImGui::SliderInt("##photo_clip_lo", &clipLoThr, SETTINGS_PHOTO_CLIP_MIN, SETTINGS_PHOTO_CLIP_MAX);
             ImGui::Text(t("ui.photo_table.clip_hi"));
-            ImGui::SliderInt("##photo_clip_hi", &clipHiThr, 0, 255);
+            ImGui::SliderInt("##photo_clip_hi", &clipHiThr, SETTINGS_PHOTO_CLIP_MIN, SETTINGS_PHOTO_CLIP_MAX);
             renderHistogram();
             char clipBuf[160];
             snprintf(clipBuf, sizeof(clipBuf), t("ui.photo_table.clipped"), Settings::instance().options.freecamFOV, histW, histH, clipLo, clipHi);
@@ -359,11 +359,11 @@ void PhotoOverlay::renderUi() {
     ImGui::Text(t("ui.filter_table.tint"));
     ImGui::PushItemWidth(-100);
     ImGui::ColorEdit3("##photo_tint", tintColor);
-    ImGui::SliderFloat("##photo_tintstr", &tintStrength, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat("##photo_tintstr", &tintStrength, SETTINGS_PHOTO_TINT_STRENGTH_MIN, SETTINGS_PHOTO_TINT_STRENGTH_MAX, "%.2f");
     ImGui::Text(t("ui.filter_table.grain"));
-    ImGui::SliderFloat("##photo_grain", &grainIntensity, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat("##photo_grain", &grainIntensity, SETTINGS_PHOTO_GRAIN_INTENSITY_MIN, SETTINGS_PHOTO_GRAIN_INTENSITY_MAX, "%.2f");
     ImGui::Text(t("ui.filter_table.grain_opacity"));
-    ImGui::SliderFloat("##photo_grainop", &grainOpacity, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat("##photo_grainop", &grainOpacity, SETTINGS_PHOTO_GRAIN_OPACITY_MIN, SETTINGS_PHOTO_GRAIN_OPACITY_MAX, "%.2f");
     ImGui::PopItemWidth();
     ImGui::Unindent();
 }

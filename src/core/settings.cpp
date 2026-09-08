@@ -94,7 +94,6 @@ void Settings::clampAndValidate() {
         options.theme = "default";
     }
 
-    options.freecamMoveSpeed = std::clamp(options.freecamMoveSpeed, SETTINGS_FREECAM_MOVE_SPEED_MIN, SETTINGS_FREECAM_MOVE_SPEED_MAX);
     options.fontSize = std::clamp(options.fontSize, SETTINGS_FONT_SIZE_MIN, SETTINGS_FONT_SIZE_MAX);
     int vk = VK_F10;
     if (!tryVkFromName(options.showOverlay, &vk)) {
@@ -127,40 +126,11 @@ void Settings::loadFromJson(const nlohmann::json& j) {
         next.showOverlay = j["showOverlay"].get<std::string>();
     }
 
-    const auto loadFreecamFloat = [&](const char* key, float& field) {
-        if (j.contains(key) && j[key].is_number()) {
-            field = j[key].get<float>();
-        }
-    };
-    loadFreecamFloat("freecamMoveSpeed", next.freecamMoveSpeed);
-    loadFreecamFloat("freecamFOV", next.freecamFOV);
-    loadFreecamFloat("freecamRoll", next.freecamRoll);
-    loadFreecamFloat("freecamDofDistance", next.freecamDofDistance);
-    loadFreecamFloat("freecamDofInnerRadius", next.freecamDofInnerRadius);
-    loadFreecamFloat("freecamDofFStop", next.freecamDofFStop);
-    loadFreecamFloat("freecamDofIntensity", next.freecamDofIntensity);
-    loadFreecamFloat("freecamBloomThreshold", next.freecamBloomThreshold);
-    loadFreecamFloat("freecamBloomScale", next.freecamBloomScale);
-    loadFreecamFloat("freecamContrast", next.freecamContrast);
-    loadFreecamFloat("freecamBright", next.freecamBright);
-    loadFreecamFloat("freecamSat", next.freecamSat);
-
     bool changed = false;
     changed |= next.language != options.language;
     changed |= next.fontSize != options.fontSize;
     changed |= next.theme != options.theme;
-    changed |= next.freecamMoveSpeed != options.freecamMoveSpeed;
-    changed |= next.freecamFOV != options.freecamFOV;
-    changed |= next.freecamRoll != options.freecamRoll;
-    changed |= next.freecamDofDistance != options.freecamDofDistance;
-    changed |= next.freecamDofInnerRadius != options.freecamDofInnerRadius;
-    changed |= next.freecamDofFStop != options.freecamDofFStop;
-    changed |= next.freecamDofIntensity != options.freecamDofIntensity;
-    changed |= next.freecamBloomThreshold != options.freecamBloomThreshold;
-    changed |= next.freecamBloomScale != options.freecamBloomScale;
-    changed |= next.freecamContrast != options.freecamContrast;
-    changed |= next.freecamBright != options.freecamBright;
-    changed |= next.freecamSat != options.freecamSat;
+    changed |= next.showOverlay != options.showOverlay;
 
     options = next;
     clampAndValidate();
@@ -175,18 +145,6 @@ nlohmann::json Settings::toJson() const {
     j["fontSize"] = options.fontSize;
     j["theme"] = options.theme;
     j["showOverlay"] = options.showOverlay;
-    j["freecamMoveSpeed"] = options.freecamMoveSpeed;
-    j["freecamFOV"] = options.freecamFOV;
-    j["freecamRoll"] = options.freecamRoll;
-    j["freecamDofDistance"] = options.freecamDofDistance;
-    j["freecamDofInnerRadius"] = options.freecamDofInnerRadius;
-    j["freecamDofFStop"] = options.freecamDofFStop;
-    j["freecamDofIntensity"] = options.freecamDofIntensity;
-    j["freecamBloomThreshold"] = options.freecamBloomThreshold;
-    j["freecamBloomScale"] = options.freecamBloomScale;
-    j["freecamContrast"] = options.freecamContrast;
-    j["freecamBright"] = options.freecamBright;
-    j["freecamSat"] = options.freecamSat;
 
     return j;
 }
@@ -397,15 +355,16 @@ static std::string displayNameForVk(int vk) {
             return "MEDIAPLAYPAUSE";
         case VK_LAUNCH_MAIL:
             return "LAUNCHMAIL";
-        case VK_LAUNCH_MEDIA_SELECT:
+        case VK_LAUNCH_MEDIA_SELECT: {
             return "LAUNCHMEDIA";
         case VK_LAUNCH_APP1: {
             return "LAUNCHAPP1";
-        case VK_LAUNCH_APP2: {
-            return "LAUNCHAPP2";
-            default: {
-                break;
+            case VK_LAUNCH_APP2: {
+                return "LAUNCHAPP2";
+                default: {
+                    break;
         }
+                }
             }
         }
     }
