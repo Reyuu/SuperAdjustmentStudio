@@ -94,6 +94,12 @@ void Settings::clampAndValidate() {
         options.theme = "default";
     }
 
+    options.shotMultiplier = std::clamp(options.shotMultiplier, SETTINGS_SHOT_MULTIPLIER_MIN, SETTINGS_SHOT_MULTIPLIER_MAX);
+    options.shotOverlap = std::clamp(options.shotOverlap, SETTINGS_SHOT_OVERLAP_MIN, SETTINGS_SHOT_OVERLAP_MAX);
+    if (options.shotFormat != "png" && options.shotFormat != "bmp" && options.shotFormat != "jpeg") {
+        options.shotFormat = "png";
+    }
+
     options.fontSize = std::clamp(options.fontSize, SETTINGS_FONT_SIZE_MIN, SETTINGS_FONT_SIZE_MAX);
     OverlayHotkey hotkey;
     if (!Settings::tryParseHotkey(options.showOverlay, &hotkey) || Settings::nameFromVk(hotkey.key).empty()) {
@@ -121,11 +127,32 @@ void Settings::loadFromJson(const nlohmann::json& j) {
         next.showOverlay = j["showOverlay"].get<std::string>();
     }
 
+    if (j.contains("shotMultiplier") && j["shotMultiplier"].is_number()) {
+        next.shotMultiplier = j["shotMultiplier"].get<int>();
+    }
+    if (j.contains("shotOverlap") && j["shotOverlap"].is_number()) {
+        next.shotOverlap = j["shotOverlap"].get<int>();
+    }
+    if (j.contains("shotFormat") && j["shotFormat"].is_string()) {
+        next.shotFormat = j["shotFormat"].get<std::string>();
+    }
+    if (j.contains("shotSaveDir") && j["shotSaveDir"].is_string()) {
+        next.shotSaveDir = j["shotSaveDir"].get<std::string>();
+    }
+    if (j.contains("shotExtraUnlit") && j["shotExtraUnlit"].is_boolean()) {
+        next.shotExtraUnlit = j["shotExtraUnlit"].get<bool>();
+    }
+
     bool changed = false;
     changed |= next.language != options.language;
     changed |= next.fontSize != options.fontSize;
     changed |= next.theme != options.theme;
     changed |= next.showOverlay != options.showOverlay;
+    changed |= next.shotMultiplier != options.shotMultiplier;
+    changed |= next.shotOverlap != options.shotOverlap;
+    changed |= next.shotFormat != options.shotFormat;
+    changed |= next.shotSaveDir != options.shotSaveDir;
+    changed |= next.shotExtraUnlit != options.shotExtraUnlit;
 
     options = next;
     clampAndValidate();
@@ -140,6 +167,12 @@ nlohmann::json Settings::toJson() const {
     j["fontSize"] = options.fontSize;
     j["theme"] = options.theme;
     j["showOverlay"] = options.showOverlay;
+
+    j["shotMultiplier"] = options.shotMultiplier;
+    j["shotOverlap"] = options.shotOverlap;
+    j["shotFormat"] = options.shotFormat;
+    j["shotSaveDir"] = options.shotSaveDir;
+    j["shotExtraUnlit"] = options.shotExtraUnlit;
 
     return j;
 }
@@ -346,19 +379,20 @@ static std::string displayNameForVk(int vk) {
             return "MEDIAPREV";
         case VK_MEDIA_STOP:
             return "MEDIASTOP";
-        case VK_MEDIA_PLAY_PAUSE:
+        case VK_MEDIA_PLAY_PAUSE: {
             return "MEDIAPLAYPAUSE";
         case VK_LAUNCH_MAIL: {
             return "LAUNCHMAIL";
-        case VK_LAUNCH_MEDIA_SELECT: {
-            return "LAUNCHMEDIA";
-            case VK_LAUNCH_APP1: {
-                return "LAUNCHAPP1";
-                case VK_LAUNCH_APP2: {
-                    return "LAUNCHAPP2";
-                    default: {
-                        break;
+            case VK_LAUNCH_MEDIA_SELECT: {
+                return "LAUNCHMEDIA";
+                case VK_LAUNCH_APP1: {
+                    return "LAUNCHAPP1";
+                    case VK_LAUNCH_APP2: {
+                        return "LAUNCHAPP2";
+                        default: {
+                            break;
         }
+                        }
                     }
                 }
             }

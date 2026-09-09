@@ -45,6 +45,8 @@ class Engine {
         void postGameThreadTask(std::function<void()> fn);
         void drainGameThreadTasks();
 
+        void consoleCommand(const std::string& command);
+
         void postPackageLoad(const std::string& package, std::function<void()> onLoaded);
         void drainPackageLoads();
 

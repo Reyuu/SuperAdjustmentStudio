@@ -135,6 +135,9 @@ class PhotoOverlay {
         bool safeFrame = SETTINGS_TOGGLE_OFF;
         bool readout = SETTINGS_TOGGLE_OFF;
 
+        bool noFogState = SETTINGS_TOGGLE_OFF;
+        bool noLensFlareState = SETTINGS_TOGGLE_OFF;
+
         bool histogram = SETTINGS_TOGGLE_OFF;
         static constexpr int HIST_BINS = 64;
         static constexpr int HIST_EVERY = 10;

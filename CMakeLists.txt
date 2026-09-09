@@ -98,6 +98,10 @@ target_include_directories(implot PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
 )
 
+message(STATUS "Adding build target: thirdparty/stb")
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/stb)
+
 #   kiero (D3D11 swapchain hooking, bundles MinHook for the actual detour)
 message(STATUS "Adding build target: thirdparty/kiero")
 
@@ -188,6 +192,12 @@ else()
     message(FATAL_ERROR "No implot target found. Please check the implot submodule.")
 endif()
 
+if (TARGET stb)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE stb)
+else()
+    message(FATAL_ERROR "No stb target found. Please check the stb submodule.")
+endif()
+
 if (TARGET kiero)
     target_link_libraries(SuperAdjustmentStudio PRIVATE kiero)
 else()
@@ -231,6 +241,7 @@ if (WIN32)
 # d3d11/dxgi for DX11 render backend and swapchain hook
 # d3dcompiler for the raw-D3D11 overlay gizmo shader compilation
 target_link_libraries(SuperAdjustmentStudio PRIVATE d3d11 dxgi d3dcompiler)
+target_link_libraries(SuperAdjustmentStudio PRIVATE ole32 oleaut32 shell32)
 target_compile_definitions(SuperAdjustmentStudio PRIVATE "WIN32_LEAN_AND_MEAN")
 endif()
 

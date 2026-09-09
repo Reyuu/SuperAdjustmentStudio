@@ -7,6 +7,10 @@
 #include "IconsFontAwesome6.h"
 #include "translation.h"
 #include "settings.h"
+#include "application.h"
+
+static const std::string CONSOLE_COMMAND_SHOW_FOG = "show fog";
+static const std::string CONSOLE_COMMAND_SHOW_LENS_FLARES = "show lensflares";
 
 static void hLine(ImDrawList* dl, float y, float w, ImU32 color, float thickness = 1.0f) {
     dl->AddLine(ImVec2(0, y), ImVec2(w, y), color, thickness);
@@ -350,22 +354,116 @@ void PhotoOverlay::renderUi() {
 
         ImGui::Unindent();
     }
-    if (!ImGui::CollapsingHeader((std::string(ICON_FA_WAND_SPARKLES " ") + t("ui.filter")).c_str())) {
-        return;
+
+    if (ImGui::CollapsingHeader((std::string(ICON_FA_WAND_SPARKLES " ") + t("ui.filter")).c_str())) {
+        ImGui::Indent();
+        ImGui::Checkbox((std::string(ICON_FA_EYE " ") + t("ui.filter_table.enable")).c_str(), &filterState);
+        if (ImGui::Checkbox(t("ui.photo_table.disable_fog"), &noFogState)) {
+            Application::instance().engine().consoleCommand(CONSOLE_COMMAND_SHOW_FOG);
+        }
+        if (ImGui::Checkbox(t("ui.photo_table.disable_lens_flares"), &noLensFlareState)) {
+            Application::instance().engine().consoleCommand(CONSOLE_COMMAND_SHOW_LENS_FLARES);
+        }
+        ImGui::Separator();
+        ImGui::TextDisabled("%s", t("ui.filter_table.hint"));
+        ImGui::Text(t("ui.filter_table.tint"));
+        ImGui::PushItemWidth(-100);
+        ImGui::ColorEdit3("##photo_tint", tintColor);
+        ImGui::SliderFloat("##photo_tintstr", &tintStrength, SETTINGS_PHOTO_TINT_STRENGTH_MIN, SETTINGS_PHOTO_TINT_STRENGTH_MAX, "%.2f");
+        ImGui::Text(t("ui.filter_table.grain"));
+        ImGui::SliderFloat("##photo_grain", &grainIntensity, SETTINGS_PHOTO_GRAIN_INTENSITY_MIN, SETTINGS_PHOTO_GRAIN_INTENSITY_MAX, "%.2f");
+        ImGui::Text(t("ui.filter_table.grain_opacity"));
+        ImGui::SliderFloat("##photo_grainop", &grainOpacity, SETTINGS_PHOTO_GRAIN_OPACITY_MIN, SETTINGS_PHOTO_GRAIN_OPACITY_MAX, "%.2f");
+        ImGui::PopItemWidth();
+        ImGui::Unindent();
     }
-    ImGui::Indent();
-    ImGui::Checkbox((std::string(ICON_FA_EYE " ") + t("ui.filter_table.enable")).c_str(), &filterState);
-    ImGui::TextDisabled("%s", t("ui.filter_table.hint"));
-    ImGui::Text(t("ui.filter_table.tint"));
-    ImGui::PushItemWidth(-100);
-    ImGui::ColorEdit3("##photo_tint", tintColor);
-    ImGui::SliderFloat("##photo_tintstr", &tintStrength, SETTINGS_PHOTO_TINT_STRENGTH_MIN, SETTINGS_PHOTO_TINT_STRENGTH_MAX, "%.2f");
-    ImGui::Text(t("ui.filter_table.grain"));
-    ImGui::SliderFloat("##photo_grain", &grainIntensity, SETTINGS_PHOTO_GRAIN_INTENSITY_MIN, SETTINGS_PHOTO_GRAIN_INTENSITY_MAX, "%.2f");
-    ImGui::Text(t("ui.filter_table.grain_opacity"));
-    ImGui::SliderFloat("##photo_grainop", &grainOpacity, SETTINGS_PHOTO_GRAIN_OPACITY_MIN, SETTINGS_PHOTO_GRAIN_OPACITY_MAX, "%.2f");
-    ImGui::PopItemWidth();
-    ImGui::Unindent();
+
+    if (ImGui::CollapsingHeader((std::string(ICON_FA_CAMERA " ") + t("ui.screenshot")).c_str())) {
+        ImGui::Indent();
+        const int busy = Application::instance().screenshot().isBusy() ? 1 : 0;
+        ImGui::BeginDisabled(busy != 0);
+        SettingsOptions& options = Settings::instance().options;
+
+        ImGui::Text(t("ui.shot_table.multiplier"));
+        ImGui::PushItemWidth(-100);
+        ImGui::SliderInt("##shot_multiplier", &options.shotMultiplier, SETTINGS_SHOT_MULTIPLIER_MIN, SETTINGS_SHOT_MULTIPLIER_MAX);
+        ImGui::Text(t("ui.shot_table.overlap"));
+        ImGui::SliderInt("##shot_overlap", &options.shotOverlap, SETTINGS_SHOT_OVERLAP_MIN, SETTINGS_SHOT_OVERLAP_MAX);
+        ImGui::PopItemWidth();
+
+        ImGui::Text(t("ui.shot_table.format"));
+        static const char* formats[] = {"PNG", "JPEG", "BMP"};
+        int fmtIdx = 0;
+        if (options.shotFormat == "PNG") {
+            fmtIdx = 0;
+        } else if (options.shotFormat == "JPEG") {
+            fmtIdx = 1;
+        } else if (options.shotFormat == "BMP") {
+            fmtIdx = 2;
+        }
+        if (ImGui::Combo("##shot_format", &fmtIdx, formats, IM_ARRAYSIZE(formats))) {
+            options.shotFormat = formats[fmtIdx];
+            Application::instance().settings().markChanged();
+        }
+
+        ImGui::Text(t("ui.shot_table.save_directory"));
+        char dirBuf[1024] = {};
+        snprintf(dirBuf, sizeof(dirBuf), "%s", Screenshot::defaultOutputDirectory().string().c_str());
+        ImGui::TextDisabled("%s", dirBuf);
+        if (ImGui::Button(t("ui.shot_table.browse"))) {
+            if (pickFolder(options.shotSaveDir)) {
+                Application::instance().settings().markChanged();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(t("ui.shot_table.revert_default"))) {
+            options.shotSaveDir.clear();
+            Application::instance().settings().markChanged();
+        }
+
+        if (ImGui::Checkbox(t("ui.shot_table.extra_unlit_shot"), &options.shotExtraUnlit)) {
+            Application::instance().settings().markChanged();
+        }
+        if (ImGui::Button((std::string(ICON_FA_CAMERA " ") + t("ui.shot_table.take")).c_str())) {
+            ScreenshotFormat format = ScreenshotFormat::PNG;
+            if (options.shotFormat == "PNG") {
+                format = ScreenshotFormat::PNG;
+            } else if (options.shotFormat == "JPEG") {
+                format = ScreenshotFormat::JPEG;
+            } else if (options.shotFormat == "BMP") {
+                format = ScreenshotFormat::BMP;
+            }
+
+            Application::instance().screenshot().start(options.shotMultiplier, options.shotOverlap, format, options.shotSaveDir, options.shotExtraUnlit);
+        }
+        ImGui::EndDisabled();
+        const std::string status = Application::instance().screenshot().getStatus();
+        if (!status.empty()) {
+            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x);
+            ImGui::TextDisabled("%s", status.c_str());
+            ImGui::PopTextWrapPos();
+        }
+        if (busy) {
+            ImGui::TextDisabled("%s", t("ui.shot_table.busy"));
+        }
+        ImGui::Unindent();
+    }
+
+    if (Application::instance().screenshot().isBusy()) {
+        ImGui::OpenPopup("##sas_capture_modal");
+        ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0, 0, 0, 0.3f));
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("##sas_capture_modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+            ImGui::TextUnformatted(t("ui.shot_table.busy"));
+            const std::string status = Application::instance().screenshot().getStatus();
+            if (!status.empty()) {
+                ImGui::TextDisabled("%s", status.c_str());
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::PopStyleColor();
+    }
 }
 
 void PhotoOverlay::shutdown() {

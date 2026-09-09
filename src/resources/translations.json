@@ -263,7 +263,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -316,7 +318,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert to default",
+                "save_directory": "Save directory",
+                "take": "Capture"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",
@@ -340,7 +363,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -587,7 +613,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -640,7 +668,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",
@@ -664,7 +713,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -911,7 +963,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -964,7 +1018,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",
@@ -988,7 +1063,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -1235,7 +1313,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -1288,7 +1368,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",
@@ -1312,7 +1413,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -1559,7 +1663,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -1612,7 +1718,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",
@@ -1636,7 +1763,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -1883,7 +2013,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -1936,7 +2068,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",
@@ -1960,7 +2113,10 @@
                 "unsaved_changes": "(niezapisane zmiany)",
                 "saved": "Ustawienia zostały zapisane!",
                 "failed_saved": "Nie udało się zapisać ustawień. Sprawdź log, aby uzyskać szczegółowe informacje.",
-                "reverted": "Ustawienia zostały zapisane!"
+                "reverted": "Ustawienia zostały zapisane!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Wskaźniki",
@@ -2207,7 +2363,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -2260,7 +2418,28 @@
                 "light_config": "Konfiguracja oświetlenia",
                 "spawn_lights": "Stwórz światło",
                 "active": "Aktywne:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Powiadomienie wyskakujące",
@@ -2284,7 +2463,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -2531,7 +2713,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -2584,7 +2768,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",
@@ -2608,7 +2813,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -2855,7 +3063,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -2908,7 +3118,28 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
-            }
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot"
         },
         "toast": {
             "toast": "Toast",

@@ -17,10 +17,11 @@ void SDKContext::initSdkGlobals(ISharedProxyInterface* proxy) {
     SDK_INITIALIZE_OBJECT_TYPED(GMalloc, FMallocLike*, BUILTIN_GMALLOC_RIP);
     SDK_INITIALIZE_OBJECT_TYPED(SFXName::GBioNamePools, SFXNameEntry const*, BUILTIN_SFXNAMEPOOLS_RIP);
     SDK_INITIALIZE_OBJECT_TYPED(SFXName::GInitMethod, SFXName::tInitMethod, BUILTIN_SFXNAMEINIT_PHOOK);
+    SDK_INITIALIZE_OBJECT_TYPED(GEngine, UEngine*, BUILTIN_GENGINE_RIP);
     SDK_INITIALIZE_OBJECT_TYPED(GWorld, UWorld*, BUILTIN_GWORLD_RIP);
     // for some reason, it can be NOT typed???
     if (!GError) {
-        GError = (void**)sdkInitializer->Resolve(BUILTIN_GWORLD_RIP);
+        GError = (void**)sdkInitializer->Resolve(BUILTIN_GERROR_RIP);
     }
 
     SDK_INITIALIZE_OBJECT_TYPED(loadPackagePointer, loadPackageType, BUILTIN_LOADPACKAGE_RVA);

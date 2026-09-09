@@ -5,9 +5,49 @@
 #include <filesystem>
 #include <vector>
 #include <windows.h>
+#include <ShlObj.h>
+#include <wrl/client.h>
 
 #include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.LE2.hpp>
+
+bool pickFolder(std::string& outPath) {
+    using Microsoft::WRL::ComPtr;
+    ComPtr<IFileDialog> fileDialog;
+    HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fileDialog));
+
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    DWORD options = 0;
+    fileDialog->GetOptions(&options);
+    fileDialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+
+    hr = fileDialog->Show(nullptr);
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    ComPtr<IShellItem> item;
+    hr = fileDialog->GetResult(&item);
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    PWSTR folderPath = nullptr;
+    hr = item->GetDisplayName(SIGDN_FILESYSPATH, &folderPath);
+    if (FAILED(hr) || !folderPath) {
+        return false;
+    }
+
+    outPath = WStringToUtf8(folderPath);
+    CoTaskMemFree(folderPath);
+    if (outPath.empty()) {
+        return false;
+    }
+    return true;
+}
 
 // UE3 FString -> length-prefixed UTF-16 buffer
 std::string FStringToUtf8(const FString& fStr) {

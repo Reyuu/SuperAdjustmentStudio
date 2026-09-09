@@ -20,6 +20,12 @@
 using gameEngineTickType = void(void*, float);
 static gameEngineTickType* origGameEngineTick = nullptr;
 
+using engineExecType = unsigned(void*, wchar_t*, void*);
+static engineExecType* origEngineExec = nullptr;
+
+// from LExSDK, it only has a single virtual (Exec at slot 0)
+constexpr ptrdiff_t VIEWPORT_FEXEC_OFFSET = 0x68;
+
 static void hkGameEngineTick(void* self, float dt) {
     SAS_HOOK_TRY {
         if (origGameEngineTick) {
@@ -71,6 +77,35 @@ void Engine::drainGameThreadTasks() {
             fn();
         }
     }
+}
+
+void Engine::consoleCommand(const std::string& command) {
+    postGameThreadTask([command]() {
+        UEngine* engine = GEngine ? *GEngine : nullptr;
+        if (!engine || !engine->GameViewport) {
+            Logger->error("consoleCommand: GEngine/GameViewport not initialized");
+            return;
+        }
+
+        FString cmd;
+        cmd.AppendUtf8(command.c_str());
+        const wchar_t* chars = cmd.Chars();
+        std::vector<wchar_t> buf(chars, chars + cmd.Length() + 1);
+        void* outDevice = (GError && *GError) ? *GError : nullptr;
+
+        UGameViewportClient* viewport = engine->GameViewport;
+        void* fexec = (char*)viewport + VIEWPORT_FEXEC_OFFSET;
+        // get the virtual function table of the fexec object
+        void** vft = *(void***)fexec;
+        // get the first function in the virtual function table
+        engineExecType* viewportExec = (engineExecType*)vft[0];
+        unsigned result = viewportExec(fexec, buf.data(), outDevice);
+        Logger->debug("consoleCommand: executed command '" + command + "' with result " + std::to_string(result));
+
+        if (result == 0) {
+            Logger->debug("consoleCommand: command '" + command + "' failed with result " + std::to_string(result));
+        }
+    });
 }
 
 void Engine::postPackageLoad(const std::string& package, std::function<void()> onLoaded) {

@@ -158,6 +158,13 @@ inline constexpr int SETTINGS_LIGHT_SHADOW_PROJ_DEFAULT = 0;
 inline constexpr int SETTINGS_LIGHT_SHADOW_FILTER_DEFAULT = 0;
 inline constexpr int SETTINGS_LIGHT_SHADOW_MODE_DEFAULT = 0;
 
+inline constexpr int SETTINGS_SHOT_MULTIPLIER_MIN = 1;
+inline constexpr int SETTINGS_SHOT_MULTIPLIER_MAX = 8;
+inline constexpr int SETTINGS_SHOT_MULTIPLIER_DEFAULT = 2;
+inline constexpr int SETTINGS_SHOT_OVERLAP_MIN = 0;
+inline constexpr int SETTINGS_SHOT_OVERLAP_MAX = 1000;
+inline constexpr int SETTINGS_SHOT_OVERLAP_DEFAULT = 250;
+
 struct SettingsOptions {
         std::string language = "en";
         int fontSize = SETTINGS_FONT_SIZE_DEFAULT;
@@ -190,6 +197,12 @@ struct SettingsOptions {
         bool isFreecamHidePartyEnabled = SETTINGS_TOGGLE_OFF;
         bool isFreecamHideNPCsEnabled = SETTINGS_TOGGLE_OFF;
         bool isFreecamHideVehicleEnabled = SETTINGS_TOGGLE_OFF;
+
+        int shotMultiplier = SETTINGS_SHOT_MULTIPLIER_DEFAULT;
+        int shotOverlap = SETTINGS_SHOT_OVERLAP_DEFAULT;
+        std::string shotFormat = "png";
+        std::string shotSaveDir;
+        bool shotExtraUnlit = SETTINGS_TOGGLE_OFF;
 };
 
 struct OverlayHotkey {

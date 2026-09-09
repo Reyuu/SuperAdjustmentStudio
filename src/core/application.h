@@ -23,6 +23,7 @@
 #include "translation.h"
 #include "freecam.h"
 #include "photo_overlay.h"
+#include "screenshot.h"
 #include <atomic>
 #include <thread>
 
@@ -108,6 +109,10 @@ class Application {
             return translationInstance;
         }
 
+        Screenshot& screenshot() {
+            return screenshotInstance;
+        }
+
         bool attach(ISharedProxyInterface* proxy);
         void detach();
 
@@ -143,6 +148,7 @@ class Application {
         Settings settingsInstance;
         PhotoOverlay photoOverlayInstance;
         Translation translationInstance;
+        Screenshot screenshotInstance;
 
         bool previousHotkey = false;
         bool hotkeyCaptureFinished = false;
