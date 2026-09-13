@@ -378,9 +378,9 @@ void PhotoOverlay::renderUi() {
         ImGui::Unindent();
     }
 
-    if (ImGui::CollapsingHeader((std::string(ICON_FA_CIRCLE_HALF_STROKE " ") + t("ui.lut_panel.title")).c_str())) {
+    if (ImGui::CollapsingHeader((std::string(ICON_FA_CIRCLE_HALF_STROKE " ") + t("ui.postprocess.title")).c_str())) {
         ImGui::Indent();
-        renderLutStackUi();
+        Application::instance().postChain().renderUI();
         ImGui::Unindent();
     }
 

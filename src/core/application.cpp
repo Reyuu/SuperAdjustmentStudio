@@ -50,7 +50,7 @@ void Application::detach() {
     if (rendererInstance.isImGuiInitialized()) {
         gameWindowInstance.restoreAll();
         photoOverlayInstance.shutdown();
-        lutStackInstance.shutdown();
+        postChainInstance.shutdown();
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImPlot::DestroyContext();
@@ -60,7 +60,7 @@ void Application::detach() {
 }
 
 void Application::uninstallAllHooks() {
-    lutStackInstance.removeDepthHook();
+    postChainInstance.removeDepthHook();
     rendererInstance.removeHooks();
     if (hookManagerInstance.areHooksInstalled()) {
         hookManagerInstance.uninstallAll();
@@ -155,7 +155,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
 
             app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
-            app.lutStack().apply(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context(), app.rendererInstance.renderTargetView());
+            app.postChain().applyGpu(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context(), app.rendererInstance.renderTargetView());
             app.rendererInstance.beginRender();
             app.photoOverlay().sample(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context());
 
@@ -200,7 +200,7 @@ HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwap
 
     SAS_HOOK_TRY {
         app.rendererInstance.releaseRenderTargetView();
-        app.lutStack().onResize();
+        app.postChain().onResize();
     } SAS_HOOK_CATCH_VOID
 
     auto origResize = app.rendererInstance.origResizeBuffers();

@@ -17,7 +17,8 @@ const char* LutEffect::lutHLSL() {
         ;
 }
 
-LutEffect::LutEffect() = default;
+LutEffect::LutEffect(LutDepth& depthProvider) : depthProvider_(depthProvider) {
+}
 LutEffect::~LutEffect() = default;
 
 bool LutEffect::initialize(ID3D11Device* device) {
@@ -31,7 +32,6 @@ void LutEffect::shutdown() {
         depthViewPixelShader_->Release();
         depthViewPixelShader_ = nullptr;
     }
-    depthState_.shutdown();
     for (auto& kv : textures_) {
         if (kv.second.srv) {
             kv.second.srv->Release();
@@ -47,18 +47,17 @@ void LutEffect::shutdown() {
 
 void LutEffect::onResize() {
     pass_.onResize();
-    depthState_.onResize();
 }
 
 LutDepth& LutEffect::depth() {
-    return depthState_;
+    return depthProvider_;
 }
 
 bool& LutEffect::freezeDepth() {
     return freezeDepthState_;
 }
 
-void LutEffect::rescan() {
+void LutEffect::rescan() const {
     std::lock_guard<std::mutex> lock(mutex_);
     catalogEntries_ = scanSasLuts();
     catalogScanned_ = true;
@@ -84,7 +83,7 @@ const std::vector<LutCatalogEntry>& LutEffect::catalog() const {
     return catalogEntries_;
 }
 
-void LutEffect::ensureCatalog() {
+void LutEffect::ensureCatalog() const {
     if (catalogScanned_) {
         return;
     }
@@ -110,7 +109,7 @@ void LutEffect::removeLayer(size_t index) {
     }
 }
 
-bool LutEffect::resolveCatalog(const LutRef& ref, const std::filesystem::path& dir, LutCatalogEntry& out, std::string& absPath) {
+bool LutEffect::resolveCatalog(const LutRef& ref, const std::filesystem::path& dir, LutCatalogEntry& out, std::string& absPath) const {
     std::filesystem::path p(ref.file);
     if (p.is_absolute() || ref.file.find('/') != std::string::npos || ref.file.find('\\') != std::string::npos) {
         absPath = ref.file;
@@ -229,17 +228,33 @@ struct ResolvedLayer {
         LutEffectConstants constants = {};
 };
 
-bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11DeviceContext* context, ID3D11RenderTargetView* backbufferRtv) {
-    if (!swapChain || !device || !context || !backbufferRtv) {
-        return false;
+bool LutEffect::isEnabled() const {
+    const auto& options = Application::instance().settings().options;
+    if (options.lutDepthCapture) {
+        return true;
+    }
+    for (const auto& o : options.lutLayers) {
+        if (o.enabled && !o.ref.empty()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void LutEffect::applyGpu(ID3D11Device* device, ID3D11DeviceContext* context, PostFrame& frame) {
+    if (!device || !context) {
+        return;
     }
     ensureCatalog();
     if (!ensureShaders(device)) {
-        return false;
+        return;
     }
 
     const std::filesystem::path dir = sasLutDirectory();
     const auto& globalOptions = Application::instance().settings().options;
+
+    // pass-through default: no layers and no debug view leaves the image untouched.
+    frame.outputSrv = frame.input;
 
     std::vector<ResolvedLayer> layers;
     {
@@ -284,27 +299,10 @@ bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11Dev
             layers.push_back(resolved);
         }
     }
-    if (layers.empty() && !globalOptions.lutDepthCapture) {
-        return false;
-    }
 
-    ID3D11Texture2D* backBuffer = nullptr;
-    if (FAILED(swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer))) || !backBuffer) {
-        return false;
-    }
-    D3D11_TEXTURE2D_DESC backBufferDesc = {};
-    backBuffer->GetDesc(&backBufferDesc);
-    backBuffer->Release();
-    backBuffer = nullptr;
-
-    // ensure ping-pong temp textures exist before streaming the scene into them
-    if (!pass_.ensureTempsIfNeeded(device, backBufferDesc.Width, backBufferDesc.Height, DXGI_FORMAT_R8G8B8A8_UNORM)) {
-        return false;
-    }
-
-    depthState_.setEnabled(globalOptions.lutDepthCapture);
+    depthProvider_.setEnabled(globalOptions.lutDepthCapture);
     if (!globalOptions.lutDepthCapture) {
-        depthState_.removeHook();
+        depthProvider_.removeHook();
     }
     bool anyGated = false;
     for (const auto& layer : layers) {
@@ -323,9 +321,9 @@ bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11Dev
                                                             globalOptions.lutDepthShowTexture);
     ID3D11ShaderResourceView* depthSrv = nullptr;
     if (globalOptions.lutDepthCapture) {
-        depthState_.installHook(context);
-        depthSrv = depthState_.update(device, context, backBufferDesc.Width, backBufferDesc.Height, globalOptions.lutDepthSource, globalOptions.lutDepthEveryN,
-                                      freezeDepthState_, globalOptions.lutDepthNear, globalOptions.lutDepthFar, globalOptions.lutDepthLinearize, needCopy);
+        depthProvider_.installHook(context);
+        depthSrv = depthProvider_.update(device, context, frame.width, frame.height, globalOptions.lutDepthSource, globalOptions.lutDepthEveryN,
+                                         freezeDepthState_, globalOptions.lutDepthNear, globalOptions.lutDepthFar, globalOptions.lutDepthLinearize, needCopy);
         for (size_t li = 0; li < layers.size(); ++li) {
             auto& layer = layers[li];
             // preview forces its own gate so it works on any layer,
@@ -343,52 +341,13 @@ bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11Dev
 
     if (layers.empty()) {
         if (globalOptions.lutDepthShowTexture && depthSrv) {
-            renderDepthView(device, context, depthSrv, backbufferRtv, backBufferDesc.Width, backBufferDesc.Height, globalOptions.lutDepthLinearize,
-                            globalOptions.lutDepthNear, globalOptions.lutDepthFar, globalOptions.lutDepthInvert,
-                            std::any_of(layers.begin(), layers.end(), [](const auto& l) {
-                                return l.options.heatPreview;
-                            }));
+            ID3D11RenderTargetView* debugDst = frame.isLast ? frame.backbuffer : frame.scratchRtv;
+            renderDepthView(device, context, depthSrv, debugDst, frame.width, frame.height, globalOptions.lutDepthLinearize, globalOptions.lutDepthNear,
+                            globalOptions.lutDepthFar, globalOptions.lutDepthInvert, false);
+            frame.outputSrv = frame.isLast ? nullptr : frame.scratchSrv;
         }
-        return false;
+        return;
     }
-
-    ID3D11Texture2D* sceneBuffer = nullptr;
-    if (FAILED(swapChain->GetBuffer(0, IID_PPV_ARGS(&sceneBuffer))) || !sceneBuffer) {
-        return false;
-    }
-    context->CopyResource(pass_.tempTextureA(), sceneBuffer);
-    sceneBuffer->Release();
-
-    // save game D3D state
-    D3D11_VIEWPORT savedViewport = {};
-    UINT viewportCount = 1;
-    context->RSGetViewports(&viewportCount, &savedViewport);
-    ID3D11RasterizerState* savedRasterizer = nullptr;
-    context->RSGetState(&savedRasterizer);
-    ID3D11DepthStencilState* savedDepthStencil = nullptr;
-    UINT savedStencilRef = 0;
-    context->OMGetDepthStencilState(&savedDepthStencil, &savedStencilRef);
-
-    // state the LUT pass needs: blend off, no depth, solid, no cull
-    D3D11_BLEND_DESC blendDesc = {};
-    blendDesc.RenderTarget[0].BlendEnable = FALSE;
-    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-    ID3D11BlendState* blendOff = nullptr;
-    device->CreateBlendState(&blendDesc, &blendOff);
-
-    D3D11_RASTERIZER_DESC rasterDesc = {};
-    rasterDesc.FillMode = D3D11_FILL_SOLID;
-    rasterDesc.CullMode = D3D11_CULL_NONE;
-    rasterDesc.ScissorEnable = FALSE;
-    rasterDesc.DepthClipEnable = TRUE;
-    ID3D11RasterizerState* rasterSolid = nullptr;
-    device->CreateRasterizerState(&rasterDesc, &rasterSolid);
-
-    D3D11_DEPTH_STENCIL_DESC dsDesc = {};
-    dsDesc.DepthEnable = FALSE;
-    dsDesc.StencilEnable = FALSE;
-    ID3D11DepthStencilState* dsOff = nullptr;
-    device->CreateDepthStencilState(&dsDesc, &dsOff);
 
     ID3D11VertexShader* vs = pass_.vertexShader();
     ID3D11PixelShader* ps = pass_.pixelShader();
@@ -401,12 +360,9 @@ bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11Dev
     context->VSSetConstantBuffers(0, 1, &cb);
     context->PSSetConstantBuffers(0, 1, &cb);
 
-    context->OMSetBlendState(blendOff, nullptr, 0xFFFFFFFF);
-    context->RSSetState(rasterSolid);
-    context->OMSetDepthStencilState(dsOff, 0);
-
-    ID3D11ShaderResourceView* sourceSrv = pass_.tempShaderResourceViewA();
-    ID3D11RenderTargetView* pingRtv = pass_.tempRenderTargetViewB();
+    ID3D11ShaderResourceView* readSrv = frame.input;
+    ID3D11RenderTargetView* writeRtv = frame.scratchRtv;
+    ID3D11ShaderResourceView* writeSrv = frame.scratchSrv;
 
     const size_t layerCount = layers.size();
     // preview short-circuit: gate visualization only. every other layer is
@@ -421,8 +377,8 @@ bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11Dev
         }
     }
     for (size_t i = drawFirst; i < drawEnd; ++i) {
-        const bool last = (i + 1 == drawEnd);
-        ID3D11RenderTargetView* dst = last ? backbufferRtv : pingRtv;
+        const bool lastLayer = (i + 1 == drawEnd);
+        ID3D11RenderTargetView* dst = (lastLayer && frame.isLast) ? frame.backbuffer : writeRtv;
 
         D3D11_MAPPED_SUBRESOURCE mapped = {};
         if (FAILED(context->Map(pass_.constantBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
@@ -435,14 +391,14 @@ bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11Dev
         if (layers[i].constants.useDepth != 0) {
             depthSrvOrNull = depthSrv;
         }
-        ID3D11ShaderResourceView* srvs[3] = {sourceSrv, layers[i].srv, depthSrvOrNull};
+        ID3D11ShaderResourceView* srvs[3] = {readSrv, layers[i].srv, depthSrvOrNull};
         context->PSSetShaderResources(0, 3, srvs);
 
         context->OMSetRenderTargets(1, &dst, nullptr);
 
         D3D11_VIEWPORT viewport = {};
-        viewport.Width = static_cast<FLOAT>(backBufferDesc.Width);
-        viewport.Height = static_cast<FLOAT>(backBufferDesc.Height);
+        viewport.Width = static_cast<FLOAT>(frame.width);
+        viewport.Height = static_cast<FLOAT>(frame.height);
         viewport.MaxDepth = 1.0f;
         context->RSSetViewports(1, &viewport);
 
@@ -455,49 +411,33 @@ bool LutEffect::apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11Dev
         ID3D11RenderTargetView* unbindRtv = nullptr;
         context->OMSetRenderTargets(1, &unbindRtv, nullptr);
 
-        if (!last) {
-            // ping-pong
-            if (sourceSrv == pass_.tempShaderResourceViewA()) {
-                sourceSrv = pass_.tempShaderResourceViewB();
-                pingRtv = pass_.tempRenderTargetViewA();
+        if (!lastLayer) {
+            // ping-pong between the chain's two temps
+            if (readSrv == frame.input) {
+                readSrv = frame.scratchSrv;
             } else {
-                sourceSrv = pass_.tempShaderResourceViewA();
-                pingRtv = pass_.tempRenderTargetViewB();
+                readSrv = frame.input;
             }
+            if (writeRtv == frame.scratchRtv) {
+                writeRtv = frame.inputRtv;
+                writeSrv = frame.input;
+            } else {
+                writeRtv = frame.scratchRtv;
+                writeSrv = frame.scratchSrv;
+            }
+        } else {
+            frame.outputSrv = frame.isLast ? nullptr : writeSrv;
         }
     }
 
     if (globalOptions.lutDepthShowTexture && depthSrv) {
-        renderDepthView(device, context, depthSrv, backbufferRtv, backBufferDesc.Width, backBufferDesc.Height, globalOptions.lutDepthLinearize,
-                        globalOptions.lutDepthNear, globalOptions.lutDepthFar, globalOptions.lutDepthInvert, false);
+        ID3D11RenderTargetView* debugDst = frame.isLast ? frame.backbuffer : frame.scratchRtv;
+        renderDepthView(device, context, depthSrv, debugDst, frame.width, frame.height, globalOptions.lutDepthLinearize, globalOptions.lutDepthNear,
+                        globalOptions.lutDepthFar, globalOptions.lutDepthInvert, false);
+        if (!frame.isLast) {
+            frame.outputSrv = frame.scratchSrv;
+        }
     }
-
-    // restore game D3D state
-    context->OMSetRenderTargets(1, &backbufferRtv, nullptr);
-    context->RSSetViewports(viewportCount, &savedViewport);
-    context->RSSetState(savedRasterizer);
-    context->OMSetDepthStencilState(savedDepthStencil, savedStencilRef);
-
-    if (blendOff) {
-        blendOff->Release();
-    }
-    if (rasterSolid) {
-        rasterSolid->Release();
-    }
-    if (dsOff) {
-        dsOff->Release();
-    }
-    if (savedRasterizer) {
-        savedRasterizer->Release();
-    }
-    if (savedDepthStencil) {
-        savedDepthStencil->Release();
-    }
-
-    ID3D11ShaderResourceView* nullSrvs[3] = {nullptr, nullptr, nullptr};
-    context->PSSetShaderResources(0, 3, nullSrvs);
-
-    return true;
 }
 
 void LutEffect::renderDepthView(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11ShaderResourceView* depthSrv, ID3D11RenderTargetView* dst, unsigned w,
@@ -580,7 +520,7 @@ void LutEffect::renderDepthView(ID3D11Device* device, ID3D11DeviceContext* conte
     context->PSSetShaderResources(0, 3, nullSrvs);
 }
 
-std::vector<LutCpuLayer> LutEffect::snapshot() {
+std::vector<LutCpuLayer> LutEffect::snapshot() const {
     ensureCatalog();
     std::vector<LutCpuLayer> out;
     const std::filesystem::path dir = sasLutDirectory();
@@ -632,6 +572,16 @@ std::vector<LutCpuLayer> LutEffect::snapshot() {
     return out;
 }
 
-void LutEffect::removeDepthHook() {
-    depthState_.removeHook();
+void LutEffect::applyCpu(unsigned char* rgba, int w, int h) const {
+    if (!rgba || w <= 0 || h <= 0) {
+        return;
+    }
+    auto layers = snapshot();
+    if (layers.empty()) {
+        return;
+    }
+    auto depthSnap = depthProvider_.cpuSnapshot();
+    const bool invert = Application::instance().settings().options.lutDepthInvert;
+    static const CpuDepth emptyDepth;
+    applyLutCpuLayer(layers, rgba, w, h, depthSnap ? *depthSnap : emptyDepth, invert);
 }

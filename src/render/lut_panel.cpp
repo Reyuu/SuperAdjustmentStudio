@@ -1,4 +1,4 @@
-#include "photo_overlay.h"
+#include "lut_effect.h"
 #include "translation.h"
 
 #include <algorithm>
@@ -10,12 +10,10 @@
 #include "IconsFontAwesome6.h"
 #include "application.h"
 #include "logger.h"
-#include "lut_stack.h"
-#include "lut_stack.h"
 #include "settings.h"
 
-void PhotoOverlay::renderLutStackUi() {
-    LutStack& stack = Application::instance().lutStack();
+void LutEffect::renderUI() {
+    ImGui::TextUnformatted(t("ui.lut_panel.title"));
     Settings& settings = Application::instance().settings();
     auto& layers = settings.options.lutLayers;
 
@@ -27,7 +25,7 @@ void PhotoOverlay::renderLutStackUi() {
     }
 
     if (ImGui::SmallButton(ICON_FA_ARROW_ROTATE_RIGHT)) {
-        stack.rescan();
+        rescan();
     }
     ImGui::Separator();
     ImGui::TextUnformatted(t("ui.lut_panel.depth_inspector"));
@@ -42,7 +40,7 @@ void PhotoOverlay::renderLutStackUi() {
             static bool depthsInit = false;
             if (!depthsInit) {
                 depthsInit = true;
-                depths = stack.depth().sourceList();
+                depths = depth().sourceList();
             }
             std::string current = t("ui.lut_panel.depth_auto");
             if (!settings.options.lutDepthSource.empty()) {
@@ -68,12 +66,11 @@ void PhotoOverlay::renderLutStackUi() {
             }
             ImGui::SameLine();
             if (ImGui::SmallButton(ICON_FA_ARROW_ROTATE_RIGHT)) {
-                depths = stack.depth().sourceList();
+                depths = depth().sourceList();
             }
-            bool freeze = stack.freezeDepth();
-            ImGui::Text(t("ui.lut_panel.freeze"));
-            if (ImGui::Checkbox("##depth_inspect_freeze", &freeze)) {
-                stack.freezeDepth() = freeze;
+            bool freeze = freezeDepth();
+            if (ImGui::Checkbox(t("ui.lut_panel.freeze"), &freeze)) {
+                freezeDepth() = freeze;
             }
             ImGui::SameLine();
             bool lin = settings.options.lutDepthLinearize;
@@ -110,7 +107,7 @@ void PhotoOverlay::renderLutStackUi() {
     }
     ImGui::Separator();
 
-    const auto& catalog = stack.catalog();
+    const auto& catalog = this->catalog();
     if (catalog.empty()) {
         ImGui::TextDisabled(t("ui.lut_panel.no_luts_found"));
     }
@@ -340,7 +337,7 @@ void PhotoOverlay::renderLutStackUi() {
                         if (e.kind == LutEntryType::MLUTSub) {
                             sub = e.subIndex;
                         }
-                        stack.addLayer(makeLutRef(e.filename, sub));
+                        addLayer(makeLutRef(e.filename, sub));
                         selectedLayer = (int)layers.size() - 1;
                         ImGui::CloseCurrentPopup();
                     }
@@ -352,7 +349,7 @@ void PhotoOverlay::renderLutStackUi() {
         ImGui::EndPopup();
     }
     if (removeAt >= 0) {
-        stack.removeLayer((size_t)removeAt);
+        removeLayer((size_t)removeAt);
         if (selectedLayer >= (int)layers.size()) {
             selectedLayer = (int)layers.size() - 1;
         }

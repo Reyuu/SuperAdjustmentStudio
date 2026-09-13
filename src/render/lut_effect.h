@@ -2,12 +2,14 @@
 #define SAS_LUT_EFFECT_H
 
 // LUT post-process effect. owns FullscreenPass + LUT texture cache + HLSL.
-// wires LutDepth for depth gate. LutStack delegates to this.
+// first node of the PostChain. borrows the chain-owned LutDepth provider
+// for the depth gate (freeze flag stays here, next to its UI).
 
 #include "lut_catalog.h"
 #include "lut_cpu.h"
 #include "lut_depth.h"
 #include "pass.h"
+#include "post_chain.h"
 
 #include <d3d11.h>
 #include <dxgi.h>
@@ -16,6 +18,8 @@
 #include <mutex>
 #include <string>
 #include <vector>
+
+inline constexpr int LUT_MAX_LAYERS = 8;
 
 // CB layout — mirrors HLSL cbuffer LutCB, field for field.
 struct LutEffectConstants {
@@ -47,31 +51,31 @@ struct LutEffectConstants {
 
 static_assert(sizeof(LutEffectConstants) == 96, "LutEffectConstants must match LutCB (6x16B rows)");
 
-class LutEffect {
+class LutEffect : public IEffect {
     public:
-        LutEffect();
-        ~LutEffect();
+        LutEffect(LutDepth& depthProvider);
+        ~LutEffect() override;
 
         bool initialize(ID3D11Device* device);
-        void shutdown();
-        void onResize();
+        void shutdown() override;
+        void onResize() override;
 
-        void rescan();
+        void rescan() const;
         const std::vector<LutCatalogEntry>& catalog() const;
 
         void addLayer(const std::string& ref);
         void removeLayer(size_t index);
 
-        // per-frame: resolve layers, run pass(es), optionally render depth view.
-        bool apply(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11DeviceContext* context, ID3D11RenderTargetView* backbufferRtv);
-
-        void removeDepthHook();
+        bool isEnabled() const override;
+        void applyGpu(ID3D11Device* device, ID3D11DeviceContext* context, PostFrame& frame) override;
+        void applyCpu(unsigned char* rgba, int w, int h) const override;
+        void renderUI() override;
 
         LutDepth& depth();
         bool& freezeDepth();
 
         // CPU snapshot for screenshot baking.
-        std::vector<LutCpuLayer> snapshot();
+        std::vector<LutCpuLayer> snapshot() const;
 
         // standalone depth texture render (when lutDepthShowTexture is on).
         void renderDepthView(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11ShaderResourceView* depthSrv, ID3D11RenderTargetView* dst, unsigned w,
@@ -87,24 +91,22 @@ class LutEffect {
         };
 
         bool ensureShaders(ID3D11Device* device);
-        void ensureCatalog();
+        void ensureCatalog() const;
         LutEffect::LutTexture* ensureTexture(ID3D11Device* device, const std::string& absPath);
-        bool resolveCatalog(const LutRef& ref, const std::filesystem::path& dir, LutCatalogEntry& out, std::string& absPath);
+        bool resolveCatalog(const LutRef& ref, const std::filesystem::path& dir, LutCatalogEntry& out, std::string& absPath) const;
 
         static const char* lutHLSL();
 
         FullscreenPass pass_;
         ID3D11PixelShader* depthViewPixelShader_ = nullptr;
 
-        std::mutex mutex_;
-        std::vector<LutCatalogEntry> catalogEntries_;
-        bool catalogScanned_ = false;
-        std::map<std::string, LutTexture> textures_;
+        mutable std::mutex mutex_;
+        mutable std::vector<LutCatalogEntry> catalogEntries_;
+        mutable bool catalogScanned_ = false;
+        mutable std::map<std::string, LutTexture> textures_;
 
-        LutDepth depthState_;
+        LutDepth& depthProvider_;
         bool freezeDepthState_ = false;
-
-        friend class LutStack;
 };
 
 #endif // SAS_LUT_EFFECT_H

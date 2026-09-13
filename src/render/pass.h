@@ -20,7 +20,7 @@ class FullscreenPass {
         FullscreenPass() = default;
         ~FullscreenPass();
 
-        bool initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize);
+        bool initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize, const std::string& pixelEntry = "PS");
         void shutdown();
 
         // per-frame draw. binds inputs[0..2] to t0..t2, unbinding all 3 after.
@@ -80,6 +80,7 @@ class FullscreenPass {
         unsigned tempW_ = 0;
         unsigned tempH_ = 0;
         DXGI_FORMAT tempFmt_ = DXGI_FORMAT_UNKNOWN;
+        std::string pixelEntry_ = "PS";
 
         bool compileShaders(ID3D11Device* device);
         bool createSampler(ID3D11Device* device);

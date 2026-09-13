@@ -125,16 +125,8 @@ bool Screenshot::convertBmpTo(const std::filesystem::path& source, const std::fi
         return false;
     }
 
-    // bake the LUT stack as visible
-    {
-        auto lutLayers = Application::instance().lutStack().snapshot();
-        if (!lutLayers.empty()) {
-            auto depthSnap = Application::instance().lutStack().depth().cpuSnapshot();
-            const bool invert = Application::instance().settings().options.lutDepthInvert;
-            static const CpuDepth emptyDepth;
-            applyLutCpuLayer(lutLayers, pixels, w, h, depthSnap ? *depthSnap : emptyDepth, invert);
-        }
-    }
+    // bake the post chain as visible
+    Application::instance().postChain().applyCpu(pixels, w, h);
 
     int ok = 0;
     switch (format) {

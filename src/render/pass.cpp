@@ -38,11 +38,12 @@ void FullscreenPass::onResize() {
     releaseTemps();
 }
 
-bool FullscreenPass::initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize) {
+bool FullscreenPass::initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize, const std::string& pixelEntry) {
     if (!device) {
         return false;
     }
     shaders_ = shaders;
+    pixelEntry_ = pixelEntry;
     releaseDeviceObjects();
     releaseTemps();
 
@@ -84,7 +85,7 @@ bool FullscreenPass::compileShaders(ID3D11Device* device) {
                 codeBlob->Release();
                 return false;
             }
-        } else if (s.entryPoint == "PS") {
+        } else if (s.entryPoint == pixelEntry_) {
             if (FAILED(device->CreatePixelShader(codeBlob->GetBufferPointer(), codeBlob->GetBufferSize(), nullptr, &pixelShader_))) {
                 codeBlob->Release();
                 return false;

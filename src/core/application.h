@@ -22,7 +22,7 @@
 #include "vfx.h"
 #include "translation.h"
 #include "freecam.h"
-#include "lut_stack.h"
+#include "post_chain.h"
 #include "photo_overlay.h"
 #include "screenshot.h"
 #include <atomic>
@@ -102,8 +102,8 @@ class Application {
             return photoOverlayInstance;
         }
 
-        LutStack& lutStack() {
-            return lutStackInstance;
+        PostChain& postChain() {
+            return postChainInstance;
         }
 
         Settings& settings() {
@@ -152,7 +152,7 @@ class Application {
         PrefabManager prefabsInstance;
         Settings settingsInstance;
         PhotoOverlay photoOverlayInstance;
-        LutStack lutStackInstance;
+        PostChain postChainInstance;
         Translation translationInstance;
         Screenshot screenshotInstance;
 

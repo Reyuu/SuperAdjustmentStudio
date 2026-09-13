@@ -346,6 +346,9 @@
                 "failed_read_png": "Failed to read PNG",
                 "unrecognized_lut_format": "Unrecognized LUT format (needs to be Hald, HorizontalStrip, or MLUT)"
             },
+            "postprocess": {
+                "title": "Postprocess"
+            },
             "lut_panel": {
                 "add_lut": "Add LUT (%d/%d)",
                 "baked_shots_hint": "Baked shots include LUTs, depth gates included.",
@@ -375,7 +378,7 @@
                 "search_luts": "Search LUTs...",
                 "show_depth_texture": "Show selected depth texture in-game",
                 "stack_is_full": "Stack is full.",
-                "title": "LUT stack",
+                "title": "LUT",
                 "update_every_n": "Update every N"
             }
         },
