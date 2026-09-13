@@ -121,6 +121,7 @@ class PhotoOverlay {
         void render(ID3D11Device* device);
         void renderUi();
         void renderHistogram();
+        void renderLutStackUi();
         void sample(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11DeviceContext* context);
         void shutdown();
 

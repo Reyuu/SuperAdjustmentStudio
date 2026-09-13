@@ -142,8 +142,25 @@ file(GLOB_RECURSE SAS_SOURCES
 message(STATUS "Adding build target: SuperAdjustmentStudio")
 add_library(SuperAdjustmentStudio SHARED ${SAS_SOURCES})
 
+set(SAS_LUT_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/render/lut_shader.hlsl")
+set(SAS_LUT_SHADER_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/generated/lut_shader_source.inc")
+add_custom_command(
+    OUTPUT "${SAS_LUT_SHADER_INCLUDE}"
+    COMMAND ${CMAKE_COMMAND}
+        -DINPUT="${SAS_LUT_SHADER_SOURCE}"
+        -DOUTPUT="${SAS_LUT_SHADER_INCLUDE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
+    DEPENDS "${SAS_LUT_SHADER_SOURCE}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
+    VERBATIM
+)
+add_custom_target(SAS_LutShaderSource DEPENDS "${SAS_LUT_SHADER_INCLUDE}")
+add_dependencies(SuperAdjustmentStudio SAS_LutShaderSource)
+set_source_files_properties("${SAS_LUT_SHADER_SOURCE}" PROPERTIES HEADER_FILE_ONLY TRUE)
+target_sources(SuperAdjustmentStudio PRIVATE "${SAS_LUT_SHADER_SOURCE}")
+
 target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/game
     ${CMAKE_CURRENT_SOURCE_DIR}/src/actors

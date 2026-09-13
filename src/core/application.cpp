@@ -50,6 +50,7 @@ void Application::detach() {
     if (rendererInstance.isImGuiInitialized()) {
         gameWindowInstance.restoreAll();
         photoOverlayInstance.shutdown();
+        lutStackInstance.shutdown();
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImPlot::DestroyContext();
@@ -59,6 +60,7 @@ void Application::detach() {
 }
 
 void Application::uninstallAllHooks() {
+    lutStackInstance.removeDepthHook();
     rendererInstance.removeHooks();
     if (hookManagerInstance.areHooksInstalled()) {
         hookManagerInstance.uninstallAll();
@@ -96,7 +98,11 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
     FrameMark;
     Application& app = instance();
     if (app.didRequestExit.load()) {
-        return app.rendererInstance.origPresent() ? app.rendererInstance.origPresent()(pSwapChain, SyncInterval, Flags) : S_OK;
+        auto orig = app.rendererInstance.origPresent();
+        if (!orig) {
+            return S_OK;
+        }
+        return orig(pSwapChain, SyncInterval, Flags);
     }
 
     SAS_HOOK_TRY {
@@ -149,6 +155,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
 
             app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
+            app.lutStack().apply(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context(), app.rendererInstance.renderTargetView());
             app.rendererInstance.beginRender();
             app.photoOverlay().sample(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context());
 
@@ -172,7 +179,11 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
         }
     } SAS_HOOK_CATCH_VOID
 
-    return app.rendererInstance.origPresent() ? app.rendererInstance.origPresent()(pSwapChain, SyncInterval, Flags) : S_OK;
+    auto orig = app.rendererInstance.origPresent();
+    if (!orig) {
+        return S_OK;
+    }
+    return orig(pSwapChain, SyncInterval, Flags);
 }
 
 HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
@@ -180,18 +191,23 @@ HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwap
     ZoneScopedN("ResizeBuffersDetour");
     Application& app = instance();
     if (app.didRequestExit.load()) {
-        return app.rendererInstance.origResizeBuffers()
-                   ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags)
-                   : S_OK;
+        auto orig = app.rendererInstance.origResizeBuffers();
+        if (!orig) {
+            return S_OK;
+        }
+        return orig(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
 
     SAS_HOOK_TRY {
         app.rendererInstance.releaseRenderTargetView();
+        app.lutStack().onResize();
     } SAS_HOOK_CATCH_VOID
 
-    return app.rendererInstance.origResizeBuffers()
-               ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags)
-               : S_OK;
+    auto origResize = app.rendererInstance.origResizeBuffers();
+    if (!origResize) {
+        return S_OK;
+    }
+    return origResize(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
 static int g_dragLastX = 0;

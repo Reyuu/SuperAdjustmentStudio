@@ -22,6 +22,7 @@
 #include "vfx.h"
 #include "translation.h"
 #include "freecam.h"
+#include "lut_stack.h"
 #include "photo_overlay.h"
 #include "screenshot.h"
 #include <atomic>
@@ -101,6 +102,10 @@ class Application {
             return photoOverlayInstance;
         }
 
+        LutStack& lutStack() {
+            return lutStackInstance;
+        }
+
         Settings& settings() {
             return settingsInstance;
         }
@@ -147,6 +152,7 @@ class Application {
         PrefabManager prefabsInstance;
         Settings settingsInstance;
         PhotoOverlay photoOverlayInstance;
+        LutStack lutStackInstance;
         Translation translationInstance;
         Screenshot screenshotInstance;
 

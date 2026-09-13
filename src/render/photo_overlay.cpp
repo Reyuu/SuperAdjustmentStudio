@@ -378,6 +378,12 @@ void PhotoOverlay::renderUi() {
         ImGui::Unindent();
     }
 
+    if (ImGui::CollapsingHeader((std::string(ICON_FA_CIRCLE_HALF_STROKE " ") + t("ui.lut_panel.title")).c_str())) {
+        ImGui::Indent();
+        renderLutStackUi();
+        ImGui::Unindent();
+    }
+
     if (ImGui::CollapsingHeader((std::string(ICON_FA_CAMERA " ") + t("ui.screenshot")).c_str())) {
         ImGui::Indent();
         const int busy = Application::instance().screenshot().isBusy() ? 1 : 0;

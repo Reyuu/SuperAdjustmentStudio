@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 #include <windows.h>
@@ -111,37 +112,70 @@ void Settings::clampAndValidate() {
 
 void Settings::loadFromJson(const nlohmann::json& j) {
     SettingsOptions next = options;
-    if (j.contains("language") && j["language"].is_string()) {
-        next.language = j["language"].get<std::string>();
-    }
+    auto loadValue = [](const nlohmann::json& object, const char* key, auto& value) {
+        const auto it = object.find(key);
+        if (it == object.end()) {
+            return;
+        }
 
-    if (j.contains("fontSize") && j["fontSize"].is_number()) {
-        next.fontSize = j["fontSize"].get<int>();
-    }
+        using Value = std::remove_cvref_t<decltype(value)>;
+        if constexpr (std::is_same_v<Value, std::string>) {
+            if (!it->is_string()) {
+                return;
+            }
+        } else if constexpr (std::is_same_v<Value, bool>) {
+            if (!it->is_boolean()) {
+                return;
+            }
+        } else if (!it->is_number()) {
+            return;
+        }
+        value = it->get<Value>();
+    };
 
-    if (j.contains("theme") && j["theme"].is_string()) {
-        next.theme = j["theme"].get<std::string>();
-    }
+    loadValue(j, "language", next.language);
+    loadValue(j, "fontSize", next.fontSize);
+    loadValue(j, "theme", next.theme);
+    loadValue(j, "showOverlay", next.showOverlay);
+    loadValue(j, "shotMultiplier", next.shotMultiplier);
+    loadValue(j, "shotOverlap", next.shotOverlap);
+    loadValue(j, "shotFormat", next.shotFormat);
+    loadValue(j, "shotSaveDir", next.shotSaveDir);
+    loadValue(j, "shotExtraUnlit", next.shotExtraUnlit);
 
-    if (j.contains("showOverlay") && j["showOverlay"].is_string()) {
-        next.showOverlay = j["showOverlay"].get<std::string>();
+    if (j.contains("lutLayers") && j["lutLayers"].is_array()) {
+        next.lutLayers.clear();
+        for (const auto& layer : j["lutLayers"]) {
+            if (!layer.is_object()) {
+                continue;
+            }
+            LutLayerOptions outLayer;
+            loadValue(layer, "ref", outLayer.ref);
+            if (outLayer.ref.empty()) {
+                continue;
+            }
+            loadValue(layer, "enabled", outLayer.enabled);
+            loadValue(layer, "blend", outLayer.blend);
+            loadValue(layer, "chroma", outLayer.chroma);
+            loadValue(layer, "luma", outLayer.luma);
+            loadValue(layer, "useDepth", outLayer.useDepth);
+            loadValue(layer, "depthFocus", outLayer.depthFocus);
+            loadValue(layer, "depthRange", outLayer.depthRange);
+            loadValue(layer, "blendMin", outLayer.blendMin);
+            loadValue(layer, "blendMax", outLayer.blendMax);
+            loadValue(layer, "previewDepth", outLayer.previewDepth);
+            loadValue(layer, "heatPreview", outLayer.heatPreview);
+            next.lutLayers.push_back(outLayer);
+        }
     }
-
-    if (j.contains("shotMultiplier") && j["shotMultiplier"].is_number()) {
-        next.shotMultiplier = j["shotMultiplier"].get<int>();
-    }
-    if (j.contains("shotOverlap") && j["shotOverlap"].is_number()) {
-        next.shotOverlap = j["shotOverlap"].get<int>();
-    }
-    if (j.contains("shotFormat") && j["shotFormat"].is_string()) {
-        next.shotFormat = j["shotFormat"].get<std::string>();
-    }
-    if (j.contains("shotSaveDir") && j["shotSaveDir"].is_string()) {
-        next.shotSaveDir = j["shotSaveDir"].get<std::string>();
-    }
-    if (j.contains("shotExtraUnlit") && j["shotExtraUnlit"].is_boolean()) {
-        next.shotExtraUnlit = j["shotExtraUnlit"].get<bool>();
-    }
+    loadValue(j, "lutDepthCapture", next.lutDepthCapture);
+    loadValue(j, "lutDepthShowTexture", next.lutDepthShowTexture);
+    loadValue(j, "lutDepthSource", next.lutDepthSource);
+    loadValue(j, "lutDepthLinearize", next.lutDepthLinearize);
+    loadValue(j, "lutDepthInvert", next.lutDepthInvert);
+    loadValue(j, "lutDepthNear", next.lutDepthNear);
+    loadValue(j, "lutDepthFar", next.lutDepthFar);
+    loadValue(j, "lutDepthEveryN", next.lutDepthEveryN);
 
     bool changed = false;
     changed |= next.language != options.language;
@@ -153,6 +187,15 @@ void Settings::loadFromJson(const nlohmann::json& j) {
     changed |= next.shotFormat != options.shotFormat;
     changed |= next.shotSaveDir != options.shotSaveDir;
     changed |= next.shotExtraUnlit != options.shotExtraUnlit;
+    changed |= next.lutLayers != options.lutLayers;
+    changed |= next.lutDepthCapture != options.lutDepthCapture;
+    changed |= next.lutDepthShowTexture != options.lutDepthShowTexture;
+    changed |= next.lutDepthSource != options.lutDepthSource;
+    changed |= next.lutDepthLinearize != options.lutDepthLinearize;
+    changed |= next.lutDepthInvert != options.lutDepthInvert;
+    changed |= next.lutDepthNear != options.lutDepthNear;
+    changed |= next.lutDepthFar != options.lutDepthFar;
+    changed |= next.lutDepthEveryN != options.lutDepthEveryN;
 
     options = next;
     clampAndValidate();
@@ -173,6 +216,33 @@ nlohmann::json Settings::toJson() const {
     j["shotFormat"] = options.shotFormat;
     j["shotSaveDir"] = options.shotSaveDir;
     j["shotExtraUnlit"] = options.shotExtraUnlit;
+
+    nlohmann::json layers = nlohmann::json::array();
+    for (const auto& layer : options.lutLayers) {
+        nlohmann::json out;
+        out["ref"] = layer.ref;
+        out["enabled"] = layer.enabled;
+        out["blend"] = layer.blend;
+        out["chroma"] = layer.chroma;
+        out["luma"] = layer.luma;
+        out["useDepth"] = layer.useDepth;
+        out["depthFocus"] = layer.depthFocus;
+        out["depthRange"] = layer.depthRange;
+        out["blendMin"] = layer.blendMin;
+        out["blendMax"] = layer.blendMax;
+        out["previewDepth"] = layer.previewDepth;
+        out["heatPreview"] = layer.heatPreview;
+        layers.push_back(out);
+    }
+    j["lutLayers"] = layers;
+    j["lutDepthCapture"] = options.lutDepthCapture;
+    j["lutDepthShowTexture"] = options.lutDepthShowTexture;
+    j["lutDepthSource"] = options.lutDepthSource;
+    j["lutDepthLinearize"] = options.lutDepthLinearize;
+    j["lutDepthInvert"] = options.lutDepthInvert;
+    j["lutDepthNear"] = options.lutDepthNear;
+    j["lutDepthFar"] = options.lutDepthFar;
+    j["lutDepthEveryN"] = options.lutDepthEveryN;
 
     return j;
 }
@@ -377,21 +447,22 @@ static std::string displayNameForVk(int vk) {
             return "MEDIANEXT";
         case VK_MEDIA_PREV_TRACK:
             return "MEDIAPREV";
-        case VK_MEDIA_STOP:
+        case VK_MEDIA_STOP: {
             return "MEDIASTOP";
         case VK_MEDIA_PLAY_PAUSE: {
             return "MEDIAPLAYPAUSE";
-        case VK_LAUNCH_MAIL: {
-            return "LAUNCHMAIL";
-            case VK_LAUNCH_MEDIA_SELECT: {
-                return "LAUNCHMEDIA";
-                case VK_LAUNCH_APP1: {
-                    return "LAUNCHAPP1";
-                    case VK_LAUNCH_APP2: {
-                        return "LAUNCHAPP2";
-                        default: {
-                            break;
+            case VK_LAUNCH_MAIL: {
+                return "LAUNCHMAIL";
+                case VK_LAUNCH_MEDIA_SELECT: {
+                    return "LAUNCHMEDIA";
+                    case VK_LAUNCH_APP1: {
+                        return "LAUNCHAPP1";
+                        case VK_LAUNCH_APP2: {
+                            return "LAUNCHAPP2";
+                            default: {
+                                break;
         }
+                            }
                         }
                     }
                 }

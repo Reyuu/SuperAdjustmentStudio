@@ -4,6 +4,31 @@
 #include "json.hpp"
 #include <filesystem>
 #include <string>
+#include <vector>
+
+struct LutLayerOptions {
+        std::string ref;
+        bool enabled = true;
+
+        float blend = 1.0f;  // uniform blend
+        float chroma = 1.0f; // LUT chroma
+        float luma = 1.0f;   // LUT luma
+
+        bool useDepth = false;
+        float depthFocus = 0.5f; // focus distance (0..1 normalized)
+        float depthRange = 0.2f; // focus +/- range
+        float blendMin = 0.0f;   // opacity remap min
+        float blendMax = 1.0f;   // opacity remap max
+
+        bool previewDepth = false; // show depth gate only for this layer
+        bool heatPreview = false;  // heatmap instead of alpha gate
+
+        bool operator==(const LutLayerOptions& other) const {
+            return ref == other.ref && enabled == other.enabled && blend == other.blend && chroma == other.chroma && luma == other.luma &&
+                   useDepth == other.useDepth && depthFocus == other.depthFocus && depthRange == other.depthRange && blendMin == other.blendMin &&
+                   blendMax == other.blendMax && previewDepth == other.previewDepth && heatPreview == other.heatPreview;
+        }
+};
 
 inline const std::string SUPPORTED_LANGUAGES[][2] = {
     {"en",    "English" },
@@ -203,6 +228,17 @@ struct SettingsOptions {
         std::string shotFormat = "png";
         std::string shotSaveDir;
         bool shotExtraUnlit = SETTINGS_TOGGLE_OFF;
+
+        std::vector<LutLayerOptions> lutLayers;
+
+        bool lutDepthCapture = SETTINGS_TOGGLE_OFF;
+        bool lutDepthShowTexture = SETTINGS_TOGGLE_OFF;
+        std::string lutDepthSource;
+        bool lutDepthLinearize = true;
+        bool lutDepthInvert = SETTINGS_TOGGLE_OFF;
+        float lutDepthNear = 1.0f;
+        float lutDepthFar = 100.0f;
+        int lutDepthEveryN = 2;
 };
 
 struct OverlayHotkey {

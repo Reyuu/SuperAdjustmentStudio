@@ -112,12 +112,18 @@ This project uses libraries from:
 - [juliettef/IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders)
 - [FortAwesome/Font-Awesome](https://github.com/FortAwesome/Font-Awesome/releases#release-6.7.2)
 - [wolfpld/tracy](https://github.com/wolfpld/tracy)
+- [nlohmann/json](https://github.com/nlohmann/json)
+- [nothings/stb](https://github.com/nothings/stb)
+- [madler/zlib](https://github.com/madler/zlib)
+- [radgametools/oodle](https://www.radgametools.com/oodle.htm) ONLY game's own copy (DLL in repo for development)
 
 
 Code from:
 - [ME3Tweaks/LExASIs](https://github.com/ME3Tweaks/LExASIs)
 - [eugen15/directx-present-hook](https://github.com/eugen15/directx-present-hook) 
 - [YT: Hooking DirectInput C++](https://www.youtube.com/watch?v=oh9i7hPQZT8)
+- [rosire/reshade](https://github.com/crosire/reshade)
+- [TheGordinho/MLUT](https://github.com/TheGordinho/MLUT)
 - MANY more
 
 If I used your code and did not credit you, please reach out, I'll be more than happy to do it.

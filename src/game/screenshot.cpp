@@ -125,6 +125,17 @@ bool Screenshot::convertBmpTo(const std::filesystem::path& source, const std::fi
         return false;
     }
 
+    // bake the LUT stack as visible
+    {
+        auto lutLayers = Application::instance().lutStack().snapshot();
+        if (!lutLayers.empty()) {
+            auto depthSnap = Application::instance().lutStack().depth().cpuSnapshot();
+            const bool invert = Application::instance().settings().options.lutDepthInvert;
+            static const CpuDepth emptyDepth;
+            applyLutCpuLayer(lutLayers, pixels, w, h, depthSnap ? *depthSnap : emptyDepth, invert);
+        }
+    }
+
     int ok = 0;
     switch (format) {
         case ScreenshotFormat::PNG: {
@@ -177,7 +188,10 @@ void Screenshot::shutdown() {
 
 void Screenshot::shot(int multiplier, int overlap, ScreenshotFormat format, std::string outDir, bool extraUnlit) {
     const std::filesystem::path sourceDirectory = defaultOutputDirectory();
-    std::filesystem::path targetDirectory = outDir.empty() ? sourceDirectory : std::filesystem::path(outDir);
+    std::filesystem::path targetDirectory = sourceDirectory;
+    if (!outDir.empty()) {
+        targetDirectory = std::filesystem::path(outDir);
+    }
     Logger->debug("screenshot: worker start sourceDir='{}' targetDir='{}' multiplier={} overlap={} extraUnlit={}", sourceDirectory.string(),
                   targetDirectory.string(), multiplier, overlap, extraUnlit ? 1 : 0);
 
@@ -281,7 +295,12 @@ void Screenshot::convertOutput(std::filesystem::path targetDirectory, const std:
         char convertingBuf[256] = {};
         snprintf(convertingBuf, sizeof(convertingBuf), t("ui.shot_table.status_converting"), newFile.filename().string().c_str());
         setStatus(convertingBuf);
-        const char* ext = format == ScreenshotFormat::PNG ? "png" : format == ScreenshotFormat::JPEG ? "jpg" : "bmp";
+        const char* ext = "bmp";
+        if (format == ScreenshotFormat::PNG) {
+            ext = "png";
+        } else if (format == ScreenshotFormat::JPEG) {
+            ext = "jpg";
+        }
         std::filesystem::path target = uniqueShotPath(targetDirectory, makeShotBaseName(multiplier, extraUnlit && i == 1), ext);
 
         bool ok = false;
