@@ -45,6 +45,19 @@ void LightManager::removeLight(AActor* actor) {
                        lightEntries.end());
 }
 
+void LightManager::removeAllLights() {
+    std::vector<AActor*> actors;
+    {
+        std::lock_guard<std::mutex> lock(lightsMtx);
+        for (const auto& entry : lightEntries) {
+            actors.push_back(entry.actor);
+        }
+    }
+    for (AActor* actor : actors) {
+        removeLight(actor);
+    }
+}
+
 void LightManager::updateActiveLights() {
     std::lock_guard<std::mutex> lock(lightsMtx);
     lightEntries.erase(std::remove_if(lightEntries.begin(), lightEntries.end(),
@@ -54,43 +67,50 @@ void LightManager::updateActiveLights() {
                        lightEntries.end());
 }
 
-void LightManager::selectLight(AActor* actor) {
+bool LightManager::readLightSettings(AActor* actor, LightSettings& out) {
     ALight* light = static_cast<ALight*>(actor);
     if (!isLiveObject(light) || !isLiveObject(light->LightComponent)) {
-        return;
+        return false;
     }
 
     ULightComponent* component = light->LightComponent;
-    selectedLight = actor;
-    selectedSettings = {};
-    selectedSettings.brightness = component->Brightness;
-    copyColor(component->LightColor, selectedSettings.color);
-    selectedSettings.enabled = component->bEnabled != 0;
-    selectedSettings.castShadows = component->CastShadows != 0;
-    selectedSettings.castDynamicShadows = component->CastDynamicShadows != 0;
-    selectedSettings.renderLightShafts = component->bRenderLightShafts != 0;
-    selectedSettings.shadowProjectionTechnique = component->ShadowProjectionTechnique;
-    selectedSettings.shadowFilterQuality = component->ShadowFilterQuality;
-    selectedSettings.lightShadowMode = component->LightShadowMode;
-    selectedSettings.bloomScale = component->BloomScale;
-    selectedSettings.bloomThreshold = component->BloomThreshold;
-    selectedSettings.bloomScreenBlendThreshold = component->BloomScreenBlendThreshold;
-    copyColor(component->BloomTint, selectedSettings.bloomTint);
+    out = {};
+    out.brightness = component->Brightness;
+    copyColor(component->LightColor, out.color);
+    out.enabled = component->bEnabled != 0;
+    out.castShadows = component->CastShadows != 0;
+    out.castDynamicShadows = component->CastDynamicShadows != 0;
+    out.renderLightShafts = component->bRenderLightShafts != 0;
+    out.shadowProjectionTechnique = component->ShadowProjectionTechnique;
+    out.shadowFilterQuality = component->ShadowFilterQuality;
+    out.lightShadowMode = component->LightShadowMode;
+    out.bloomScale = component->BloomScale;
+    out.bloomThreshold = component->BloomThreshold;
+    out.bloomScreenBlendThreshold = component->BloomScreenBlendThreshold;
+    copyColor(component->BloomTint, out.bloomTint);
 
     if (component->IsA(UPointLightComponent::StaticClass())) {
         UPointLightComponent* point = static_cast<UPointLightComponent*>(component);
-        selectedSettings.isPoint = true;
-        selectedSettings.radius = point->Radius;
-        selectedSettings.falloffExponent = point->FalloffExponent;
-        selectedSettings.shadowRadiusMultiplier = point->ShadowRadiusMultiplier;
+        out.isPoint = true;
+        out.radius = point->Radius;
+        out.falloffExponent = point->FalloffExponent;
+        out.shadowRadiusMultiplier = point->ShadowRadiusMultiplier;
         if (component->IsA(USpotLightComponent::StaticClass())) {
             USpotLightComponent* spot = static_cast<USpotLightComponent*>(component);
-            selectedSettings.isSpot = true;
-            selectedSettings.innerConeAngle = spot->InnerConeAngle;
-            selectedSettings.outerConeAngle = spot->OuterConeAngle;
-            selectedSettings.lightShaftConeAngle = spot->LightShaftConeAngle;
+            out.isSpot = true;
+            out.innerConeAngle = spot->InnerConeAngle;
+            out.outerConeAngle = spot->OuterConeAngle;
+            out.lightShaftConeAngle = spot->LightShaftConeAngle;
         }
     }
+    return true;
+}
+
+void LightManager::selectLight(AActor* actor) {
+    if (!readLightSettings(actor, selectedSettings)) {
+        return;
+    }
+    selectedLight = actor;
 
     Application::instance().ui().selectActor(actor);
 }
@@ -159,7 +179,7 @@ void LightManager::renderUI() {
         selectLight(pending);
     }
     auto spawn = [this](const char* className, const char* type) {
-        Transform transform = Application::instance().ui().getSelectedTransform();
+        Transform transform = Application::instance().ui().getSpawnTransform();
         Application::instance().engine().postGameThreadTask([this, className = std::string(className), type = std::string(type), transform]() {
             AActor* actor = Application::instance().engine().spawnClass(className, transform);
             if (actor) {
@@ -225,28 +245,34 @@ void LightManager::renderUI() {
         bool changed = false;
         if (ImGui::CollapsingHeader(t("ui.lights_table.light"))) {
             labelAbove((std::string(t("ui.lights_table.color")) + "##light").c_str());
-            changed = ImGui::ColorEdit3("##light", selectedSettings.color) || changed;
+            changed = ImGui::ColorEdit3("##light_color", selectedSettings.color) || changed;
             labelAbove((std::string(t("ui.lights_table.intensity")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.brightness, 0.1f, SETTINGS_LIGHT_BRIGHTNESS_MIN, SETTINGS_LIGHT_BRIGHTNESS_MAX) || changed;
+            changed = ImGui::DragFloat("##light_intensity", &selectedSettings.brightness, 0.1f, SETTINGS_LIGHT_BRIGHTNESS_MIN, SETTINGS_LIGHT_BRIGHTNESS_MAX) ||
+                      changed;
             changed = ImGui::Checkbox((std::string(t("ui.lights_table.enabled")) + "##light").c_str(), &selectedSettings.enabled) || changed;
         }
 
         if (selectedSettings.isPoint && ImGui::CollapsingHeader(t("ui.lights_table.shape"))) {
             labelAbove((std::string(t("ui.lights_table.radius")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.radius, 1.0f, SETTINGS_LIGHT_RADIUS_MIN, SETTINGS_LIGHT_RADIUS_MAX) || changed;
+            changed = ImGui::DragFloat("##light_radius", &selectedSettings.radius, 1.0f, SETTINGS_LIGHT_RADIUS_MIN, SETTINGS_LIGHT_RADIUS_MAX) || changed;
             labelAbove((std::string(t("ui.lights_table.falloff")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.falloffExponent, 0.05f, SETTINGS_LIGHT_FALLOFF_MIN, SETTINGS_LIGHT_FALLOFF_MAX) || changed;
+            changed = ImGui::DragFloat("##light_falloff", &selectedSettings.falloffExponent, 0.05f, SETTINGS_LIGHT_FALLOFF_MIN, SETTINGS_LIGHT_FALLOFF_MAX) ||
+                      changed;
             labelAbove((std::string(t("ui.lights_table.shadow_radius_mult")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.shadowRadiusMultiplier, 0.05f, SETTINGS_LIGHT_SHADOW_RADIUS_MULT_MIN,
+            changed = ImGui::DragFloat("##light_shadow_radius", &selectedSettings.shadowRadiusMultiplier, 0.05f, SETTINGS_LIGHT_SHADOW_RADIUS_MULT_MIN,
                                        SETTINGS_LIGHT_SHADOW_RADIUS_MULT_MAX) ||
                       changed;
             if (selectedSettings.isSpot) {
                 labelAbove((std::string(t("ui.lights_table.inner_cone_angle")) + "##light").c_str());
-                changed = ImGui::DragFloat("##light", &selectedSettings.innerConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
+                changed =
+                    ImGui::DragFloat("##light_inner_cone", &selectedSettings.innerConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
                 labelAbove((std::string(t("ui.lights_table.outer_cone_angle")) + "##light").c_str());
-                changed = ImGui::DragFloat("##light", &selectedSettings.outerConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
+                changed =
+                    ImGui::DragFloat("##light_outer_cone", &selectedSettings.outerConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
                 labelAbove((std::string(t("ui.lights_table.light_shaft_cone")) + "##light").c_str());
-                changed = ImGui::DragFloat("##light", &selectedSettings.lightShaftConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) || changed;
+                changed =
+                    ImGui::DragFloat("##light_shaft_cone", &selectedSettings.lightShaftConeAngle, 0.5f, SETTINGS_LIGHT_CONE_MIN, SETTINGS_LIGHT_CONE_MAX) ||
+                    changed;
             }
         }
 
@@ -267,25 +293,30 @@ void LightManager::renderUI() {
             changed = ImGui::Checkbox((std::string(t("ui.lights_table.cast_shadows")) + "##light").c_str(), &selectedSettings.castShadows) || changed;
             changed = ImGui::Checkbox((std::string(t("ui.lights_table.cast_dyn_shadow")) + "##light").c_str(), &selectedSettings.castDynamicShadows) || changed;
             labelAbove((std::string(t("ui.lights_table.projection_technique")) + "##light").c_str());
-            changed = ImGui::Combo("##light", &selectedSettings.shadowProjectionTechnique, projectionItems, IM_ARRAYSIZE(projectionItems)) || changed;
+            changed =
+                ImGui::Combo("##light_projection", &selectedSettings.shadowProjectionTechnique, projectionItems, IM_ARRAYSIZE(projectionItems)) || changed;
             labelAbove((std::string(t("ui.lights_table.filter_quality")) + "##light").c_str());
-            changed = ImGui::Combo("##light", &selectedSettings.shadowFilterQuality, qualityItems, IM_ARRAYSIZE(qualityItems)) || changed;
+            changed = ImGui::Combo("##light_quality", &selectedSettings.shadowFilterQuality, qualityItems, IM_ARRAYSIZE(qualityItems)) || changed;
             labelAbove((std::string(t("ui.lights_table.mode")) + "##light").c_str());
-            changed = ImGui::Combo("##light", &selectedSettings.lightShadowMode, modeItems, IM_ARRAYSIZE(modeItems)) || changed;
+            changed = ImGui::Combo("##light_mode", &selectedSettings.lightShadowMode, modeItems, IM_ARRAYSIZE(modeItems)) || changed;
         }
 
         if (ImGui::CollapsingHeader(t("ui.lights_table.boom_and_shafts"))) {
             changed =
                 ImGui::Checkbox((std::string(t("ui.lights_table.render_light_shafts")) + "##light").c_str(), &selectedSettings.renderLightShafts) || changed;
             labelAbove((std::string(t("ui.lights_table.bloom_scale")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.bloomScale, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) || changed;
-            labelAbove((std::string(t("ui.lights_table.bloom_threshold")) + "##light").c_str());
-            changed = ImGui::DragFloat("##light", &selectedSettings.bloomThreshold, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) || changed;
-            labelAbove((std::string(t("ui.lights_table.bloom_sceen_threshold")) + "##light").c_str());
             changed =
-                ImGui::DragFloat("##light", &selectedSettings.bloomScreenBlendThreshold, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) || changed;
+                ImGui::DragFloat("##light_bloom_scale", &selectedSettings.bloomScale, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) || changed;
+            labelAbove((std::string(t("ui.lights_table.bloom_threshold")) + "##light").c_str());
+            changed =
+                ImGui::DragFloat("##light_bloom_threshold", &selectedSettings.bloomThreshold, 0.01f, SETTINGS_LIGHT_BLOOM_MIN, SETTINGS_LIGHT_BLOOM_MAX) ||
+                changed;
+            labelAbove((std::string(t("ui.lights_table.bloom_sceen_threshold")) + "##light").c_str());
+            changed = ImGui::DragFloat("##light_bloom_blend", &selectedSettings.bloomScreenBlendThreshold, 0.01f, SETTINGS_LIGHT_BLOOM_MIN,
+                                       SETTINGS_LIGHT_BLOOM_MAX) ||
+                      changed;
             labelAbove((std::string(t("ui.lights_table.bloom_tint")) + "##light").c_str());
-            changed = ImGui::ColorEdit3("##light", selectedSettings.bloomTint) || changed;
+            changed = ImGui::ColorEdit3("##light_bloom_tint", selectedSettings.bloomTint) || changed;
         }
 
         if (changed) {

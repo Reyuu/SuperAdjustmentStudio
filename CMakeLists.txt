@@ -258,7 +258,7 @@ if (WIN32)
 # d3d11/dxgi for DX11 render backend and swapchain hook
 # d3dcompiler for the raw-D3D11 overlay gizmo shader compilation
 target_link_libraries(SuperAdjustmentStudio PRIVATE d3d11 dxgi d3dcompiler)
-target_link_libraries(SuperAdjustmentStudio PRIVATE ole32 oleaut32 shell32)
+target_link_libraries(SuperAdjustmentStudio PRIVATE ole32 oleaut32 shell32 dbghelp)
 target_compile_definitions(SuperAdjustmentStudio PRIVATE "WIN32_LEAN_AND_MEAN")
 endif()
 

@@ -5,6 +5,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 #include <atomic>
+#include <dbghelp.h>
 #include <exception>
 #include <sstream>
 #include <string>
@@ -37,6 +38,17 @@ inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
     watchdog.detach();
 
     try {
+        if (info && info->ExceptionRecord) {
+            HANDLE hDump = CreateFileA("SuperAdjustmentStudio.dmp", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (hDump != INVALID_HANDLE_VALUE) {
+                MINIDUMP_EXCEPTION_INFORMATION mei;
+                mei.ThreadId = GetCurrentThreadId();
+                mei.ExceptionPointers = info;
+                mei.ClientPointers = FALSE;
+                MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDump, MiniDumpNormal, &mei, nullptr, nullptr);
+                CloseHandle(hDump);
+            }
+        }
         if (Logger) {
             if (info && info->ExceptionRecord) {
                 EXCEPTION_RECORD* rec = info->ExceptionRecord;

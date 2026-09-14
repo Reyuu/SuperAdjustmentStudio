@@ -12,7 +12,7 @@
 
 #include "tracy.h"
 
-static UParticleSystem* findParticleTemplateByName(const std::string& name) {
+UParticleSystem* ParticleManager::findTemplateByName(const std::string& name) {
     UParticleSystem* found = nullptr;
     forEachOf<UParticleSystem>([&](UParticleSystem* p) {
         if (p && toLowerStr(FStringToUtf8(p->GetName())).find(toLowerStr(name)) != std::string::npos) {
@@ -252,7 +252,7 @@ void ParticleManager::renderUI() {
                         Logger->debug("particle spawn: selected pawn no longer exists");
                         return;
                     }
-                    UParticleSystem* resolvedTemplate = findParticleTemplateByName(particleName);
+                    UParticleSystem* resolvedTemplate = ParticleManager::findTemplateByName(particleName);
                     if (!resolvedTemplate) {
                         Logger->debug("particle spawn: template no longer exists");
                         return;

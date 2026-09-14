@@ -46,16 +46,18 @@ struct LightSettings {
 class LightManager {
     public:
         void renderUI();
-
-    private:
+        static bool readLightSettings(AActor* actor, LightSettings& out);
         void addLight(AActor* actor, const std::string& type);
-        void removeLight(AActor* actor);
-        void updateActiveLights();
-        void selectLight(AActor* actor);
+        void removeAllLights();
         void applyLightProperties(AActor* actor, const LightSettings& settings);
 
         std::vector<LightEntry> lightEntries;
         std::mutex lightsMtx;
+
+    private:
+        void removeLight(AActor* actor);
+        void updateActiveLights();
+        void selectLight(AActor* actor);
         AActor* pendingSelection = nullptr;
         AActor* selectedLight = nullptr;
         LightSettings selectedSettings;

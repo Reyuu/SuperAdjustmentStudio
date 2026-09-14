@@ -46,9 +46,11 @@ if not exist "%DEPLOY_DIR%" (
 )
 
 rem Rename all .dll files in the build directory to .asi
+rem (delete stale .asi first - ren cannot overwrite an existing destination)
 for /f "tokens=*" %%f in ('dir /b "%BUILD_DIR%\*.dll"') do (
     set "filename=%%~nf"
     setlocal enabledelayedexpansion
+    if exist "%BUILD_DIR%\!filename!.asi" del "%BUILD_DIR%\!filename!.asi"
     ren "%BUILD_DIR%\%%f" "!filename!.asi"
     endlocal
 )

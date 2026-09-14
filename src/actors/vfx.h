@@ -36,14 +36,16 @@ class VFXManager {
         void removeVFX(VFXEntry& entry);
         void removeAllVFX();
         void updateActiveVFX();
+        static UBioVFXTemplate* findTemplateByName(const std::string& name);
+
+        std::vector<VFXEntry> vfxEntries;
+        std::mutex vfxMtx;
 
     private:
         void applyVFXLiveState(VFXEntry& entry);
 
     private:
-        std::vector<VFXEntry> vfxEntries;
         std::set<UBioVFXTemplate*, VFXTemplateNameLess> availableTemplates;
-        std::mutex vfxMtx;
         bool ignoreCameraMovement = SETTINGS_TOGGLE_OFF;
         bool loopVFX = SETTINGS_TOGGLE_OFF;
         float loopDelayVFX = SETTINGS_FX_LOOP_DELAY_DEFAULT;

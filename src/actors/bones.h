@@ -38,7 +38,6 @@ class Bones {
         void absoluteResetBones(const std::string& pawnName, MeshTarget target);
         void keepBonePoses();
 
-    private:
         struct BonePoseState {
             public:
                 std::mutex mtx;
@@ -54,6 +53,8 @@ class Bones {
         };
 
         BonePoseState bonePose;
+
+    private:
         std::atomic<bool> bonePoseActiveState{false};
 
         void restoreBonePoseMesh(std::string pawn, MeshTarget target, std::vector<FBoneAtom> atoms, std::vector<int> indices, bool useSavedPose);

@@ -453,6 +453,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     ImGui::Begin((std::string(ICON_FA_SLIDERS " ") + t("ui.program_name") + " " PLUGIN_VERSION).c_str(), NULL, ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar()) {
         ImGui::MenuItem((std::string(ICON_FA_GEAR " ") + t("ui.settings")).c_str(), nullptr, &showSettingsWindow);
+        Application::instance().snapshots().renderUi();
         if (ImGui::BeginMenu((std::string(ICON_FA_BUG " ") + t("ui.debug")).c_str())) {
             ImGui::MenuItem("Metrics##imgui_debug_metrics", (std::string(ICON_FA_CHART_SIMPLE " ") + t("ui.metrics_menu.metrics")).c_str(), &showMetricsWindow);
             ImGui::MenuItem("Debug Log##imgui_debug_log", (std::string(ICON_FA_LIST " ") + t("ui.metrics_menu.debug_log")).c_str(), &showDebugLogWindow);
@@ -461,6 +462,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
         }
         ImGui::EndMenuBar();
     }
+    Application::instance().snapshots().renderWizards();
     ImVec2 windowPosition = ImGui::GetWindowPos();
     ImVec2 windowSize = ImGui::GetWindowSize();
     renderer.setUiRect({(LONG)windowPosition.x, (LONG)windowPosition.y, (LONG)(windowPosition.x + windowSize.x), (LONG)(windowPosition.y + windowSize.y)});

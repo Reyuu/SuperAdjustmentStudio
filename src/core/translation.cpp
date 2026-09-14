@@ -23,24 +23,15 @@ Translation::~Translation() {
 }
 
 // get translation for the given key in the current language, using dot notation for nested keys
-std::string Translation::translate(const std::string& key) {
-    std::string lang = currentLanguage;
-
-    if (!translations.contains(lang)) {
-        lang = "en"; // fallback to English if the current language is not available
-    }
-    if (!translations.contains(lang)) {
-        return key;
-    }
-
-    const json* node = &translations.at(lang);
+static bool walkTranslationKey(const json& root, const std::string& key, std::string& out) {
+    const json* node = &root;
     size_t start = 0;
 
     while (true) {
         size_t dot = key.find('.', start);
         std::string part = key.substr(start, dot - start);
         if (!node->contains(part)) {
-            return key;
+            return false;
         }
 
         node = &(*node)[part];
@@ -53,10 +44,32 @@ std::string Translation::translate(const std::string& key) {
     }
 
     if (!node->is_string()) {
+        return false;
+    }
+
+    out = node->get<std::string>();
+    return true;
+}
+
+std::string Translation::translate(const std::string& key) {
+    std::string lang = currentLanguage;
+
+    if (!translations.contains(lang)) {
+        lang = "en"; // fallback to English if the current language is not available
+    }
+    if (!translations.contains(lang)) {
         return key;
     }
 
-    return node->get<std::string>();
+    std::string out;
+    if (walkTranslationKey(translations.at(lang), key, out)) {
+        return out;
+    }
+    // per-key fallback to English so untranslated keys still read sensibly
+    if (lang != "en" && translations.contains("en") && walkTranslationKey(translations.at("en"), key, out)) {
+        return out;
+    }
+    return key;
 }
 
 void Translation::setLanguage(const std::string& language) {

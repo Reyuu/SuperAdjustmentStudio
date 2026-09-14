@@ -16,6 +16,10 @@ class Animation {
         void resetAnimation(const std::string& pawnName);
         void playAnimation(const std::string& pawnName, const std::string& animName, bool bLoop = true);
 
+        std::string playedPawnName;
+        std::string playedAnimName;
+        bool playedLoop = true;
+
     private:
         bool animPauseActiveState = false;
         UAnimNodeSequence* playedNode = nullptr;

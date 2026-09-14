@@ -16,6 +16,7 @@
 #include "particles.h"
 #include "prefabs.h"
 #include "props.h"
+#include "snapshots.h"
 #include "sdk.h"
 #include "settings.h"
 #include "ui.h"
@@ -98,6 +99,9 @@ class Application {
         PrefabManager& prefabs() {
             return prefabsInstance;
         }
+        SnapshotsManager& snapshots() {
+            return snapshotsInstance;
+        }
         PhotoOverlay& photoOverlay() {
             return photoOverlayInstance;
         }
@@ -155,6 +159,7 @@ class Application {
         PostChain postChainInstance;
         Translation translationInstance;
         Screenshot screenshotInstance;
+        SnapshotsManager snapshotsInstance;
 
         bool previousHotkey = false;
         bool hotkeyCaptureFinished = false;

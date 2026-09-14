@@ -124,6 +124,14 @@ class PhotoOverlay {
         void sample(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11DeviceContext* context);
         void shutdown();
 
+        bool filterState = SETTINGS_TOGGLE_OFF;
+        float tintColor[3] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B};
+        float tintStrength = SETTINGS_PHOTO_TINT_STRENGTH_DEFAULT;
+        float grainIntensity = SETTINGS_PHOTO_GRAIN_INTENSITY_DEFAULT;
+        float grainOpacity = SETTINGS_PHOTO_GRAIN_OPACITY_DEFAULT;
+        bool noFogState = SETTINGS_TOGGLE_OFF;
+        bool noLensFlareState = SETTINGS_TOGGLE_OFF;
+
     private:
         bool enabledState = SETTINGS_TOGGLE_OFF;
         PhotoOverlayGrid gridIndex = GRID_NONE;
@@ -134,9 +142,6 @@ class PhotoOverlay {
         bool centerDot = SETTINGS_TOGGLE_OFF;
         bool safeFrame = SETTINGS_TOGGLE_OFF;
         bool readout = SETTINGS_TOGGLE_OFF;
-
-        bool noFogState = SETTINGS_TOGGLE_OFF;
-        bool noLensFlareState = SETTINGS_TOGGLE_OFF;
 
         bool histogram = SETTINGS_TOGGLE_OFF;
         static constexpr int HIST_BINS = 64;
@@ -154,12 +159,6 @@ class PhotoOverlay {
         unsigned histW = 0;
         unsigned histH = 0;
         int histFmt = 0;
-
-        bool filterState = SETTINGS_TOGGLE_OFF;
-        float tintColor[3] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B};
-        float tintStrength = SETTINGS_PHOTO_TINT_STRENGTH_DEFAULT;
-        float grainIntensity = SETTINGS_PHOTO_GRAIN_INTENSITY_DEFAULT;
-        float grainOpacity = SETTINGS_PHOTO_GRAIN_OPACITY_DEFAULT;
 };
 
 #endif // SAS_PHOTO_OVERLAY_H

@@ -13,7 +13,7 @@
 
 #include "tracy.h"
 
-static UBioVFXTemplate* findVFXTemplateByName(const std::string& name) {
+UBioVFXTemplate* VFXManager::findTemplateByName(const std::string& name) {
     UBioVFXTemplate* vfxTemplate = nullptr;
     forEachOf<UBioVFXTemplate>([&](UBioVFXTemplate* vfx) {
         if (vfx && toLowerStr(FStringToUtf8(vfx->GetName())).find(toLowerStr(name)) != std::string::npos) {
@@ -59,6 +59,10 @@ void VFXManager::addVFX(UBioVFXTemplate* vfxTemplate, AActor* actor, const std::
 
     // if (vfxTemplate->bIsCrustEffect) {...}
 
+    if (!isLiveObject(donor)) {
+        Logger->debug("addVFX: no donor effect available");
+        return;
+    }
     ABioVisualEffect* vfxActor = nullptr;
     vfxActor = donor->CreateCrustEffect(vfxTemplate, actor, lifeTime, 0);
     // attach to bone
@@ -120,11 +124,23 @@ void VFXManager::removeVFX(VFXEntry& entry) {
 }
 
 void VFXManager::removeAllVFX() {
+    std::lock_guard<std::mutex> lock(vfxMtx);
     for (VFXEntry& entry : vfxEntries) {
-        if (entry.actor) {
-            removeVFX(entry);
+        if (entry.actor && isLiveObject(entry.actor)) {
+            entry.actor->SetPaused(1, true);
+            entry.actor->SetLifeTime(0.0f);
+            entry.actor->LoopDuration(0);
+            entry.actor->PauseOnDeath(1);
+            entry.actor->fStateDurations[0] = 0.0f; // SPAWN
+            entry.actor->fStateDurations[1] = 0.0f; // LIFE
+            entry.actor->bActive = 0;
+            entry.actor->bPaused = 1;
+            entry.actor->SetState(2, true, true, false); // BVFX_DE
+            entry.actor->eventOnComplete();
         }
+        entry.actor = nullptr;
     }
+    vfxEntries.clear();
 }
 
 void VFXManager::applyVFXLiveState(VFXEntry& entry) {
@@ -276,7 +292,7 @@ void VFXManager::renderUI() {
         // spawn the selected VFX on the selected pawn
         AActor* actor = Application::instance().engine().findActorByName(Application::instance().ui().getSelectedPawnName());
         if (actor) {
-            UBioVFXTemplate* vfxTemplate = findVFXTemplateByName(selectedVFXName);
+            UBioVFXTemplate* vfxTemplate = VFXManager::findTemplateByName(selectedVFXName);
             if (vfxTemplate) {
                 double spawnTime = ImGui::GetTime();
                 Application::instance().engine().postGameThreadTask([this, vfxTemplate, actor, boneSelect = boneSelect, spawnTime]() {

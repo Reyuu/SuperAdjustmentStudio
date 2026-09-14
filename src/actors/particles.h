@@ -36,14 +36,16 @@ class ParticleManager {
         void removeParticle(ParticleEntry& entry);
         void removeAllParticles();
         void updateActiveParticles();
+        static UParticleSystem* findTemplateByName(const std::string& name);
+
+        std::vector<ParticleEntry> particleEntries;
+        std::mutex particleMtx;
 
     private:
         void applyParticleLiveState(ParticleEntry& entry);
 
     private:
-        std::vector<ParticleEntry> particleEntries;
         std::set<UParticleSystem*, ParticleTemplateNameLess> availableTemplates;
-        std::mutex particleMtx;
         bool loopParticles = SETTINGS_TOGGLE_OFF;
         float loopDelayParticles = SETTINGS_FX_LOOP_DELAY_DEFAULT;
         float particleDuration = SETTINGS_FX_DURATION_DEFAULT;

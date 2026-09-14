@@ -50,6 +50,10 @@ struct PrefabManager {
         void onActorMoved(AActor* actor);
         void nudgeLights(int idx);
 
+        mutable std::recursive_mutex mutex;
+        std::vector<PrefabTemplate> available;
+        std::vector<PrefabEntry> prefabEntries;
+
     private:
         int findEntryIndexByName(const std::string& name, const std::string& prefabName) const;
         void fixupSelectedActive();
@@ -62,9 +66,6 @@ struct PrefabManager {
         void renderActivePrefabsPanel(const std::vector<PrefabEntry>& entries, int& selActive);
         void renderMaterialControls();
         void renderLightSpawnControls();
-        mutable std::recursive_mutex mutex;
-        std::vector<PrefabTemplate> available;
-        std::vector<PrefabEntry> prefabEntries;
         std::string selectedPrefabName;
         int selectedActive = -1;
         LightConfig selectedLightConfig = LightConfig::Corner;
