@@ -34,7 +34,7 @@ jobs:
 
       - name: Regenerate LExSDKv2 patch
         shell: pwsh
-        run: python patches/LExSDKv2/enumerate.py --apply; git -C thirdparty/LExSDKv2 diff --output=../../patches/LExSDKv2/fix-sdk-layout.patch
+        run: python patches/LExSDKv2/enumerate.py --apply; git -C thirdparty/LExSDKv2 add -N Src/LESDK/Includes.hpp; git -C thirdparty/LExSDKv2 diff --output=../../patches/LExSDKv2/fix-sdk-layout.patch
 
       - name: Build and deploy
         shell: pwsh

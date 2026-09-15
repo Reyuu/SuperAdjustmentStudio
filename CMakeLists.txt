@@ -53,7 +53,7 @@ else()
     if (LExSDK_PATCH_REVERSE EQUAL 0)
         message(STATUS "LExSDKv2 patch already applied")
     else()
-        message(FATAL_ERROR "patches/LExSDKv2/fix-sdk-layout.patch neither applies nor is applied - the submodule changed. Regenerate: python patches/LExSDKv2/enumerate.py --apply && git -C thirdparty/LExSDKv2 diff --output=../../patches/LExSDKv2/fix-sdk-layout.patch")
+        message(FATAL_ERROR "patches/LExSDKv2/fix-sdk-layout.patch neither applies nor is applied - the submodule changed. Regenerate: python patches/LExSDKv2/enumerate.py --apply && git -C thirdparty/LExSDKv2 add -N Src/LESDK/Includes.hpp && git -C thirdparty/LExSDKv2 diff --output=../../patches/LExSDKv2/fix-sdk-layout.patch")
     endif()
 endif()
 
