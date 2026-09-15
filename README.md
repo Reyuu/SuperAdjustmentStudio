@@ -132,6 +132,7 @@ If I used your code and did not credit you, please reach out, I'll be more than 
 - to my friend Tris, who always listens to my technical yapping
 - Mass Effect Modding Discord
 - [d00t](https://github.com/llamathings), [Mgamerz](https://github.com/Mgamerz) and [Cersei](https://github.com/SirCxyrtyx) - for helping me with my understanding of LExSDK
+- [naNuke](https://www.nexusmods.com/profile/naNuke) - for the feedback and the help 
 
 ## Other things
 **I do NOT allow this mod to be reposted just for the translation to be added.** Translation happens on Crowdin, contact me if you want to contribute!
