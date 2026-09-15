@@ -28,6 +28,7 @@ Please treat this release as <ins>**BETA**</ins>.
 - manual package loading and preview - allows you to load additional content into the game (you have to know where a specific prefab/animation is located)
 - freecam - it can be used as a replacement to the game's default photo mode! It even works in conversations! 📷
 - photo utilities - grid overlay, basic photo adjustments and histogram
+- LUT support for color grading 🎨
 - saving and loading the snapshots! (saving the poses, the properties for the objects, transforms and so on)
 
 ### Known issues (what doesn't work)
@@ -132,7 +133,7 @@ If I used your code and did not credit you, please reach out, I'll be more than 
 - to my friend Tris, who always listens to my technical yapping
 - Mass Effect Modding Discord
 - [d00t](https://github.com/llamathings), [Mgamerz](https://github.com/Mgamerz) and [Cersei](https://github.com/SirCxyrtyx) - for helping me with my understanding of LExSDK
-- [naNuke](https://www.nexusmods.com/profile/naNuke) - for the feedback and the help 
+- [naNuke](https://www.nexusmods.com/profile/naNuke) - for the feedback and help 
 
 ## Other things
 **I do NOT allow this mod to be reposted just for the translation to be added.** Translation happens on Crowdin, contact me if you want to contribute!
