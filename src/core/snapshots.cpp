@@ -1351,7 +1351,8 @@ void SnapshotsManager::renderLoadWizard() {
             ChildScope child("##sas_snapshot_list", ImVec2(270, 300), true);
             if (child.open) {
                 for (int i = 0; i < (int)loadFiles.size(); ++i) {
-                    if (ImGui::Selectable(loadFiles[i].name.c_str(), i == loadIndex)) {
+                    std::string loadLabel = loadFiles[i].name + "##" + loadFiles[i].filename;
+                    if (ImGui::Selectable(loadLabel.c_str(), i == loadIndex)) {
                         loadIndex = i;
                         for (int s = 0; s < SnapshotSectionCount; ++s) {
                             loadSections[s] = true;

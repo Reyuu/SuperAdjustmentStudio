@@ -380,7 +380,7 @@ void VFXManager::renderUI() {
     std::string filterLower = toLowerStr(vfxSearchFilter);
     ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##vfx_refresh")) {
         findAvailableTemplates(true);
     }
     ImGui::SameLine();
@@ -415,7 +415,8 @@ void VFXManager::renderUI() {
                 while (clipper.Step()) {
                     for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                         const std::string& name = filteredNames[n];
-                        if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
+                        std::string id = name + "##" + std::to_string(n);
+                        if (ImGui::Selectable(id.c_str(), selectedVFXName == name)) {
                             selectedVFXName = name;
                         }
                     }
@@ -439,7 +440,8 @@ void VFXManager::renderUI() {
                     while (clipper.Step()) {
                         for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                             const std::string& name = filteredNames[n];
-                            if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
+                            std::string id = name + "##f" + std::to_string(n);
+                            if (ImGui::Selectable(id.c_str(), selectedVFXName == name)) {
                                 selectedVFXName = name;
                             }
                         }

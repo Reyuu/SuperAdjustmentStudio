@@ -24,7 +24,7 @@ void LutEffect::renderUI() {
         ImGui::TextDisabled("%s", dirBuf);
     }
 
-    if (ImGui::SmallButton(ICON_FA_ARROW_ROTATE_RIGHT)) {
+    if (ImGui::SmallButton(ICON_FA_ARROW_ROTATE_RIGHT "##lut_rescan")) {
         rescan();
     }
     ImGui::Separator();
@@ -65,7 +65,7 @@ void LutEffect::renderUI() {
                 ImGui::EndCombo();
             }
             ImGui::SameLine();
-            if (ImGui::SmallButton(ICON_FA_ARROW_ROTATE_RIGHT)) {
+            if (ImGui::SmallButton(ICON_FA_ARROW_ROTATE_RIGHT "##lut_depth_rescan")) {
                 depths = depth().sourceList();
             }
             bool freeze = freezeDepth();
@@ -268,7 +268,7 @@ void LutEffect::renderUI() {
     ImGui::EndChild();
 
     float cornerW = 60.0f;
-    if (ImGui::Button(ICON_FA_PLUS)) {
+    if (ImGui::Button(ICON_FA_PLUS "##lut_add")) {
         ImGui::OpenPopup("##lut_add_popup");
     }
     if (ImGui::BeginPopup("##lut_add_popup")) {

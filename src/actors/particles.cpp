@@ -286,7 +286,8 @@ void ParticleManager::renderUI() {
                 while (clipper.Step()) {
                     for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                         const std::string& name = filtered[n].first;
-                        if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
+                        std::string id = name + "##" + std::to_string(n);
+                        if (ImGui::Selectable(id.c_str(), name == selectedParticleName)) {
                             selectedParticleName = name;
                         }
                     }
@@ -310,7 +311,8 @@ void ParticleManager::renderUI() {
                     while (clipper.Step()) {
                         for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                             const std::string& name = filtered[n].first;
-                            if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
+                            std::string id = name + "##f" + std::to_string(n);
+                            if (ImGui::Selectable(id.c_str(), name == selectedParticleName)) {
                                 selectedParticleName = name;
                             }
                         }
