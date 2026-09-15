@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 #define GET_MEMBER_SLOT_POINTER(cls, parent, request) (BYTE*)parent + offsetof(cls, request);
 

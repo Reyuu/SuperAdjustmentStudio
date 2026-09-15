@@ -38,7 +38,7 @@ data = {
             "limitSymbolsToIncludedHeaders": True,
             "databaseFilename": root + "/build/compile-commands/vc.db",
         },
-        "defines": ["_DEBUG", "UNICODE", "_UNICODE", "WIN32_LEAN_AND_MEAN", "SDK_TARGET_LE2"],
+        "defines": ["_DEBUG", "UNICODE", "_UNICODE", "WIN32_LEAN_AND_MEAN", "SDK_TARGET_LE1", "SDK_TARGET_LE2", "SDK_TARGET_LE3"],
         "intelliSenseMode": "windows-msvc-x64",
         "compilerPath": cl,
         "cppStandard": "c++20",

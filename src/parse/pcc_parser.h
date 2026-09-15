@@ -59,8 +59,18 @@ struct PCCFile {
         uint32_t magic = 0;
         uint16_t unrealVersion = 0;
         uint16_t licenseeVersion = 0;
+        uint32_t headerSize = 0;
         uint32_t packageFlags = 0;
         uint32_t compressionType = 0;
+        uint32_t compressedChunkCount = 0;
+        size_t compressedChunksOffset = 0;
+
+        uint32_t nameCount = 0;
+        uint32_t nameOffset = 0;
+        uint32_t importCount = 0;
+        uint32_t importOffset = 0;
+        uint32_t exportCount = 0;
+        uint32_t exportOffset = 0;
 
         std::vector<std::string> names;
         std::vector<PCCImport> imports;
@@ -98,8 +108,12 @@ class PCCParser {
         }
 
     private:
-        void readHeader();
+        void readRawFile();
+        bool readPreliminaryHeader();
+        void readFullHeader();
         void decompress();
+        void decompressFullyCompressed();
+        void decompressChunked();
         void parseNameTable();
         void parseImportTable();
         void parseExportTable();
@@ -115,6 +129,7 @@ class PCCParser {
         PCCFile file_;
         std::vector<uint8_t> raw_;
         std::vector<uint8_t> decompressed_;
+        size_t compStartOffset_ = 0;
 };
 
 #endif // SAS_PCC_PARSER_H

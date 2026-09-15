@@ -7,7 +7,7 @@
 #include "settings.h"
 #include <imgui.h>
 #include "IconsFontAwesome6.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <LESDK/Common/Math.hpp>
 
 #define SAS_PP_SET(FLAG, FIELD, VALUE) \
@@ -126,9 +126,15 @@ void Freecam::applyFreecamEnabled(bool enabled) {
                 USFXCameraMode_PhotoFree* target = photoGameMode->PhotoCamFree;
                 if (photoGameMode && isLiveObject(photoGameMode) && freecamCamera->CurrentCameraMode != target) {
                     freecamPreviousCameraMode = freecamCamera->CurrentCameraMode;
+#ifdef SDK_TARGET_LE3
+                    target->Initialize();
+#else
                     target->Initialize(localPC);
+#endif
                     cam->FreeCam = target;
+#ifndef SDK_TARGET_LE3
                     cam->bFreeCamActive = true;
+#endif
                     localPC->bPhotoModeCameraUnlocked = true;
                     cam->SwitchTo(target);
                 }
@@ -152,9 +158,16 @@ void Freecam::applyFreecamEnabled(bool enabled) {
         ABioPlayerController* localPC = findLocalBioPC();
         if (localPC) {
             if (freecamCamera) {
+#ifndef SDK_TARGET_LE3
                 freecamCamera->bFreeCamActive = false;
+#endif
                 localPC->bPhotoModeCameraUnlocked = false;
+#ifdef SDK_TARGET_LE3
+                FTViewTarget* vt = nullptr;
+                freecamCamera->PickCameraMode(0.0f, vt);
+#else
                 freecamCamera->PickCameraMode(0.0f);
+#endif
                 USFXCameraMode* prev = nullptr;
                 if (freecamPreviousCameraMode && isLiveObject(freecamPreviousCameraMode)) {
                     prev = freecamPreviousCameraMode;
@@ -218,7 +231,7 @@ void Freecam::assertFreecamCache() {
 
     FRotator rot = offsets.rotation;
     rot.Roll = DegreesToUnrealRotationUnits(std::clamp(options.freecamRoll, SETTINGS_FREECAM_ROLL_MIN, SETTINGS_FREECAM_ROLL_MAX));
-    freecamCamera->CameraCache.POV.Location = offsets.position;
+    freecamCamera->CameraCache.POV.LOCATION = offsets.position;
     freecamCamera->CameraCache.POV.Rotation = rot;
     freecamCamera->CameraCache.POV.FOV = std::clamp(options.freecamFOV, SETTINGS_FREECAM_FOV_MIN, SETTINGS_FREECAM_FOV_MAX);
 }

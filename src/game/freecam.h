@@ -7,7 +7,7 @@
 
 #include "settings.h"
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <LESDK/Common/Math.hpp>
 
 enum CameraDragState {

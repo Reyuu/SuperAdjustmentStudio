@@ -1,7 +1,7 @@
 #ifndef SAS_LIGHTS_H
 #define SAS_LIGHTS_H
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <mutex>
 #include <string>
 #include <vector>

@@ -12,7 +12,7 @@
 #include <sstream>
 
 #include <LESDK/Common/Math.hpp>
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 #include "imgui.h"
 #include "tracy.h"
@@ -79,7 +79,7 @@ static void DrawWorldGizmo(ULineBatchComponent* lineBatcher, AActor* actor) {
     float az[3];
 
     RotatorToBasis(actor->Rotation, ax, ay, az);
-    FVector origin{actor->Location.X, actor->Location.Y, actor->Location.Z};
+    FVector origin{actor->LOCATION.X, actor->LOCATION.Y, actor->LOCATION.Z};
     DrawAxes(lineBatcher, origin, ax, ay, az, 80.0f, 2.5f);
 }
 
@@ -204,7 +204,7 @@ static void DrawLightRadius(ULineBatchComponent* lineBatcher, AActor* actor) {
     }
     void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
     auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
-    FVector center = actor->Location;
+    FVector center = actor->LOCATION;
     const FLinearColor color{1.0f, 0.85f, 0.1f, 1.0f};
     constexpr int segments = 24;
     constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
@@ -258,7 +258,7 @@ static void DrawLightOrientation(ULineBatchComponent* lineBatcher, AActor* actor
     float length = (point->Radius > 100.0f) ? point->Radius : 100.0f;
     void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
     auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
-    FVector origin = actor->Location;
+    FVector origin = actor->LOCATION;
     FVector tip{origin.X + forward[0] * length, origin.Y + forward[1] * length, origin.Z + forward[2] * length};
     const FLinearColor dirColor{0.2f, 0.8f, 1.0f, 1.0f};
     const FLinearColor outerColor{0.2f, 0.8f, 1.0f, 1.0f};
@@ -302,7 +302,7 @@ static void DrawLightRadiusOnTop(ABioHUD* hud, AActor* actor) {
         return;
     }
     float radius = static_cast<UPointLightComponent*>(component)->Radius;
-    FVector center = actor->Location;
+    FVector center = actor->LOCATION;
     constexpr int segments = 24;
     constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
     const FColor color{26, 217, 255, 255};
@@ -333,7 +333,7 @@ static void DrawLightOrientationOnTop(ABioHUD* hud, AActor* actor) {
     RotatorToBasis(actor->Rotation, forward, right, up);
     UPointLightComponent* point = static_cast<UPointLightComponent*>(component);
     float length = (point->Radius > 100.0f) ? point->Radius : 100.0f;
-    FVector origin = actor->Location;
+    FVector origin = actor->LOCATION;
     FVector tip{origin.X + forward[0] * length, origin.Y + forward[1] * length, origin.Z + forward[2] * length};
     const FColor dirColor{255, 204, 51, 255};
     const FColor outerColor{255, 204, 51, 255};
@@ -466,7 +466,7 @@ static void DrawWorldGizmoOnTop(ABioHUD* hud, AActor* actor) {
     float az[3];
 
     RotatorToBasis(actor->Rotation, ax, ay, az);
-    FVector origin = actor->Location;
+    FVector origin = actor->LOCATION;
     DrawAxesOnTop(hud, origin, ax, ay, az, 80.0f);
 }
 
@@ -555,8 +555,8 @@ static bool GetActorBoundsBox(AActor* actor, FBox& out) {
         const float hY = 50.0f * (s.Y > 0.01f ? s.Y : 1.0f);
         const float hZ = 50.0f * (s.Z > 0.01f ? s.Z : 1.0f);
 
-        out.Min = {actor->Location.X - hX, actor->Location.Y - hY, actor->Location.Z - hZ};
-        out.Max = {actor->Location.X + hX, actor->Location.Y + hY, actor->Location.Z + hZ};
+        out.Min = {actor->LOCATION.X - hX, actor->LOCATION.Y - hY, actor->LOCATION.Z - hZ};
+        out.Max = {actor->LOCATION.X + hX, actor->LOCATION.Y + hY, actor->LOCATION.Z + hZ};
         out.IsValid = 1;
     }
     return out.IsValid != 0;
@@ -607,7 +607,7 @@ static bool GetActorOBB(AActor* actor, FVector out[8]) {
         return FVector{v.X * f[0] + v.Y * r[0] + v.Z * u[0], v.X * f[1] + v.Y * r[1] + v.Z * u[1], v.X * f[2] + v.Y * r[2] + v.Z * u[2]};
     };
 
-    FVector worldOrigin = actor->Location;
+    FVector worldOrigin = actor->LOCATION;
     FVector ro = rotate(localOrigin);
     worldOrigin.X += ro.X;
     worldOrigin.Y += ro.Y;
@@ -801,7 +801,11 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY) {
     FTraceHitInfo hitInfo;
     AActor* hit = nullptr;
     if (hud->PlayerOwner && isObjectStillLive(hud->PlayerOwner)) {
+#ifdef SDK_TARGET_LE3
+        hit = hud->PlayerOwner->Trace(end, origin, 1, FVector{0.0f, 0.0f, 0.0f}, 0, &hitLocation, &hitNormal, &hitInfo);
+#else
         hit = hud->PlayerOwner->Trace(end, origin, 1, FVector{0.0f, 0.0f, 0.0f}, 0, 0, &hitLocation, &hitNormal, &hitInfo);
+#endif
     }
     if (hit && isObjectStillLive(hit)) {
         Application::instance().ui().selectActor(hit);
@@ -870,7 +874,7 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
 
                     APawn* playerPawn = GetPlayerPawn(hud);
                     if (drawTracerState && actor && playerPawn) {
-                        DrawTracer(lb, playerPawn->Location, actor->Location);
+                        DrawTracer(lb, playerPawn->LOCATION, actor->LOCATION);
                     }
                 }
             }
@@ -909,7 +913,7 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                 DrawWorldOBBOnTop(hud, actor);
             }
             if (drawTracerState && playerPawn) {
-                DrawTracerOnTop(hud, playerPawn->Location, actor->Location);
+                DrawTracerOnTop(hud, playerPawn->LOCATION, actor->LOCATION);
             }
         }
     } SAS_HOOK_CATCH_VOID

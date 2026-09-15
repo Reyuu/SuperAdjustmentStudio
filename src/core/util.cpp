@@ -9,7 +9,7 @@
 #include <wrl/client.h>
 
 #include <LESDK/Common/Math.hpp>
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 bool pickFolder(std::string& outPath) {
     using Microsoft::WRL::ComPtr;

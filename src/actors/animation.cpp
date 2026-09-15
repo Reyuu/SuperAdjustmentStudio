@@ -221,7 +221,11 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
     }
 
     mesh->StopAnim();
+#ifdef SDK_TARGET_LE3
+    float pos = slot->PlayCustomAnim(sfxAnim, 1.0f, 0.1f, 0.2f, bLoop ? 1 : 0, 1, 0.0f);
+#else
     float pos = pawn->PawnPlayCustomAnim(slot, sfxAnim, 1.0f, 0.1f, 0.2f, bLoop ? 1 : 0, 1, 0.0f);
+#endif
     customAnimSlot = slot;
     playedPawnName = pawnName;
     playedAnimName = animName;

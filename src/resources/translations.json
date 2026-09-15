@@ -24,6 +24,7 @@
                 "deleted_ok": "Snapshot '%s' deleted.",
                 "save_failed": "Failed to save snapshot '%s'.",
                 "load_failed": "Failed to load snapshot '%s'.",
+                "wrong_game": "Snapshot '%s' was saved for %s and cannot be loaded in %s.",
                 "delete_failed": "Failed to delete snapshot '%s'.",
                 "section_camera": "Camera position",
                 "section_fov_roll": "FOV / Roll",

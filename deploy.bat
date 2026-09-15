@@ -1,77 +1,86 @@
 @echo off
-REM deploy.bat [build_dir] [deploy_dir]
+REM deploy.bat [Debug|Release] [ME1|ME2|ME3]
 
-setlocal
-if not defined DEPLOY_DIR if exist "%~dp0env.bat" call "%~dp0env.bat"
+setlocal enabledelayedexpansion
+if exist "%~dp0env.bat" call "%~dp0env.bat"
 
-if "%~1"=="" (
+REM Parse arguments
+set "CONFIGURATION="
+set "SINGLE_GAME="
+for %%A in (%*) do (
+    if /I "%%A"=="Debug" (
+        set "CONFIGURATION=Debug"
+    ) else if /I "%%A"=="Release" (
+        set "CONFIGURATION=Release"
+    ) else if /I "%%A"=="ME1" (
+        set "SINGLE_GAME=ME1"
+    ) else if /I "%%A"=="ME2" (
+        set "SINGLE_GAME=ME2"
+    ) else if /I "%%A"=="ME3" (
+        set "SINGLE_GAME=ME3"
+    )
+)
+
+if "%CONFIGURATION%"=="" (
     if exist "%~dp0.build_last_config" (
         for /f "usebackq" %%c in ("%~dp0.build_last_config") do set "CONFIGURATION=%%c"
     ) else (
         set "CONFIGURATION=Release"
     )
-) else (
-    set "CONFIGURATION=%~1"
-)
-if /I not "%CONFIGURATION%"=="Debug" if /I not "%CONFIGURATION%"=="Release" (
-    echo Unknown configuration "%CONFIGURATION%", defaulting to Release.
-    set "CONFIGURATION=Release"
 )
 
-if "%~2"=="" (
-    set "BUILD_DIR=%~dp0build\%CONFIGURATION%"
-) else (
-    set "BUILD_DIR=%~2"
-)
+set "ROOT_DIR=%~dp0"
+if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
 
-if "%~3"=="" (
-    set "DEPLOY_DIR=%DEPLOY_DIR%"
-) else (
-    set "DEPLOY_DIR=%~3"
-)
+set "GAMES=ME1 ME2 ME3"
+if defined SINGLE_GAME set "GAMES=!SINGLE_GAME!"
 
-echo Deploying from directory: %BUILD_DIR%
-echo Deploying to directory: %DEPLOY_DIR%
+set "FAIL=0"
 
-rem Check if the build directory exists
-if not exist "%BUILD_DIR%" (
-    echo Build directory does not exist: %BUILD_DIR%
-    exit /b 1
-)
+for %%G in (!GAMES!) do (
+    set "GAME=%%G"
+    set "BUILD_DIR=%ROOT_DIR%\build\%%G\!CONFIGURATION!"
+    set "DEPLOY_DIR=!DEPLOY_DIR_%%G!"
 
-rem Check if the deployment directory exists
-if not exist "%DEPLOY_DIR%" (
-    echo Deployment directory does not exist: %DEPLOY_DIR%
-    exit /b 1
-)
+    echo.
+    echo ===== Deploying !GAME! (!CONFIGURATION!) =====
 
-rem Rename all .dll files in the build directory to .asi
-rem (delete stale .asi first - ren cannot overwrite an existing destination)
-for /f "tokens=*" %%f in ('dir /b "%BUILD_DIR%\*.dll"') do (
-    set "filename=%%~nf"
-    setlocal enabledelayedexpansion
-    if exist "%BUILD_DIR%\!filename!.asi" del "%BUILD_DIR%\!filename!.asi"
-    ren "%BUILD_DIR%\%%f" "!filename!.asi"
-    endlocal
-)
+    if not exist "!BUILD_DIR!" (
+        echo Build directory does not exist: !BUILD_DIR!
+        set "FAIL=1"
+    ) else if not defined DEPLOY_DIR (
+        echo DEPLOY_DIR_!GAME! not set, skipping.
+    ) else if not exist "!DEPLOY_DIR!" (
+        echo Deployment directory does not exist: !DEPLOY_DIR!
+        set "FAIL=1"
+    ) else (
+        for /f "tokens=*" %%f in ('dir /b "!BUILD_DIR!\*.dll" 2^>nul') do (
+            set "filename=%%~nf"
+            if exist "!BUILD_DIR!\!filename!.asi" del "!BUILD_DIR!\!filename!.asi"
+            ren "!BUILD_DIR!\%%f" "!filename!.asi"
+        )
 
-rem Copy .asi files from the build directory to the deployment directory
-copy "%BUILD_DIR%\*.asi" "%DEPLOY_DIR%"
+        copy "!BUILD_DIR!\*.asi" "!DEPLOY_DIR!" >nul
 
-rem For Debug, also copy the PDB so the debugger can resolve symbols
-if /I "%CONFIGURATION%"=="Debug" (
-    copy "%BUILD_DIR%\SAS_SuperAdjustmentStudio.pdb" "%DEPLOY_DIR%"
-    if errorlevel 1 (
-        echo Failed to copy PDB file.
-        exit /b 1
+        if /I "!CONFIGURATION!"=="Debug" (
+            copy "!BUILD_DIR!\SAS_SuperAdjustmentStudio.pdb" "!DEPLOY_DIR!" >nul 2>nul
+        )
+
+        if errorlevel 1 (
+            echo Deployment failed for !GAME!.
+            set "FAIL=1"
+        ) else (
+            echo !GAME! deployed successfully.
+        )
     )
 )
 
-rem make sure the copy commands succeeded
-if errorlevel 1 (
-    echo Deployment failed.
+if "!FAIL!"=="1" (
+    echo.
+    echo Some deployments failed.
     exit /b 1
 )
 
-echo Deployment succeeded.
+echo.
+echo All games deployed successfully.
 exit /b 0

@@ -1,4 +1,4 @@
-﻿#include "bones.h"
+#include "bones.h"
 #include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include <cmath>
@@ -11,7 +11,7 @@
 #include "util.h"
 
 #include <LESDK/Common/Math.hpp>
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 #include "tracy.h"
 
@@ -226,23 +226,47 @@ void Bones::listBones(const std::string& pawnName, MeshTarget target, std::vecto
         return;
     }
 
-    TArray<int>& ref = mesh->SkeletalMesh->RefSkeleton;
+    USkeletalMesh* skel = mesh->SkeletalMesh;
+    TArray<int>& ref = skel->RefSkeleton;
     int n = (int)ref.Count();
-    TArray<SFXName> names;
-    mesh->GetBoneNames(&names);
-    if ((int)names.Count() < n) {
-        n = (int)names.Count();
+
+    // read NameIndexMap directly
+    constexpr ptrdiff_t kNameMapOffset = 0xC8; // USkeletalMesh::NameIndexMap, no SDK accessor
+    std::vector<SFXName> ordered(static_cast<size_t>(n));
+    std::vector<bool> have(static_cast<size_t>(n), false);
+    int mapFound = 0;
+    auto& nameMap = *reinterpret_cast<TMap<SFXName, int>*>(reinterpret_cast<char*>(skel) + kNameMapOffset);
+    for (const auto& kv : nameMap) {
+        if (kv.Value < 0 || kv.Value >= n) {
+            continue;
+        }
+        ordered[static_cast<size_t>(kv.Value)] = kv.Key;
+        have[static_cast<size_t>(kv.Value)] = true;
+        ++mapFound;
+    }
+    if (mapFound == 0) {
+        TArray<SFXName> fbNames;
+        mesh->GetBoneNames(&fbNames);
+        int nc = (int)fbNames.Count();
+        for (int i = 0; i < nc && i < n; ++i) {
+            ordered[static_cast<size_t>(i)] = fbNames.GetData()[i];
+            have[static_cast<size_t>(i)] = true;
+        }
     }
 
     for (int i = 0; i < n; ++i) {
         BonePoseInfo b;
         b.index = i;
         b.parentIndex = ref.GetData()[i];
-        SFXName bn = names.GetData()[i];
-        b.boneName = bn.GetName() ? bn.GetName() : "";
-        if (b.parentIndex >= 0 && b.parentIndex < n) {
-            SFXName pn = names.GetData()[b.parentIndex];
-            b.parentName = pn.GetName() ? pn.GetName() : "";
+        if (have[static_cast<size_t>(i)]) {
+            const char* nm = ordered[static_cast<size_t>(i)].GetName();
+            b.boneName = nm ? nm : "";
+        } else {
+            b.boneName = "bone_" + std::to_string(i);
+        }
+        if (b.parentIndex >= 0 && b.parentIndex < n && have[static_cast<size_t>(b.parentIndex)]) {
+            const char* pnm = ordered[static_cast<size_t>(b.parentIndex)].GetName();
+            b.parentName = pnm ? pnm : "";
         }
         out.push_back(b);
     }

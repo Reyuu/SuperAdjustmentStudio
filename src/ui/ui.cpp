@@ -5,7 +5,7 @@
 #include "helpers/toast_notifications.h"
 #include "imgui.h"
 #include "ui.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -521,7 +521,6 @@ void UI::renderControlsSection() {
     icon = pauseTime ? ICON_FA_PAUSE : ICON_FA_PLAY;
     if (ImGui::Checkbox((std::string(icon) + " " + t("ui.controls_table.pause")).c_str(), &pauseTime)) {
         Application::instance().engine().setPause(pauseTime);
-        Application::instance().animation().pauseAnimations(pauseTime);
     }
 
     ImGui::TableNextColumn();

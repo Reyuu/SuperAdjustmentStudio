@@ -7,9 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # submodules
 #   LExSDKv2
 message(STATUS "Adding build target: thirdparty/LExSDKv2")
-# disabling LE1 and LE3 for now, might reintroduce after
+# Game target selection: ME1, ME2, or ME3. SAS_LE follows the SDK naming (LE1/LE2/LE3).
+set(SAS_GAME "ME2" CACHE STRING "Target game: ME1, ME2, or ME3")
+set_property(CACHE SAS_GAME PROPERTY STRINGS ME1 ME2 ME3)
+if (SAS_GAME STREQUAL "ME1")
+    set(SAS_LE "LE1")
+elseif (SAS_GAME STREQUAL "ME3")
+    set(SAS_LE "LE3")
+else()
+    set(SAS_LE "LE2")
+endif()
 set(LESDK_WITH_LE1 OFF)
+set(LESDK_WITH_LE2 OFF)
 set(LESDK_WITH_LE3 OFF)
+set(LESDK_WITH_${SAS_LE} ON)
 
 # Patch the generated SDK in the submodule working tree: parms structs the
 # generator packed tighter than the game's real layouts (ProcessEvent then
@@ -181,14 +192,10 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
 
 # link dependencies
 
-if (TARGET LESDK-LE1)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-LE1)
-elseif (TARGET LESDK-LE2)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-LE2)
-elseif (TARGET LESDK-LE3)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-LE3)
+if (TARGET LESDK-${SAS_LE})
+    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-${SAS_LE})
 else()
-    message(FATAL_ERROR "No LESDK target found. Please check the LExSDKv2 submodule.")
+    message(FATAL_ERROR "No LESDK target found for ${SAS_GAME}. Please check the LExSDKv2 submodule.")
 endif()
 
 if (TARGET spdlog)
@@ -257,9 +264,9 @@ if (WIN32)
 # LE uses DirectX 11, so we need to link against the appropriate libraries
 # d3d11/dxgi for DX11 render backend and swapchain hook
 # d3dcompiler for the raw-D3D11 overlay gizmo shader compilation
-target_link_libraries(SuperAdjustmentStudio PRIVATE d3d11 dxgi d3dcompiler)
+target_link_libraries(SuperAdjustmentStudio PRIVATE d3d11 dxgi d3dcompiler dinput8 dxguid)
 target_link_libraries(SuperAdjustmentStudio PRIVATE ole32 oleaut32 shell32 dbghelp)
-target_compile_definitions(SuperAdjustmentStudio PRIVATE "WIN32_LEAN_AND_MEAN")
+target_compile_definitions(SuperAdjustmentStudio PRIVATE "WIN32_LEAN_AND_MEAN NOMINMAX")
 endif()
 
 set_target_properties(SuperAdjustmentStudio PROPERTIES
@@ -270,8 +277,8 @@ OUTPUT_NAME "SuperAdjustmentStudio"
 # ensure SAS is compiled with C++20 standard
 target_compile_features(SuperAdjustmentStudio PUBLIC cxx_std_20)
 
-# LE2 target 
-target_compile_definitions(SuperAdjustmentStudio PRIVATE SDK_TARGET_LE2)
+# game target define
+target_compile_definitions(SuperAdjustmentStudio PRIVATE SDK_TARGET_${SAS_LE})
 
 if (MSVC)
     # ensure SAS is using MSVC conformance flags when MSVC is used

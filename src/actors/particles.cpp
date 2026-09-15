@@ -7,7 +7,7 @@
 #include "ui/helpers/raii_guards.h"
 #include "ui/helpers/toast_notifications.h"
 #include "util.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <sstream>
 
 #include "tracy.h"
@@ -62,7 +62,11 @@ static AEmitter* spawnEmitterActor(UParticleSystem* emitterTemplate, AActor* own
     rot.Yaw = DegreesToUnrealRotationUnits(spawnTransform.rot[1]);
     rot.Roll = DegreesToUnrealRotationUnits(spawnTransform.rot[2]);
 
+#ifdef SDK_TARGET_LE3
+    AActor* spawned = owner->Spawn(AEmitter::StaticClass(), owner, SFXName(), loc, rot, nullptr, 1, 0);
+#else
     AActor* spawned = owner->Spawn(AEmitter::StaticClass(), nullptr, SFXName(), loc, rot, nullptr, nullptr, 1, 0);
+#endif
     AEmitter* emitter = static_cast<AEmitter*>(spawned);
     if (!emitter || !emitter->ParticleSystemComponent) {
         Logger->debug("spawnEmitterActor: failed to spawn AEmitter");

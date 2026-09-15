@@ -24,6 +24,40 @@
 
 using json = nlohmann::json;
 
+static const char* currentGameId() {
+#if defined(SDK_TARGET_LE1)
+    return "LE1";
+#elif defined(SDK_TARGET_LE3)
+    return "LE3";
+#else
+    return "LE2";
+#endif
+}
+
+// default to LE2 -> mostly historic
+static std::string snapshotGame(const json& snapshot) {
+    if (snapshot.is_object()) {
+        auto it = snapshot.find("game");
+        if (it != snapshot.end() && it->is_string()) {
+            return it->get<std::string>();
+        }
+    }
+    return "LE2";
+}
+
+static bool snapshotGameMatches(const json& snapshot) {
+    if (!snapshot.is_object()) {
+        return true;
+    }
+    return snapshotGame(snapshot) == currentGameId();
+}
+
+static void notifyWrongGame(const std::string& filename, const json& snapshot) {
+    char buf[512];
+    snprintf(buf, sizeof(buf), t("ui.snapshots.wrong_game"), filename.c_str(), snapshotGame(snapshot).c_str(), currentGameId());
+    Application::instance().ui().toastManager.addToastNotification(buf, ToastTypeWarning, 4.0);
+}
+
 #pragma region // Getters
 json SnapshotsManager::getCameraData() const {
     json cameraData;
@@ -489,7 +523,7 @@ void SnapshotsManager::applyVfxData(const json& vfxData) {
         VFXManager& vfx = Application::instance().vfx();
         Engine& engine = Application::instance().engine();
         for (const auto& item : items) {
-            UBioVFXTemplate* vfxTemplate = VFXManager::findTemplateByName(item.templateName);
+            auto* vfxTemplate = VFXManager::findTemplateByName(item.templateName);
             AActor* actor = engine.findActorByName(item.pawn);
             if (!vfxTemplate || !actor) {
                 continue;
@@ -894,6 +928,7 @@ void SnapshotsManager::saveSnapshot() {
         }
     }
     snapshot["name"] = name;
+    snapshot["game"] = currentGameId();
     json sections = json::array();
     for (const auto& info : SNAPSHOT_SECTION_INFOS) {
         if (!saveSections[info.section]) {
@@ -1094,6 +1129,10 @@ void SnapshotsManager::loadSnapshot(std::string filename) {
     try {
         json snapshot;
         in >> snapshot;
+        if (!snapshotGameMatches(snapshot)) {
+            notifyWrongGame(filename, snapshot);
+            return;
+        }
         for (int i = 0; i < SnapshotSectionCount; ++i) {
             loadSections[i] = true;
         }
@@ -1163,6 +1202,9 @@ void SnapshotsManager::refreshSnapshotFiles() {
             try {
                 json snapshot;
                 in >> snapshot;
+                if (!snapshotGameMatches(snapshot)) {
+                    continue;
+                }
                 if (snapshot.contains("name") && snapshot["name"].is_string()) {
                     file.name = snapshot["name"].get<std::string>();
                 }
@@ -1353,17 +1395,21 @@ void SnapshotsManager::renderLoadWizard() {
             try {
                 json snapshot;
                 in >> snapshot;
-                applyLoadedSnapshot(snapshot);
-                std::string name = filename;
-                if (snapshot.contains("name") && snapshot["name"].is_string()) {
-                    name = snapshot["name"].get<std::string>();
+                if (!snapshotGameMatches(snapshot)) {
+                    notifyWrongGame(filename, snapshot);
+                } else {
+                    applyLoadedSnapshot(snapshot);
+                    std::string name = filename;
+                    if (snapshot.contains("name") && snapshot["name"].is_string()) {
+                        name = snapshot["name"].get<std::string>();
+                    }
+                    lastLoadedFile = filename;
+                    lastLoadedName = name;
+                    char buf[512];
+                    snprintf(buf, sizeof(buf), t("ui.snapshots.loaded_ok"), name.c_str());
+                    Application::instance().ui().toastManager.addToastNotification(buf, ToastTypeSuccess, 3.0);
+                    showLoadWizard = false;
                 }
-                lastLoadedFile = filename;
-                lastLoadedName = name;
-                char buf[512];
-                snprintf(buf, sizeof(buf), t("ui.snapshots.loaded_ok"), name.c_str());
-                Application::instance().ui().toastManager.addToastNotification(buf, ToastTypeSuccess, 3.0);
-                showLoadWizard = false;
             } catch (const std::exception& e) {
                 Logger->warn("snapshots: failed to parse '{}': {}", path.string(), e.what());
                 char buf[512];
