@@ -78,7 +78,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -469,7 +471,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -857,7 +861,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -1245,7 +1251,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -1633,7 +1641,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -2021,7 +2031,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -2409,7 +2421,9 @@
                 "show_orient": "Pokaż gizmo orientacji",
                 "always_on_top": "Rysuj gizmo zawsze na wierzchu",
                 "draw_tracer": "Rysuj linię znacznika",
-                "highlight": "Wyróżnij wybrane"
+                "highlight": "Wyróżnij wybrane",
+                "bone_pivot": "Gizmo pivota kości",
+                "bone_pivot_world": "Pivot kości: przestrzeń świata"
             },
             "selection": "Wybór",
             "selection_table": {
@@ -2797,7 +2811,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -3185,7 +3201,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {

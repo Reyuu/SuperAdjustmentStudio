@@ -33,6 +33,7 @@ class Bones {
 
         void listBones(const std::string& pawnName, MeshTarget target, std::vector<BonePoseInfo>& out);
         bool getBoneTransform(const std::string& pawnName, MeshTarget target, int index, BonePoseInfo& out);
+        bool getBoneWorldBasis(const std::string& pawnName, MeshTarget target, int index, FVector& outPos, FVector& outX, FVector& outY, FVector& outZ);
         void setBonePose(const std::string& pawnName, MeshTarget target, const BonePoseInfo& pose);
         void resetBonePose(const std::string& pawnName, MeshTarget target);
         void absoluteResetBones(const std::string& pawnName, MeshTarget target);
@@ -46,7 +47,9 @@ class Bones {
                 MeshTarget target = MESH_BODY;
                 std::vector<FBoneAtom> savedAtoms;
                 std::vector<int> savedIndices;
+                std::vector<FVector> savedBasePos;
                 std::vector<int> pendingSnapshots;
+                std::vector<FVector> pendingBasePos;
                 bool savedUseSavedPose = false;
                 int boneCount = 0;
                 bool toApply = false;

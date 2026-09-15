@@ -97,8 +97,9 @@ void Bones::keepBonePoses() {
     ZoneScopedN("Bones::keepBonePoses");
     std::vector<BonePoseInfo> posed;
     std::vector<int> pending;
-    std::vector<FBoneAtom> baseAtoms;
+    std::vector<FVector> pendingBasePos;
     std::vector<int> baseIndices;
+    std::vector<FVector> basePos;
     std::string pawn;
     MeshTarget target;
     int boneCount = 0;
@@ -111,8 +112,9 @@ void Bones::keepBonePoses() {
         }
         posed = bonePose.posed;
         pending = bonePose.pendingSnapshots;
-        baseAtoms = bonePose.savedAtoms;
+        pendingBasePos = bonePose.pendingBasePos;
         baseIndices = bonePose.savedIndices;
+        basePos = bonePose.savedBasePos;
         pawn = bonePose.pawn;
         target = bonePose.target;
         boneCount = bonePose.boneCount;
@@ -145,19 +147,27 @@ void Bones::keepBonePoses() {
 
     if (!pending.empty()) {
         std::lock_guard<std::mutex> lock(bonePose.mtx);
-        for (int index : pending) {
+        for (int k = 0; k < (int)pending.size(); ++k) {
+            int index = pending[k];
             if (index < 0 || index >= (int)mesh->LocalAtoms.Count()) {
                 continue;
             }
             FBoneAtom orig = mesh->LocalAtoms.GetData()[index];
             bonePose.savedAtoms.push_back(orig);
             bonePose.savedIndices.push_back(index);
-            baseAtoms.push_back(orig);
             baseIndices.push_back(index);
+            // use the base position captured at the time the bone was added to pendingSnapshots
+            FVector anchor = orig.Translation;
+            if (k < (int)pendingBasePos.size()) {
+                anchor = pendingBasePos[k];
+            }
+            basePos.push_back(anchor);
+            bonePose.savedBasePos.push_back(anchor);
         }
         bonePose.savedUseSavedPose = tree->bUseSavedPose;
         bonePose.boneCount = n;
         bonePose.pendingSnapshots.clear();
+        bonePose.pendingBasePos.clear();
     }
 
     if ((int)tree->SavedPose.Count() != n) {
@@ -177,9 +187,9 @@ void Bones::keepBonePoses() {
             mesh->MakeRotator(DegreesToUnrealRotationUnits(p.rot[0]), DegreesToUnrealRotationUnits(p.rot[1]), DegreesToUnrealRotationUnits(p.rot[2])));
 
         FVector base = la[p.index].Translation;
-        for (int k = 0; k < baseIndices.size(); ++k) {
+        for (int k = 0; k < baseIndices.size() && k < basePos.size(); ++k) {
             if (baseIndices[k] == p.index) {
-                base = baseAtoms[k].Translation;
+                base = basePos[k];
                 break;
             }
         }
@@ -267,20 +277,60 @@ bool Bones::getBoneTransform(const std::string& pawnName, MeshTarget target, int
 
     SFXName sname(out.boneName.c_str(), 0);
     FVector loc = mesh->GetBoneLocation(sname, kParentSpace);
-    FQuat quat = mesh->GetBoneQuaternion(sname, kParentSpace);
     out.pos[0] = loc.X;
     out.pos[1] = loc.Y;
     out.pos[2] = loc.Z;
     if (mesh->LocalAtoms.Count() == (int)ref.Count()) {
-        out.scale[0] = out.scale[1] = out.scale[2] = mesh->LocalAtoms.GetData()[index].Scale;
+        const FBoneAtom& atom = mesh->LocalAtoms.GetData()[index];
+        out.scale[0] = out.scale[1] = out.scale[2] = atom.Scale;
+        FRotator rot = mesh->QuatToRotator(atom.Rotation);
+        out.rot[0] = UnrealRotationUnitsToDegrees(rot.Pitch);
+        out.rot[1] = UnrealRotationUnitsToDegrees(rot.Yaw);
+        out.rot[2] = UnrealRotationUnitsToDegrees(rot.Roll);
     } else {
         out.scale[0] = out.scale[1] = out.scale[2] = 1.0f;
+        out.rot[0] = out.rot[1] = out.rot[2] = 0.0f;
     }
+    return true;
+}
 
-    FRotator rot = mesh->QuatToRotator(quat);
-    out.rot[0] = UnrealRotationUnitsToDegrees(rot.Pitch);
-    out.rot[1] = UnrealRotationUnitsToDegrees(rot.Yaw);
-    out.rot[2] = UnrealRotationUnitsToDegrees(rot.Roll);
+bool Bones::getBoneWorldBasis(const std::string& pawnName, MeshTarget target, int index, FVector& outPos, FVector& outX, FVector& outY, FVector& outZ) {
+    USkeletalMeshComponent* mesh = findPawnMeshForTarget(pawnName, target);
+    if (!mesh || !mesh->SkeletalMesh) {
+        static std::string lastFailKey;
+        std::string key = pawnName + "/" + std::to_string((int)target) + "/" + std::to_string(index) + ":nomesh";
+        if (key != lastFailKey) {
+            lastFailKey = key;
+            Logger->debug("getBoneWorldBasis: no mesh for '" + key + "'");
+        }
+        return false;
+    }
+    int n = (int)mesh->SkeletalMesh->RefSkeleton.Count();
+    if (index < 0 || index >= n) {
+        return false;
+    }
+    // engine-computed bone-frame-to-world transform (no space/enum assumptions on our side)
+    SFXName sname = mesh->GetBoneName(index);
+    FVector zero{0.0f, 0.0f, 0.0f};
+    FRotator zeroRot{0, 0, 0};
+    FRotator worldRot{0, 0, 0};
+    mesh->TransformFromBoneSpace(sname, zero, zeroRot, &outPos, &worldRot);
+    FMatrix basis = MatrixCompose(FVector{0.0f, 0.0f, 0.0f}, FVector{1.0f, 1.0f, 1.0f}, UnrealRotationUnitsToRadians(worldRot.Pitch),
+                                  UnrealRotationUnitsToRadians(worldRot.Yaw), UnrealRotationUnitsToRadians(worldRot.Roll));
+    outX = basis.XPlane;
+    outY = basis.YPlane;
+    outZ = basis.ZPlane;
+    auto norm = [](FVector& v) {
+        float l = std::sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z);
+        if (l > 1e-8f) {
+            v.X /= l;
+            v.Y /= l;
+            v.Z /= l;
+        }
+    };
+    norm(outX);
+    norm(outY);
+    norm(outZ);
     return true;
 }
 
@@ -291,6 +341,8 @@ void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const Bo
     std::vector<int> oldIndices;
     bool oldUseSavedPose = false;
     bool hadOldData = false;
+    FVector capturedBase{0, 0, 0};
+    bool hasCapturedBase = false;
     {
         std::lock_guard<std::mutex> lock(bonePose.mtx);
         if (bonePoseActiveState.load() && (bonePose.pawn != pawnName || bonePose.target != target)) {
@@ -303,7 +355,9 @@ void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const Bo
             bonePose.posed.clear();
             bonePose.savedAtoms.clear();
             bonePose.savedIndices.clear();
+            bonePose.savedBasePos.clear();
             bonePose.pendingSnapshots.clear();
+            bonePose.pendingBasePos.clear();
             bonePose.toApply = false;
             bonePose.boneCount = 0;
             bonePoseActiveState.store(false);
@@ -325,6 +379,15 @@ void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const Bo
             bonePose.posed.push_back(b);
             bonePose.pendingSnapshots.push_back(pose.index);
             index = (int)bonePose.posed.size() - 1;
+            // capture base position now, before LocalAtoms is modified by later edits
+            USkeletalMeshComponent* m = findPawnMeshForTarget(pawnName, target);
+            if (m && m->SkeletalMesh && pose.index >= 0 && pose.index < (int)m->LocalAtoms.Count()) {
+                capturedBase = m->LocalAtoms.GetData()[pose.index].Translation;
+                hasCapturedBase = true;
+            }
+            if (hasCapturedBase) {
+                bonePose.pendingBasePos.push_back(capturedBase);
+            }
         }
         bonePose.posed[index] = pose;
         bonePose.toApply = true;
@@ -353,7 +416,9 @@ void Bones::resetBonePose(const std::string& pawnName, MeshTarget target) {
         bonePose.posed.clear();
         bonePose.savedAtoms.clear();
         bonePose.savedIndices.clear();
+        bonePose.savedBasePos.clear();
         bonePose.pendingSnapshots.clear();
+        bonePose.pendingBasePos.clear();
         bonePose.toApply = false;
         bonePose.boneCount = 0;
         bonePoseActiveState.store(false);
@@ -375,7 +440,9 @@ void Bones::absoluteResetBones(const std::string& pawnName, MeshTarget target) {
         bonePose.posed.clear();
         bonePose.savedAtoms.clear();
         bonePose.savedIndices.clear();
+        bonePose.savedBasePos.clear();
         bonePose.pendingSnapshots.clear();
+        bonePose.pendingBasePos.clear();
         bonePose.toApply = false;
         bonePose.boneCount = 0;
         bonePoseActiveState.store(false);

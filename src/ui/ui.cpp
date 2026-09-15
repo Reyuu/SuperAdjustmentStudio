@@ -63,6 +63,17 @@ void UI::refreshBoneList(const std::string& pawnName) {
     }
 }
 
+bool UI::getSelectedBone(std::string& pawn, int& target, int& listPos, int& boneIndexOut) {
+    if (bones.empty() || boneIndex < 0 || boneIndex >= (int)bones.size() || bonePawn.empty()) {
+        return false;
+    }
+    pawn = bonePawn;
+    target = meshTargetIndex;
+    listPos = boneIndex;
+    boneIndexOut = bones[boneIndex].index;
+    return true;
+}
+
 // check if the inheritance chain contains AActor class
 static bool isActorClass(UClass* cls) {
     for (UClass* s = cls; s; s = (UClass*)s->SuperField) {
@@ -576,6 +587,10 @@ void UI::renderControlsSection() {
     ImGui::TableNextColumn();
     icon = ICON_FA_HIGHLIGHTER;
     ImGui::Checkbox((std::string(icon) + " " + t("ui.gizmos_table.highlight")).c_str(), &Application::instance().gizmo().highlightSelected());
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    icon = ICON_FA_BONE;
+    ImGui::Checkbox((std::string(icon) + " " + t("ui.gizmos_table.bone_pivot")).c_str(), &Application::instance().gizmo().showBonePivot());
     ImGui::EndTable();
     ImGui::Separator();
 }

@@ -46,6 +46,9 @@ class Gizmo {
         bool& clickSelect() {
             return clickSelectState;
         }
+        bool& showBonePivot() {
+            return showBonePivotState;
+        }
 
         void initHooks(HookManager& hooks, SDKContext& sdk);
         void setTarget(AActor* actor);
@@ -60,6 +63,7 @@ class Gizmo {
         bool debugAlwaysOnTopState = SETTINGS_TOGGLE_OFF;
         bool highlightSelectedState = SETTINGS_TOGGLE_OFF;
         bool clickSelectState = SETTINGS_TOGGLE_OFF;
+        bool showBonePivotState = SETTINGS_TOGGLE_OFF;
 
         // original UObject::ProcessEvent, to forward after batching
         ProcessEventFn origProcessEvent = nullptr;
