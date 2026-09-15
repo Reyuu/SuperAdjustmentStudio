@@ -5,7 +5,7 @@
 #include "helpers/toast_notifications.h"
 #include "imgui.h"
 #include "ui.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -61,6 +61,17 @@ void UI::refreshBoneList(const std::string& pawnName) {
             boneEdit = b;
         }
     }
+}
+
+bool UI::getSelectedBone(std::string& pawn, int& target, int& listPos, int& boneIndexOut) {
+    if (bones.empty() || boneIndex < 0 || boneIndex >= (int)bones.size() || bonePawn.empty()) {
+        return false;
+    }
+    pawn = bonePawn;
+    target = meshTargetIndex;
+    listPos = boneIndex;
+    boneIndexOut = bones[boneIndex].index;
+    return true;
 }
 
 // check if the inheritance chain contains AActor class
@@ -340,9 +351,9 @@ bool UI::renderTransformEditor(Transform& t, const char* idPrefix) {
     ImGui::PushID(idPrefix);
     ImGui::Text(t("ui.transform_table.position"));
     ImGui::PushItemWidth(-100);
-    edited |= axisWidgetLambda("X", "##px", &t.pos[0], 1.0f, -100000.f, 100000.f, "%.1f");
-    edited |= axisWidgetLambda("Y", "##py", &t.pos[1], 1.0f, -100000.f, 100000.f, "%.1f");
-    edited |= axisWidgetLambda("Z", "##pz", &t.pos[2], 1.0f, -100000.f, 100000.f, "%.1f");
+    edited |= axisWidgetLambda("X", "##px", &t.pos[0], 1.0f, -10000000.f, 10000000.f, "%.1f");
+    edited |= axisWidgetLambda("Y", "##py", &t.pos[1], 1.0f, -10000000.f, 10000000.f, "%.1f");
+    edited |= axisWidgetLambda("Z", "##pz", &t.pos[2], 1.0f, -10000000.f, 10000000.f, "%.1f");
     ImGui::Text(t("ui.transform_table.rotation"));
     edited |= axisWidgetLambda("RX", "##rx", &t.rot[0], 0.1f, -180.f, 180.f, "%.1f");
     edited |= axisWidgetLambda("RY", "##ry", &t.rot[1], 0.1f, -180.f, 180.f, "%.1f");
@@ -453,6 +464,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
     ImGui::Begin((std::string(ICON_FA_SLIDERS " ") + t("ui.program_name") + " " PLUGIN_VERSION).c_str(), NULL, ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar()) {
         ImGui::MenuItem((std::string(ICON_FA_GEAR " ") + t("ui.settings")).c_str(), nullptr, &showSettingsWindow);
+        Application::instance().snapshots().renderUi();
         if (ImGui::BeginMenu((std::string(ICON_FA_BUG " ") + t("ui.debug")).c_str())) {
             ImGui::MenuItem("Metrics##imgui_debug_metrics", (std::string(ICON_FA_CHART_SIMPLE " ") + t("ui.metrics_menu.metrics")).c_str(), &showMetricsWindow);
             ImGui::MenuItem("Debug Log##imgui_debug_log", (std::string(ICON_FA_LIST " ") + t("ui.metrics_menu.debug_log")).c_str(), &showDebugLogWindow);
@@ -461,6 +473,7 @@ void UI::renderOverlayContents(NativeRenderer& renderer) {
         }
         ImGui::EndMenuBar();
     }
+    Application::instance().snapshots().renderWizards();
     ImVec2 windowPosition = ImGui::GetWindowPos();
     ImVec2 windowSize = ImGui::GetWindowSize();
     renderer.setUiRect({(LONG)windowPosition.x, (LONG)windowPosition.y, (LONG)(windowPosition.x + windowSize.x), (LONG)(windowPosition.y + windowSize.y)});
@@ -574,6 +587,10 @@ void UI::renderControlsSection() {
     ImGui::TableNextColumn();
     icon = ICON_FA_HIGHLIGHTER;
     ImGui::Checkbox((std::string(icon) + " " + t("ui.gizmos_table.highlight")).c_str(), &Application::instance().gizmo().highlightSelected());
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    icon = ICON_FA_BONE;
+    ImGui::Checkbox((std::string(icon) + " " + t("ui.gizmos_table.bone_pivot")).c_str(), &Application::instance().gizmo().showBonePivot());
     ImGui::EndTable();
     ImGui::Separator();
 }
@@ -1057,7 +1074,7 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
         Application::instance().bones().resetBonePose(pawn, (MeshTarget)meshTargetIndex);
     }
     ImGui::SameLine();
-    if (ImGui::Button((std::string(ICON_FA_LAND_MINE_ON " ") + t("ui.bones_table.absolute_reset") + "##bones").c_str())) {
+    if (ImGui::Button((std::string(ICON_FA_LAND_MINE_ON " ") + t("ui.bones_table.absolute_reset") + "##bones_abs").c_str())) {
         Application::instance().bones().absoluteResetBones(pawn, (MeshTarget)meshTargetIndex);
     }
 }
@@ -1195,7 +1212,7 @@ void UI::renderSpawnClassList() {
     ImGui::InputText("##class_search", classSearch, sizeof(classSearch));
     ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##sel_class_refresh")) {
         collectClasses();
     }
 
@@ -1331,7 +1348,7 @@ void UI::renderPackagesSection() {
     ImGui::InputText("##pkg_search", packageSearch, sizeof(packageSearch));
     ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##pkg_refresh")) {
         lastPackageRefresh = ImGui::GetTime();
         collectPackagesAsync();
     }

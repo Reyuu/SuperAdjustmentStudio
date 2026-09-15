@@ -16,13 +16,16 @@
 #include "particles.h"
 #include "prefabs.h"
 #include "props.h"
+#include "snapshots.h"
 #include "sdk.h"
 #include "settings.h"
 #include "ui.h"
 #include "vfx.h"
 #include "translation.h"
 #include "freecam.h"
+#include "post_chain.h"
 #include "photo_overlay.h"
+#include "screenshot.h"
 #include <atomic>
 #include <thread>
 
@@ -96,8 +99,15 @@ class Application {
         PrefabManager& prefabs() {
             return prefabsInstance;
         }
+        SnapshotsManager& snapshots() {
+            return snapshotsInstance;
+        }
         PhotoOverlay& photoOverlay() {
             return photoOverlayInstance;
+        }
+
+        PostChain& postChain() {
+            return postChainInstance;
         }
 
         Settings& settings() {
@@ -106,6 +116,10 @@ class Application {
 
         Translation& translation() {
             return translationInstance;
+        }
+
+        Screenshot& screenshot() {
+            return screenshotInstance;
         }
 
         bool attach(ISharedProxyInterface* proxy);
@@ -142,9 +156,13 @@ class Application {
         PrefabManager prefabsInstance;
         Settings settingsInstance;
         PhotoOverlay photoOverlayInstance;
+        PostChain postChainInstance;
         Translation translationInstance;
+        Screenshot screenshotInstance;
+        SnapshotsManager snapshotsInstance;
 
         bool previousHotkey = false;
+        bool hotkeyCaptureFinished = false;
 };
 
 #endif // SAS_APPLICATION_H

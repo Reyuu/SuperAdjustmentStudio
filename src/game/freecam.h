@@ -7,7 +7,7 @@
 
 #include "settings.h"
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <LESDK/Common/Math.hpp>
 
 enum CameraDragState {
@@ -83,9 +83,9 @@ class Freecam {
         void cacheLivePP(const FPostProcessSettings& pp);
         void seedSlidersFromLive();
         FVector dofFocusPoint(float distance);
-        void applyDofPP(FPostProcessSettings& pp, const SettingOptions& options);
-        void applyBloomPP(FPostProcessSettings& pp, const SettingOptions& options);
-        void applyColorPP(FPostProcessSettings& pp, const SettingOptions& options);
+        void applyDofPP(FPostProcessSettings& pp, const SettingsOptions& options);
+        void applyBloomPP(FPostProcessSettings& pp, const SettingsOptions& options);
+        void applyColorPP(FPostProcessSettings& pp, const SettingsOptions& options);
         void observeModePostProcess(UObject* context, UFunction* function, void* params);
         bool preFreecamCameraHook(UObject* context, UFunction* function);
         void requestFreecamSeed();

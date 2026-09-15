@@ -50,6 +50,7 @@ void Application::detach() {
     if (rendererInstance.isImGuiInitialized()) {
         gameWindowInstance.restoreAll();
         photoOverlayInstance.shutdown();
+        postChainInstance.shutdown();
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImPlot::DestroyContext();
@@ -59,6 +60,7 @@ void Application::detach() {
 }
 
 void Application::uninstallAllHooks() {
+    postChainInstance.removeDepthHook();
     rendererInstance.removeHooks();
     if (hookManagerInstance.areHooksInstalled()) {
         hookManagerInstance.uninstallAll();
@@ -96,7 +98,11 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
     FrameMark;
     Application& app = instance();
     if (app.didRequestExit.load()) {
-        return app.rendererInstance.origPresent() ? app.rendererInstance.origPresent()(pSwapChain, SyncInterval, Flags) : S_OK;
+        auto orig = app.rendererInstance.origPresent();
+        if (!orig) {
+            return S_OK;
+        }
+        return orig(pSwapChain, SyncInterval, Flags);
     }
 
     SAS_HOOK_TRY {
@@ -117,26 +123,39 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
         if (app.rendererInstance.isImGuiInitialized()) {
             const std::string& hotkeyName = app.settingsInstance.options.showOverlay;
             static std::string lastHotkeyName;
-            static int lastHotkeyVk = VK_F10;
+            static OverlayHotkey lastHotkey{false, false, false, VK_F10};
             if (hotkeyName != lastHotkeyName) {
-                lastHotkeyVk = app.settingsInstance.vkFromName(hotkeyName);
+                OverlayHotkey parsed{};
+                if (Settings::tryParseHotkey(hotkeyName, &parsed)) {
+                    lastHotkey = parsed;
+                }
                 lastHotkeyName = hotkeyName;
             }
-            SHORT ks = GetAsyncKeyState(lastHotkeyVk);
-            bool currentHotkey = (ks & 0x8000) != 0;
-            if (currentHotkey && !app.previousHotkey) {
+            bool firing = false;
+            if (!app.settings().capturingHotkey) {
+                bool controlState = false;
+                bool altState = false;
+                bool shiftState = false;
+                Settings::queryModdifiers(&controlState, &altState, &shiftState);
+                const bool mainDown = (GetAsyncKeyState(lastHotkey.key) & 0x8000) != 0;
+                firing = mainDown && (controlState == lastHotkey.ctrl) && (altState == lastHotkey.alt) && (shiftState == lastHotkey.shift);
+            }
+            const bool suppressHotkey = app.hotkeyCaptureFinished;
+            app.hotkeyCaptureFinished = false;
+            if (firing && !app.previousHotkey && !app.settings().capturingHotkey && !suppressHotkey) {
                 std::atomic<bool>& showUI = app.ui().showUI();
                 showUI = !showUI.load();
                 app.ui().applyUIInputState(app.gameWindowInstance);
 
-                std::ostringstream ss;
-                ss << "Toggle UI: visible=" << showUI.load();
-                Logger->debug(ss.str());
+                std::ostringstream oss;
+                oss << "Overlay hotkey pressed, toggling UI to " << (showUI.load() ? "shown" : "hidden");
+                Logger->debug(oss.str());
             }
-            app.previousHotkey = currentHotkey;
+            app.previousHotkey = firing;
 
             app.freecam().assertFreecamCache();
             app.rendererInstance.ensureRenderTarget(pSwapChain);
+            app.postChain().applyGpu(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context(), app.rendererInstance.renderTargetView());
             app.rendererInstance.beginRender();
             app.photoOverlay().sample(pSwapChain, app.rendererInstance.device(), app.rendererInstance.context());
 
@@ -146,19 +165,25 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             app.mouse().cursorPassthrough() = false;
 
             ImGui::NewFrame();
+            const bool wasCapturingHotkey = app.settings().capturingHotkey;
             if (app.photoOverlay().isActive()) {
                 app.photoOverlay().render(app.rendererInstance.device());
             }
             if (app.ui().showUI().load()) {
                 app.ui().renderOverlayContents(app.rendererInstance);
             }
+            app.hotkeyCaptureFinished = wasCapturingHotkey && !app.settings().capturingHotkey;
             ImGui::EndFrame();
             ImGui::Render();
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
         }
     } SAS_HOOK_CATCH_VOID
 
-    return app.rendererInstance.origPresent() ? app.rendererInstance.origPresent()(pSwapChain, SyncInterval, Flags) : S_OK;
+    auto orig = app.rendererInstance.origPresent();
+    if (!orig) {
+        return S_OK;
+    }
+    return orig(pSwapChain, SyncInterval, Flags);
 }
 
 HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
@@ -166,18 +191,23 @@ HRESULT STDMETHODCALLTYPE Application::resizeBuffersDetour(IDXGISwapChain* pSwap
     ZoneScopedN("ResizeBuffersDetour");
     Application& app = instance();
     if (app.didRequestExit.load()) {
-        return app.rendererInstance.origResizeBuffers()
-                   ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags)
-                   : S_OK;
+        auto orig = app.rendererInstance.origResizeBuffers();
+        if (!orig) {
+            return S_OK;
+        }
+        return orig(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
 
     SAS_HOOK_TRY {
         app.rendererInstance.releaseRenderTargetView();
+        app.postChain().onResize();
     } SAS_HOOK_CATCH_VOID
 
-    return app.rendererInstance.origResizeBuffers()
-               ? app.rendererInstance.origResizeBuffers()(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags)
-               : S_OK;
+    auto origResize = app.rendererInstance.origResizeBuffers();
+    if (!origResize) {
+        return S_OK;
+    }
+    return origResize(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
 static int g_dragLastX = 0;

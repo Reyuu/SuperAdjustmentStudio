@@ -1,7 +1,7 @@
 #ifndef SAS_ANIMATION_H
 #define SAS_ANIMATION_H
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <string>
 #include <vector>
 
@@ -15,6 +15,10 @@ class Animation {
         void keepAnimationsPaused();
         void resetAnimation(const std::string& pawnName);
         void playAnimation(const std::string& pawnName, const std::string& animName, bool bLoop = true);
+
+        std::string playedPawnName;
+        std::string playedAnimName;
+        bool playedLoop = true;
 
     private:
         bool animPauseActiveState = false;

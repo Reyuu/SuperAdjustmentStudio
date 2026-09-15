@@ -1,53 +1,73 @@
 #ifndef SAS_VFX_H
 #define SAS_VFX_H
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <LESDK/Common/Math.hpp>
 #include <mutex>
 #include <set>
+#include <string>
+#include "settings.h"
+
+#ifdef SDK_TARGET_LE3
+#include "le3_compat.h"
+#endif
+
+#ifdef SDK_TARGET_LE3
+using VfxTemplateT = URvrClientEffectInterface;
+#else
+using VfxTemplateT = UBioVFXTemplate;
+#endif
 
 struct VFXEntry {
-    public:
         std::string name;
         std::string path;
         std::string pawnName;
         std::string boneName;
         float lifeTime = 9999.0f;
         double spawnTime = 0.0;
+
+#ifdef SDK_TARGET_LE3
+        URvrClientEffectInterface* templateRef = nullptr;
+        FGuid effectGuid{0, 0, 0, 0}; // zero-init so IsGuidZero works
+        AActor* effectOwner = nullptr;
+#else
         ABioVisualEffect* actor = nullptr;
-        UBioCameraShake* cameraShake = nullptr; // original template shake, for restore
-        AActor* cameraShakenActor = nullptr;    // original shaken actor, for restore
+        UBioCameraShake* cameraShake = nullptr; // original shake, restored when toggled back
+        AActor* cameraShakenActor = nullptr;
+#endif
+
         bool loop = false;
-        double loopDelay = 0.0;    // seconds to wait after the effect ends before re-triggering
-        double nextLoopTime = 0.0; // game time at which the next loop may fire (0 == not scheduled)
+        double loopDelay = 0.0;    // wait after the effect ends before re-triggering
+        double nextLoopTime = 0.0; // 0 means not scheduled
 };
 
-// orders/unique-ifies available templates by (case-insensitive) name
+// orders available templates by case-insensitive name
 struct VFXTemplateNameLess {
-        bool operator()(UBioVFXTemplate* a, UBioVFXTemplate* b) const;
+        bool operator()(VfxTemplateT* a, VfxTemplateT* b) const;
 };
 
 class VFXManager {
     public:
         void renderUI();
         void findAvailableTemplates(bool forceRefresh = false);
-        void addVFX(UBioVFXTemplate* vfxTemplate, AActor* actor, const std::string& boneName, float lifeTime, double spawnTime);
+        void addVFX(VfxTemplateT* vfxTemplate, AActor* actor, const std::string& boneName, float lifeTime, double spawnTime);
         void removeVFX(VFXEntry& entry);
         void removeAllVFX();
         void updateActiveVFX();
+        static VfxTemplateT* findTemplateByName(const std::string& name);
+
+        std::vector<VFXEntry> vfxEntries;
+        std::mutex vfxMtx;
 
     private:
         void applyVFXLiveState(VFXEntry& entry);
 
-    private:
-        std::vector<VFXEntry> vfxEntries;
-        std::set<UBioVFXTemplate*, VFXTemplateNameLess> availableTemplates;
-        std::mutex vfxMtx;
-        bool ignoreCameraMovement = false;
-        bool loopVFX = false;
-        float loopDelayVFX = 0.0f;
-        float vfxDuration = 10.0f;
-        bool showBoneSelection = false;
+        std::set<VfxTemplateT*, VFXTemplateNameLess> availableTemplates;
+        bool ignoreCameraMovement = SETTINGS_TOGGLE_OFF;
+        bool loopVFX = SETTINGS_TOGGLE_OFF;
+        float loopDelayVFX = SETTINGS_FX_LOOP_DELAY_DEFAULT;
+        float vfxDuration = SETTINGS_FX_DURATION_DEFAULT;
+        bool showBoneSelection = SETTINGS_TOGGLE_OFF;
 };
 
 #endif // SAS_VFX_H

@@ -4,10 +4,12 @@
 #include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "imgui.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <LESDK/Common/Math.hpp>
 #include <numbers>
 #include <string>
+
+bool pickFolder(std::string& outPath);
 
 // UE3 -> transform in degrees for rotation and per-axis scale. Converted to whatever is usable at the engine.
 struct Transform {

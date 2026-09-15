@@ -2,6 +2,46 @@
     "en":     {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
+
+            "snapshots": {
+                "menu": "Snapshots",
+                "save": "Save snapshot...",
+                "load": "Load snapshot...",
+                "save_title": "Save snapshot",
+                "load_title": "Load snapshot",
+                "name_hint": "Snapshot name",
+                "save_button": "Save",
+                "load_button": "Load",
+                "cancel_button": "Cancel",
+                "delete_button": "Delete",
+                "overwrite_confirm": "A snapshot with this name already exists. Save again to overwrite it.",
+                "no_snapshots": "No snapshots saved yet.",
+                "clear_existing": "Clear existing %s",
+                "name_empty": "Enter a snapshot name first.",
+                "nothing_to_save": "Nothing selected to save.",
+                "saved_ok": "Snapshot '%s' saved.",
+                "loaded_ok": "Snapshot '%s' loaded.",
+                "deleted_ok": "Snapshot '%s' deleted.",
+                "save_failed": "Failed to save snapshot '%s'.",
+                "load_failed": "Failed to load snapshot '%s'.",
+                "wrong_game": "Snapshot '%s' was saved for %s and cannot be loaded in %s.",
+                "delete_failed": "Failed to delete snapshot '%s'.",
+                "section_camera": "Camera position",
+                "section_fov_roll": "FOV / Roll",
+                "section_filter": "Screen filter",
+                "section_lut": "Color LUTs",
+                "section_animation": "Animation",
+                "section_vfx": "VFX",
+                "section_bones": "Bones",
+                "section_selection": "Selection",
+                "section_lighting": "Lights",
+                "section_prefabs": "Prefabs",
+                "section_particles": "Particles",
+                "section_camera_pp": "Camera post-process",
+                "refresh_hint": "Refresh snapshot list",
+                "reseed_hint": "Reseed from current scene",
+                "overwrite_last": "Empty name merges into last loaded snapshot: %s"
+            },
             "settings": "Settings",
             "settings_table": {
                 "language": "Language:",
@@ -13,7 +53,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)",
+                "cancel_hotkey": "Cancel"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -36,7 +79,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -260,7 +305,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -313,6 +360,68 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert to default",
+                "save_directory": "Save directory",
+                "take": "Capture"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed to parse MLUT FX file",
+                "failed_read_png": "Failed to read PNG",
+                "unrecognized_lut_format": "Unrecognized LUT format (needs to be Hald, HorizontalStrip, or MLUT)"
+            },
+            "postprocess": {
+                "title": "Postprocess"
+            },
+            "lut_panel": {
+                "add_lut": "Add LUT (%d/%d)",
+                "baked_shots_hint": "Baked shots include LUTs, depth gates included.",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "%d match%s",
+                "near": "Near",
+                "no_luts_found": "No LUTs found - drop .png files (and MLUT .fx pairs) into the folder above.",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search LUTs...",
+                "show_depth_texture": "Show selected depth texture in-game",
+                "stack_is_full": "Stack is full.",
+                "title": "LUT",
+                "update_every_n": "Update every N"
             }
         },
         "toast": {
@@ -337,7 +446,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -360,7 +472,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -584,7 +698,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -637,6 +753,65 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed parse mlutfx",
+                "failed_read_png": "Failed read png",
+                "unrecognized_lut_format": "Unrecognized lut format"
+            },
+            "lut_panel": {
+                "add_lut": "Add lut",
+                "baked_shots_hint": "Baked shots hint",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Depth auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "Match count",
+                "near": "Near",
+                "no_luts_found": "No luts found",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search luts",
+                "show_depth_texture": "Show depth texture",
+                "stack_is_full": "Stack is full",
+                "title": "Title",
+                "update_every_n": "Update every n"
             }
         },
         "toast": {
@@ -661,7 +836,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -684,7 +862,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -908,7 +1088,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -961,6 +1143,65 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed parse mlutfx",
+                "failed_read_png": "Failed read png",
+                "unrecognized_lut_format": "Unrecognized lut format"
+            },
+            "lut_panel": {
+                "add_lut": "Add lut",
+                "baked_shots_hint": "Baked shots hint",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Depth auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "Match count",
+                "near": "Near",
+                "no_luts_found": "No luts found",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search luts",
+                "show_depth_texture": "Show depth texture",
+                "stack_is_full": "Stack is full",
+                "title": "Title",
+                "update_every_n": "Update every n"
             }
         },
         "toast": {
@@ -985,7 +1226,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -1008,7 +1252,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -1232,7 +1478,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -1285,6 +1533,65 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed parse mlutfx",
+                "failed_read_png": "Failed read png",
+                "unrecognized_lut_format": "Unrecognized lut format"
+            },
+            "lut_panel": {
+                "add_lut": "Add lut",
+                "baked_shots_hint": "Baked shots hint",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Depth auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "Match count",
+                "near": "Near",
+                "no_luts_found": "No luts found",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search luts",
+                "show_depth_texture": "Show depth texture",
+                "stack_is_full": "Stack is full",
+                "title": "Title",
+                "update_every_n": "Update every n"
             }
         },
         "toast": {
@@ -1309,7 +1616,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -1332,7 +1642,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -1556,7 +1868,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -1609,6 +1923,65 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed parse mlutfx",
+                "failed_read_png": "Failed read png",
+                "unrecognized_lut_format": "Unrecognized lut format"
+            },
+            "lut_panel": {
+                "add_lut": "Add lut",
+                "baked_shots_hint": "Baked shots hint",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Depth auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "Match count",
+                "near": "Near",
+                "no_luts_found": "No luts found",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search luts",
+                "show_depth_texture": "Show depth texture",
+                "stack_is_full": "Stack is full",
+                "title": "Title",
+                "update_every_n": "Update every n"
             }
         },
         "toast": {
@@ -1633,7 +2006,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -1656,7 +2032,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -1880,7 +2258,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -1933,6 +2313,65 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed parse mlutfx",
+                "failed_read_png": "Failed read png",
+                "unrecognized_lut_format": "Unrecognized lut format"
+            },
+            "lut_panel": {
+                "add_lut": "Add lut",
+                "baked_shots_hint": "Baked shots hint",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Depth auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "Match count",
+                "near": "Near",
+                "no_luts_found": "No luts found",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search luts",
+                "show_depth_texture": "Show depth texture",
+                "stack_is_full": "Stack is full",
+                "title": "Title",
+                "update_every_n": "Update every n"
             }
         },
         "toast": {
@@ -1957,7 +2396,10 @@
                 "unsaved_changes": "(niezapisane zmiany)",
                 "saved": "Ustawienia zostały zapisane!",
                 "failed_saved": "Nie udało się zapisać ustawień. Sprawdź log, aby uzyskać szczegółowe informacje.",
-                "reverted": "Ustawienia zostały zapisane!"
+                "reverted": "Ustawienia zostały zapisane!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Wskaźniki",
@@ -1980,7 +2422,9 @@
                 "show_orient": "Pokaż gizmo orientacji",
                 "always_on_top": "Rysuj gizmo zawsze na wierzchu",
                 "draw_tracer": "Rysuj linię znacznika",
-                "highlight": "Wyróżnij wybrane"
+                "highlight": "Wyróżnij wybrane",
+                "bone_pivot": "Gizmo pivota kości",
+                "bone_pivot_world": "Pivot kości: przestrzeń świata"
             },
             "selection": "Wybór",
             "selection_table": {
@@ -2204,7 +2648,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -2257,6 +2703,65 @@
                 "light_config": "Konfiguracja oświetlenia",
                 "spawn_lights": "Stwórz światło",
                 "active": "Aktywne:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed parse mlutfx",
+                "failed_read_png": "Failed read png",
+                "unrecognized_lut_format": "Unrecognized lut format"
+            },
+            "lut_panel": {
+                "add_lut": "Add lut",
+                "baked_shots_hint": "Baked shots hint",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Depth auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "Match count",
+                "near": "Near",
+                "no_luts_found": "No luts found",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search luts",
+                "show_depth_texture": "Show depth texture",
+                "stack_is_full": "Stack is full",
+                "title": "Title",
+                "update_every_n": "Update every n"
             }
         },
         "toast": {
@@ -2281,7 +2786,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -2304,7 +2812,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -2528,7 +3038,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -2581,6 +3093,65 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_catalog": {
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_parse_mlutfx": "Failed parse mlutfx",
+                "failed_read_png": "Failed read png",
+                "unrecognized_lut_format": "Unrecognized lut format"
+            },
+            "lut_panel": {
+                "add_lut": "Add lut",
+                "baked_shots_hint": "Baked shots hint",
+                "blend": "Blend",
+                "blend_max": "Blend max",
+                "blend_min": "Blend min",
+                "chroma": "Chroma",
+                "depth_auto": "Depth auto",
+                "depth_gate": "Depth gate",
+                "depth_inspector": "Depth inspector",
+                "depth_source": "Depth source",
+                "enable_depth_capture": "Enable depth capture",
+                "far": "Far",
+                "focus": "Focus",
+                "freeze": "Freeze",
+                "heatmap": "Heatmap",
+                "invert": "Invert",
+                "linearize": "Linearize",
+                "luma": "Luma",
+                "match_count": "Match count",
+                "near": "Near",
+                "no_luts_found": "No luts found",
+                "preview_depth_gate": "Preview depth gate",
+                "range": "Range",
+                "refresh_surfaces": "Refresh surfaces",
+                "rescan": "Rescan",
+                "search_luts": "Search luts",
+                "show_depth_texture": "Show depth texture",
+                "stack_is_full": "Stack is full",
+                "title": "Title",
+                "update_every_n": "Update every n"
             }
         },
         "toast": {
@@ -2605,7 +3176,10 @@
                 "unsaved_changes": "(unsaved changes)",
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
-                "reverted": "Settings reverted!"
+                "reverted": "Settings reverted!",
+                "cancel_hotkey": "Cancel",
+                "capture_hotkey": "Bind key",
+                "capturing_hotkey": "Press keys... (ESC to cancel)"
             },
             "debug": "Debug",
             "metrics": "Metrics",
@@ -2628,7 +3202,9 @@
                 "show_orient": "Show orientation gizmo",
                 "always_on_top": "Draw gizmos always on top",
                 "draw_tracer": "Draw tracer",
-                "highlight": "Highlight selected"
+                "highlight": "Highlight selected",
+                "bone_pivot": "Bone pivot gizmo",
+                "bone_pivot_world": "Bone pivot: world space"
             },
             "selection": "Selection",
             "selection_table": {
@@ -2852,7 +3428,9 @@
                 "histogram": "Histogram (RGB)",
                 "clip_lo": "Shadow threshold:",
                 "clip_hi": "Highlight threshold:",
-                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%"
+                "clipped": "%.0f FOV | %u x %u | clipped %.1f%% / %.1f%%",
+                "disable_fog": "Disable fog",
+                "disable_lens_flares": "Disable lens flares"
             },
             "filter": "Screen filter",
             "filter_table": {
@@ -2905,6 +3483,65 @@
                 "light_config": "Light configuration",
                 "spawn_lights": "Spawn lights",
                 "active": "Active:"
+            },
+            "shot_table": {
+                "browse": "Browse",
+                "busy": "Busy",
+                "extra_unlit_shot": "Extra unlit shot",
+                "format": "Format",
+                "multiplier": "Multiplier",
+                "overlap": "Overlap",
+                "status_capturing": "Capturing tiledshot...",
+                "status_capturing_unlit": "Capturing unlit tiledshot...",
+                "status_no_file": "Tiledshot produced no file",
+                "status_captured": "Captured %s",
+                "status_converting": "Converting %s...",
+                "status_convert_failed": "Failed to convert %s",
+                "status_converted": "Converted %s",
+                "status_saved_to": "Saved to %s",
+                "status_failed": "Screenshot failed!",
+                "revert_default": "Revert default",
+                "save_directory": "Save directory",
+                "take": "Take"
+            },
+            "screenshot": "Screenshot",
+            "lut_panel": {
+                "title": "LUT stack (backbuffer)",
+                "baked_shots_hint": "Baked shots include LUTs, depth gates included.",
+                "rescan": "Rescan",
+                "depth_inspector": "Depth inspector",
+                "enable_depth_capture": "Enable depth capture",
+                "depth_source": "Depth source",
+                "depth_auto": "Auto",
+                "refresh_surfaces": "Refresh surfaces",
+                "freeze": "Freeze",
+                "linearize": "Linearize",
+                "invert": "Invert",
+                "near": "Near",
+                "far": "Far",
+                "update_every_n": "Update every N",
+                "show_depth_texture": "Show selected depth texture in-game",
+                "no_luts_found": "No LUTs found - drop .png files (and MLUT .fx pairs) into the folder above.",
+                "blend": "Blend",
+                "chroma": "Chroma",
+                "luma": "Luma",
+                "depth_gate": "Depth gate",
+                "focus": "Focus",
+                "range": "Range",
+                "blend_min": "Blend min",
+                "blend_max": "Blend max",
+                "preview_depth_gate": "Preview depth gate",
+                "heatmap": "Heatmap",
+                "add_lut": "Add LUT (%d/%d)",
+                "stack_is_full": "Stack is full.",
+                "search_luts": "Search LUTs...",
+                "match_count": "%d match%s"
+            },
+            "lut_catalog": {
+                "failed_parse_mlutfx": "Failed to parse MLUT FX file",
+                "atlas_size_mismatch": "Atlas size mismatch",
+                "failed_read_png": "Failed to read PNG",
+                "unrecognized_lut_format": "Unrecognized LUT format (needs to be Hald, HorizontalStrip, or MLUT)"
             }
         },
         "toast": {

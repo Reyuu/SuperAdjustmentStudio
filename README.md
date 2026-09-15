@@ -28,6 +28,7 @@ Please treat this release as <ins>**BETA**</ins>.
 - manual package loading and preview - allows you to load additional content into the game (you have to know where a specific prefab/animation is located)
 - freecam - it can be used as a replacement to the game's default photo mode! It even works in conversations! 📷
 - photo utilities - grid overlay, basic photo adjustments and histogram
+- saving and loading the snapshots! (saving the poses, the properties for the objects, transforms and so on)
 
 ### Known issues (what doesn't work)
 - after animation is played back and the character reset - animations can stay broken, the solution is to play and then reset the animation again
@@ -41,7 +42,6 @@ Please treat this release as <ins>**BETA**</ins>.
 - improving the search
 - handling other properties (Components)
 - UI settings along with customizable keybinds
-- saving and loading the presets (saving the poses, the properties for the objects, transforms and so on)
 - spawning a pawn - so you could pose different game characters together!
 - expanding to LE1 and LE3 - (LE3 might be easier than LE1)
 
@@ -112,12 +112,18 @@ This project uses libraries from:
 - [juliettef/IconFontCppHeaders](https://github.com/juliettef/IconFontCppHeaders)
 - [FortAwesome/Font-Awesome](https://github.com/FortAwesome/Font-Awesome/releases#release-6.7.2)
 - [wolfpld/tracy](https://github.com/wolfpld/tracy)
+- [nlohmann/json](https://github.com/nlohmann/json)
+- [nothings/stb](https://github.com/nothings/stb)
+- [madler/zlib](https://github.com/madler/zlib)
+- [radgametools/oodle](https://www.radgametools.com/oodle.htm) ONLY game's own copy (DLL in repo for development)
 
 
 Code from:
 - [ME3Tweaks/LExASIs](https://github.com/ME3Tweaks/LExASIs)
 - [eugen15/directx-present-hook](https://github.com/eugen15/directx-present-hook) 
 - [YT: Hooking DirectInput C++](https://www.youtube.com/watch?v=oh9i7hPQZT8)
+- [rosire/reshade](https://github.com/crosire/reshade)
+- [TheGordinho/MLUT](https://github.com/TheGordinho/MLUT)
 - MANY more
 
 If I used your code and did not credit you, please reach out, I'll be more than happy to do it.
@@ -126,6 +132,7 @@ If I used your code and did not credit you, please reach out, I'll be more than 
 - to my friend Tris, who always listens to my technical yapping
 - Mass Effect Modding Discord
 - [d00t](https://github.com/llamathings), [Mgamerz](https://github.com/Mgamerz) and [Cersei](https://github.com/SirCxyrtyx) - for helping me with my understanding of LExSDK
+- [naNuke](https://www.nexusmods.com/profile/naNuke) - for the feedback and the help 
 
 ## Other things
 **I do NOT allow this mod to be reposted just for the translation to be added.** Translation happens on Crowdin, contact me if you want to contribute!

@@ -7,6 +7,21 @@ on:
         description: Environment containing Nexus Mods secrets
         required: true
         type: environment
+      build_le1:
+        description: Build Mass Effect 1
+        required: false
+        type: boolean
+        default: true
+      build_le2:
+        description: Build Mass Effect 2
+        required: false
+        type: boolean
+        default: true
+      build_le3:
+        description: Build Mass Effect 3
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -23,12 +38,37 @@ jobs:
 
       - name: Build and deploy
         shell: pwsh
-        run: .\build.bat Debug clean; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $env:DEPLOY_DIR = "$env:RUNNER_TEMP\deploy"; New-Item -ItemType Directory -Path $env:DEPLOY_DIR; .\deploy.bat Debug; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; .\compile_commands.bat Debug
+        run: |
+          $deployBase = "$env:RUNNER_TEMP\deploy"
+          $env:DEPLOY_DIR_ME1 = "$deployBase\LE1"
+          $env:DEPLOY_DIR_ME2 = "$deployBase\LE2"
+          $env:DEPLOY_DIR_ME3 = "$deployBase\LE3"
+
+          $games = @()
+          if ("${{ inputs.build_le1 }}" -eq "true") { $games += "ME1" }
+          if ("${{ inputs.build_le2 }}" -eq "true") { $games += "ME2" }
+          if ("${{ inputs.build_le3 }}" -eq "true") { $games += "ME3" }
+
+          if ($games.Count -eq 0) {
+            Write-Error "No games selected for build."
+            exit 1
+          }
+
+          foreach ($game in $games) {
+            Write-Host "`n===== Building $game ====="
+            .\build.bat Debug clean $game
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            $dest = Join-Path $deployBase $game.Replace("ME", "LE")
+            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+            .\deploy.bat Debug $game
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+          .\compile_commands.bat Debug
 
       - name: Upload debug artifact
         uses: actions/upload-artifact@v7
         with:
           name: SuperAdjustmentStudio-debug
-          path: |
-            ${{ runner.temp }}\deploy\*.asi
-            ${{ runner.temp }}\deploy\*.pdb
+          path: ${{ runner.temp }}\deploy\

@@ -7,9 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # submodules
 #   LExSDKv2
 message(STATUS "Adding build target: thirdparty/LExSDKv2")
-# disabling LE1 and LE3 for now, might reintroduce after
+# Game target selection: ME1, ME2, or ME3. SAS_LE follows the SDK naming (LE1/LE2/LE3).
+set(SAS_GAME "ME2" CACHE STRING "Target game: ME1, ME2, or ME3")
+set_property(CACHE SAS_GAME PROPERTY STRINGS ME1 ME2 ME3)
+if (SAS_GAME STREQUAL "ME1")
+    set(SAS_LE "LE1")
+elseif (SAS_GAME STREQUAL "ME3")
+    set(SAS_LE "LE3")
+else()
+    set(SAS_LE "LE2")
+endif()
 set(LESDK_WITH_LE1 OFF)
+set(LESDK_WITH_LE2 OFF)
 set(LESDK_WITH_LE3 OFF)
+set(LESDK_WITH_${SAS_LE} ON)
 
 # Patch the generated SDK in the submodule working tree: parms structs the
 # generator packed tighter than the game's real layouts (ProcessEvent then
@@ -98,6 +109,10 @@ target_include_directories(implot PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui
 )
 
+message(STATUS "Adding build target: thirdparty/stb")
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/stb)
+
 #   kiero (D3D11 swapchain hooking, bundles MinHook for the actual detour)
 message(STATUS "Adding build target: thirdparty/kiero")
 
@@ -138,8 +153,25 @@ file(GLOB_RECURSE SAS_SOURCES
 message(STATUS "Adding build target: SuperAdjustmentStudio")
 add_library(SuperAdjustmentStudio SHARED ${SAS_SOURCES})
 
+set(SAS_LUT_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/render/lut_shader.hlsl")
+set(SAS_LUT_SHADER_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/generated/lut_shader_source.inc")
+add_custom_command(
+    OUTPUT "${SAS_LUT_SHADER_INCLUDE}"
+    COMMAND ${CMAKE_COMMAND}
+        -DINPUT="${SAS_LUT_SHADER_SOURCE}"
+        -DOUTPUT="${SAS_LUT_SHADER_INCLUDE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
+    DEPENDS "${SAS_LUT_SHADER_SOURCE}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
+    VERBATIM
+)
+add_custom_target(SAS_LutShaderSource DEPENDS "${SAS_LUT_SHADER_INCLUDE}")
+add_dependencies(SuperAdjustmentStudio SAS_LutShaderSource)
+set_source_files_properties("${SAS_LUT_SHADER_SOURCE}" PROPERTIES HEADER_FILE_ONLY TRUE)
+target_sources(SuperAdjustmentStudio PRIVATE "${SAS_LUT_SHADER_SOURCE}")
+
 target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/game
     ${CMAKE_CURRENT_SOURCE_DIR}/src/actors
@@ -160,14 +192,10 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
 
 # link dependencies
 
-if (TARGET LESDK-LE1)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-LE1)
-elseif (TARGET LESDK-LE2)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-LE2)
-elseif (TARGET LESDK-LE3)
-    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-LE3)
+if (TARGET LESDK-${SAS_LE})
+    target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-${SAS_LE})
 else()
-    message(FATAL_ERROR "No LESDK target found. Please check the LExSDKv2 submodule.")
+    message(FATAL_ERROR "No LESDK target found for ${SAS_GAME}. Please check the LExSDKv2 submodule.")
 endif()
 
 if (TARGET spdlog)
@@ -186,6 +214,12 @@ if (TARGET implot)
     target_link_libraries(SuperAdjustmentStudio PRIVATE implot)
 else()
     message(FATAL_ERROR "No implot target found. Please check the implot submodule.")
+endif()
+
+if (TARGET stb)
+    target_link_libraries(SuperAdjustmentStudio PRIVATE stb)
+else()
+    message(FATAL_ERROR "No stb target found. Please check the stb submodule.")
 endif()
 
 if (TARGET kiero)
@@ -230,8 +264,9 @@ if (WIN32)
 # LE uses DirectX 11, so we need to link against the appropriate libraries
 # d3d11/dxgi for DX11 render backend and swapchain hook
 # d3dcompiler for the raw-D3D11 overlay gizmo shader compilation
-target_link_libraries(SuperAdjustmentStudio PRIVATE d3d11 dxgi d3dcompiler)
-target_compile_definitions(SuperAdjustmentStudio PRIVATE "WIN32_LEAN_AND_MEAN")
+target_link_libraries(SuperAdjustmentStudio PRIVATE d3d11 dxgi d3dcompiler dinput8 dxguid)
+target_link_libraries(SuperAdjustmentStudio PRIVATE ole32 oleaut32 shell32 dbghelp)
+target_compile_definitions(SuperAdjustmentStudio PRIVATE "WIN32_LEAN_AND_MEAN NOMINMAX")
 endif()
 
 set_target_properties(SuperAdjustmentStudio PROPERTIES
@@ -242,8 +277,8 @@ OUTPUT_NAME "SuperAdjustmentStudio"
 # ensure SAS is compiled with C++20 standard
 target_compile_features(SuperAdjustmentStudio PUBLIC cxx_std_20)
 
-# LE2 target 
-target_compile_definitions(SuperAdjustmentStudio PRIVATE SDK_TARGET_LE2)
+# game target define
+target_compile_definitions(SuperAdjustmentStudio PRIVATE SDK_TARGET_${SAS_LE})
 
 if (MSVC)
     # ensure SAS is using MSVC conformance flags when MSVC is used

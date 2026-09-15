@@ -1,7 +1,7 @@
 #ifndef SAS_BONES_H
 #define SAS_BONES_H
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <atomic>
 #include <mutex>
 #include <string>
@@ -33,12 +33,12 @@ class Bones {
 
         void listBones(const std::string& pawnName, MeshTarget target, std::vector<BonePoseInfo>& out);
         bool getBoneTransform(const std::string& pawnName, MeshTarget target, int index, BonePoseInfo& out);
+        bool getBoneWorldBasis(const std::string& pawnName, MeshTarget target, int index, FVector& outPos, FVector& outX, FVector& outY, FVector& outZ);
         void setBonePose(const std::string& pawnName, MeshTarget target, const BonePoseInfo& pose);
         void resetBonePose(const std::string& pawnName, MeshTarget target);
         void absoluteResetBones(const std::string& pawnName, MeshTarget target);
         void keepBonePoses();
 
-    private:
         struct BonePoseState {
             public:
                 std::mutex mtx;
@@ -47,13 +47,17 @@ class Bones {
                 MeshTarget target = MESH_BODY;
                 std::vector<FBoneAtom> savedAtoms;
                 std::vector<int> savedIndices;
+                std::vector<FVector> savedBasePos;
                 std::vector<int> pendingSnapshots;
+                std::vector<FVector> pendingBasePos;
                 bool savedUseSavedPose = false;
                 int boneCount = 0;
                 bool toApply = false;
         };
 
         BonePoseState bonePose;
+
+    private:
         std::atomic<bool> bonePoseActiveState{false};
 
         void restoreBonePoseMesh(std::string pawn, MeshTarget target, std::vector<FBoneAtom> atoms, std::vector<int> indices, bool useSavedPose);

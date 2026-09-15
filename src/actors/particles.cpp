@@ -7,12 +7,12 @@
 #include "ui/helpers/raii_guards.h"
 #include "ui/helpers/toast_notifications.h"
 #include "util.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <sstream>
 
 #include "tracy.h"
 
-static UParticleSystem* findParticleTemplateByName(const std::string& name) {
+UParticleSystem* ParticleManager::findTemplateByName(const std::string& name) {
     UParticleSystem* found = nullptr;
     forEachOf<UParticleSystem>([&](UParticleSystem* p) {
         if (p && toLowerStr(FStringToUtf8(p->GetName())).find(toLowerStr(name)) != std::string::npos) {
@@ -62,7 +62,11 @@ static AEmitter* spawnEmitterActor(UParticleSystem* emitterTemplate, AActor* own
     rot.Yaw = DegreesToUnrealRotationUnits(spawnTransform.rot[1]);
     rot.Roll = DegreesToUnrealRotationUnits(spawnTransform.rot[2]);
 
+#ifdef SDK_TARGET_LE3
+    AActor* spawned = owner->Spawn(AEmitter::StaticClass(), owner, SFXName(), loc, rot, nullptr, 1, 0);
+#else
     AActor* spawned = owner->Spawn(AEmitter::StaticClass(), nullptr, SFXName(), loc, rot, nullptr, nullptr, 1, 0);
+#endif
     AEmitter* emitter = static_cast<AEmitter*>(spawned);
     if (!emitter || !emitter->ParticleSystemComponent) {
         Logger->debug("spawnEmitterActor: failed to spawn AEmitter");
@@ -252,7 +256,7 @@ void ParticleManager::renderUI() {
                         Logger->debug("particle spawn: selected pawn no longer exists");
                         return;
                     }
-                    UParticleSystem* resolvedTemplate = findParticleTemplateByName(particleName);
+                    UParticleSystem* resolvedTemplate = ParticleManager::findTemplateByName(particleName);
                     if (!resolvedTemplate) {
                         Logger->debug("particle spawn: template no longer exists");
                         return;
@@ -282,7 +286,8 @@ void ParticleManager::renderUI() {
                 while (clipper.Step()) {
                     for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                         const std::string& name = filtered[n].first;
-                        if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
+                        std::string id = name + "##" + std::to_string(n);
+                        if (ImGui::Selectable(id.c_str(), name == selectedParticleName)) {
                             selectedParticleName = name;
                         }
                     }
@@ -306,7 +311,8 @@ void ParticleManager::renderUI() {
                     while (clipper.Step()) {
                         for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                             const std::string& name = filtered[n].first;
-                            if (ImGui::Selectable(name.c_str(), name == selectedParticleName)) {
+                            std::string id = name + "##f" + std::to_string(n);
+                            if (ImGui::Selectable(id.c_str(), name == selectedParticleName)) {
                                 selectedParticleName = name;
                             }
                         }
@@ -334,12 +340,12 @@ void ParticleManager::renderUI() {
 
     ImGui::PushItemWidth(-100);
     ImGui::Text(t("ui.particles_table.loop_delay"));
-    ImGui::DragFloat("##particle_loop_delay", &loopDelayParticles, 0.1f, 0.0f, 60.0f, "%.1f");
+    ImGui::DragFloat("##particle_loop_delay", &loopDelayParticles, 0.1f, SETTINGS_FX_LOOP_DELAY_MIN, SETTINGS_FX_LOOP_DELAY_MAX, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::PushItemWidth(-100);
     ImGui::Text(t("ui.particles_table.playback_dur"));
-    ImGui::DragFloat("##particle_duration_drag", &particleDuration, 0.1f, 0.1f, 60.0f, "%.1f");
+    ImGui::DragFloat("##particle_duration_drag", &particleDuration, 0.1f, SETTINGS_FX_DURATION_MIN, SETTINGS_FX_DURATION_MAX, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::Separator();

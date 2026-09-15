@@ -4,7 +4,7 @@ import os
 import sys
 
 root = sys.argv[1].rstrip('\\')
-cl = sys.argv[2].replace('\\', '\\\\')
+cl = sys.argv[2]
 
 inc = [root + p for p in [
     '/src', '/src/ui_helpers',
@@ -34,7 +34,11 @@ data = {
         "name": "Win32",
         "compileCommands": root + "/compile_commands.json",
         "includePath": inc,
-        "defines": ["_DEBUG", "UNICODE", "_UNICODE"],
+        "browse": {
+            "limitSymbolsToIncludedHeaders": True,
+            "databaseFilename": root + "/build/compile-commands/vc.db",
+        },
+        "defines": ["_DEBUG", "UNICODE", "_UNICODE", "WIN32_LEAN_AND_MEAN", "SDK_TARGET_LE1", "SDK_TARGET_LE2", "SDK_TARGET_LE3"],
         "intelliSenseMode": "windows-msvc-x64",
         "compilerPath": cl,
         "cppStandard": "c++20",

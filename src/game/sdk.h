@@ -4,7 +4,7 @@
 #include "../../thirdparty/LExSDKv2/Src/LESDK/_Global.pch.hpp"
 
 #include "plugin.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <LESDK/Init.hpp>
 
 #define SDK_INITIALIZE_OBJECT_TYPED(variable, resolveType, address)    \

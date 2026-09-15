@@ -11,7 +11,7 @@
 #include "hook_manager.h"
 #include "sdk.h"
 #include "util.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 struct PackageLoadTask {
     public:
@@ -44,6 +44,8 @@ class Engine {
 
         void postGameThreadTask(std::function<void()> fn);
         void drainGameThreadTasks();
+
+        void consoleCommand(const std::string& command);
 
         void postPackageLoad(const std::string& package, std::function<void()> onLoaded);
         void drainPackageLoads();
@@ -92,14 +94,20 @@ class Engine {
         bool floatOldBlockActors = false;
         bool floatOldBlockRigidBody = false;
 
+#ifdef SDK_TARGET_LE3
+        std::unordered_map<USFXGUIMovieLegacyAdapter*, bool> savedPanelVisibility;
+#else
         std::unordered_map<UBioSFPanel*, bool> savedPanelVisibility;
+#endif
 
         std::unordered_map<USFXGameModeBase*, HudModeFlags> savedModeVisibility;
         std::unordered_map<AHUD*, unsigned char> savedHudVisibility;
         std::unordered_map<ASFXPointOfInterest*, bool> savedPoiHidden;
         std::unordered_map<UPrimitiveComponent*, bool> savedPoiCompHidden;
+#ifndef SDK_TARGET_LE1
         std::unordered_map<ULensFlareComponent*, bool> savedFlareActive;
         std::unordered_map<USFXSelectionModule*, unsigned char> savedSelectionTargetable;
+#endif
 };
 
 #endif // SAS_ENGINE_H

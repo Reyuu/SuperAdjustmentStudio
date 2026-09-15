@@ -70,7 +70,7 @@ class NativeRenderer {
         // functionality
         //   imgui context + win32/dx11 backend initialization from the live swapchain.
         bool initImGuiInGame(IDXGISwapChain* pSwapChain);
-        void applySettings(const struct SettingOptions& options);
+        void applySettings(const struct SettingsOptions& options);
         //  resolve the D3D11 swapchain vtable via kiero and detour Present/ResizeBuffers.
         bool installHooks(PresentFn presentDetour, ResizeBuffersFn resizeBuffersDetour);
         //  restore the original vtable entries and tear kiero down.

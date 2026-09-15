@@ -118,6 +118,8 @@ void Animation::resetAnimation(const std::string& pawnName) {
     playedNode = nullptr;
     playedNodeOrigSeq = nullptr;
     playedNodeOrigName = SFXName();
+    playedPawnName.clear();
+    playedAnimName.clear();
 
     std::ostringstream ss;
     ss << "resetAnimation: released custom anim and resumed locomotion on '" << pawnName << "'";
@@ -219,8 +221,15 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
     }
 
     mesh->StopAnim();
+#ifdef SDK_TARGET_LE3
+    float pos = slot->PlayCustomAnim(sfxAnim, 1.0f, 0.1f, 0.2f, bLoop ? 1 : 0, 1, 0.0f);
+#else
     float pos = pawn->PawnPlayCustomAnim(slot, sfxAnim, 1.0f, 0.1f, 0.2f, bLoop ? 1 : 0, 1, 0.0f);
+#endif
     customAnimSlot = slot;
+    playedPawnName = pawnName;
+    playedAnimName = animName;
+    playedLoop = bLoop;
 
     std::ostringstream ss;
     ss << "playAnimation: '" << animName << "' on '" << pawnName << "' via PawnPlayCustomAnim slot='"

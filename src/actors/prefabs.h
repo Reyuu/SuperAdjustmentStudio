@@ -2,10 +2,11 @@
 #define SAS_PREFABS_H
 
 #include "util.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <mutex>
 #include <string>
 #include <vector>
+#include "settings.h"
 
 // ME2 -> no public runtime for instancing UPrefab assets
 struct PrefabTemplate {
@@ -49,6 +50,10 @@ struct PrefabManager {
         void onActorMoved(AActor* actor);
         void nudgeLights(int idx);
 
+        mutable std::recursive_mutex mutex;
+        std::vector<PrefabTemplate> available;
+        std::vector<PrefabEntry> prefabEntries;
+
     private:
         int findEntryIndexByName(const std::string& name, const std::string& prefabName) const;
         void fixupSelectedActive();
@@ -61,9 +66,6 @@ struct PrefabManager {
         void renderActivePrefabsPanel(const std::vector<PrefabEntry>& entries, int& selActive);
         void renderMaterialControls();
         void renderLightSpawnControls();
-        mutable std::recursive_mutex mutex;
-        std::vector<PrefabTemplate> available;
-        std::vector<PrefabEntry> prefabEntries;
         std::string selectedPrefabName;
         int selectedActive = -1;
         LightConfig selectedLightConfig = LightConfig::Corner;
@@ -74,9 +76,9 @@ struct PrefabManager {
         float lastMaterialUpdate = 0.0f;
         AActor* pendingMaterialActor = nullptr;
         bool needsRefresh = false;
-        float lightExpansion = 95.0f;
-        float lightBrightness = 0.4f;
-        float lightRadius = 350.0f;
-        float lightColor[3] = {1.0f, 1.0f, 1.0f};
+        float lightExpansion = SETTINGS_PREFAB_EXPANSION_DEFAULT;
+        float lightBrightness = SETTINGS_PREFAB_BRIGHTNESS_DEFAULT;
+        float lightRadius = SETTINGS_PREFAB_RADIUS_DEFAULT;
+        float lightColor[3] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B};
 };
 #endif // SAS_PREFABS_H

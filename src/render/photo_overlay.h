@@ -5,6 +5,7 @@
 #include <d3d11.h>
 #include <cmath>
 #include <numbers>
+#include "settings.h"
 
 constexpr int PHOTO_OVERLAY_GRID_COUNT = 7;
 typedef enum PhotoOverlayGrid {
@@ -123,18 +124,26 @@ class PhotoOverlay {
         void sample(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11DeviceContext* context);
         void shutdown();
 
+        bool filterState = SETTINGS_TOGGLE_OFF;
+        float tintColor[3] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B};
+        float tintStrength = SETTINGS_PHOTO_TINT_STRENGTH_DEFAULT;
+        float grainIntensity = SETTINGS_PHOTO_GRAIN_INTENSITY_DEFAULT;
+        float grainOpacity = SETTINGS_PHOTO_GRAIN_OPACITY_DEFAULT;
+        bool noFogState = SETTINGS_TOGGLE_OFF;
+        bool noLensFlareState = SETTINGS_TOGGLE_OFF;
+
     private:
-        bool enabledState = false;
+        bool enabledState = SETTINGS_TOGGLE_OFF;
         PhotoOverlayGrid gridIndex = GRID_NONE;
         AspectRatio aspectRatio = ASPECT_RATIO_NONE;
-        float maskOpacity = 0.6f;
-        float lineColor[4] = {1.0f, 1.0f, 1.0f, 0.85f};
-        float lineThickness = 1.5f;
-        bool centerDot = false;
-        bool safeFrame = false;
-        bool readout = false;
+        float maskOpacity = SETTINGS_PHOTO_MASK_OPACITY_DEFAULT;
+        float lineColor[4] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B, SETTINGS_PHOTO_LINE_ALPHA_DEFAULT};
+        float lineThickness = SETTINGS_PHOTO_LINE_THICKNESS_DEFAULT;
+        bool centerDot = SETTINGS_TOGGLE_OFF;
+        bool safeFrame = SETTINGS_TOGGLE_OFF;
+        bool readout = SETTINGS_TOGGLE_OFF;
 
-        bool histogram = false;
+        bool histogram = SETTINGS_TOGGLE_OFF;
         static constexpr int HIST_BINS = 64;
         static constexpr int HIST_EVERY = 10;
         float histR[HIST_BINS] = {};
@@ -144,18 +153,12 @@ class PhotoOverlay {
         int histTick = 0;
         float clipLo = 0.0f;
         float clipHi = 0.0f;
-        int clipLoThr = 8;
-        int clipHiThr = 247;
+        int clipLoThr = SETTINGS_PHOTO_CLIP_LO_DEFAULT;
+        int clipHiThr = SETTINGS_PHOTO_CLIP_HI_DEFAULT;
         ID3D11Texture2D* histogramTexture = nullptr;
         unsigned histW = 0;
         unsigned histH = 0;
         int histFmt = 0;
-
-        bool filterState = false;
-        float tintColor[3] = {1.0f, 1.0f, 1.0f};
-        float tintStrength = 0.0f;
-        float grainIntensity = 0.0f;
-        float grainOpacity = 1.0f;
 };
 
 #endif // SAS_PHOTO_OVERLAY_H

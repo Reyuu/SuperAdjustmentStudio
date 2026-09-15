@@ -3,6 +3,7 @@
 #include "oodle.h"
 
 #include <cstring>
+#include <algorithm>
 
 PCCParser::PCCParser(const std::string& filePath) : filePath_(filePath) {
     fileStream_.open(filePath, std::ios::binary);
@@ -21,60 +22,209 @@ bool PCCParser::parse() {
     if (!fileStream_.is_open()) {
         return false;
     }
-    readHeader();
-    decompress();
-    if (decompressed_.empty()) {
+
+    readRawFile();
+    if (raw_.empty()) {
         return false;
     }
+
+    if (!readPreliminaryHeader()) {
+        return false;
+    }
+
+    bool fullyCompressed = (file_.packageFlags & static_cast<uint32_t>(PCCPackageFlags::FullyCompressed)) != 0;
+
+    if (fullyCompressed) {
+        decompress();
+        if (decompressed_.empty()) {
+            return false;
+        }
+        readFullHeader();
+    } else {
+        readFullHeader();
+        decompress();
+        if (decompressed_.empty()) {
+            return false;
+        }
+    }
+
     parseNameTable();
     parseImportTable();
     parseExportTable();
     buildTree();
     parsed_ = true;
-    Logger->info("Parsed " + std::to_string(file_.exports.size()) + " exports, " + std::to_string(file_.imports.size()) + " imports from: " + filePath_);
+    Logger->info("Parsed {} exports, {} imports from: {}", file_.exports.size(), file_.imports.size(), filePath_);
     return true;
 }
 
-void PCCParser::readHeader() {
+static uint32_t readU32(const std::vector<uint8_t>& buf, size_t off) {
+    uint32_t v = 0;
+    if (off + 4 <= buf.size()) {
+        std::memcpy(&v, buf.data() + off, 4);
+    }
+    return v;
+}
+
+// folder name is a length-prefixed string
+static size_t skipFolderName(const std::vector<uint8_t>& buf, size_t p) {
+    constexpr size_t kMaxFolderLen = 512;
+    if (p + 4 > buf.size()) {
+        return buf.size();
+    }
+    int32_t folderLen = 0;
+    std::memcpy(&folderLen, buf.data() + p, 4);
+    p += 4;
+    if (folderLen > 0) {
+        if ((size_t)folderLen > kMaxFolderLen) {
+            return buf.size();
+        }
+        p += (size_t)folderLen;
+    } else if (folderLen < 0) {
+        if ((size_t)-folderLen > kMaxFolderLen) {
+            return buf.size();
+        }
+        p += (size_t)-folderLen * sizeof(wchar_t);
+    }
+    return p;
+}
+
+void PCCParser::readRawFile() {
     fileStream_.seekg(0, std::ios::end);
     size_t fileSize = static_cast<size_t>(fileStream_.tellg());
     fileStream_.seekg(0, std::ios::beg);
     raw_.resize(fileSize);
     fileStream_.read(reinterpret_cast<char*>(raw_.data()), fileSize);
+}
 
-    auto r32 = [&](size_t o) -> uint32_t {
-        uint32_t v;
-        std::memcpy(&v, raw_.data() + o, 4);
-        return v;
-    };
-    auto r16 = [&](size_t o) -> uint16_t {
-        uint16_t v;
-        std::memcpy(&v, raw_.data() + o, 2);
-        return v;
-    };
-
-    file_.magic = r32(0x00);
+bool PCCParser::readPreliminaryHeader() {
+    if (raw_.size() < 12) {
+        Logger->error("File too small for header");
+        return false;
+    }
+    file_.magic = readU32(raw_, 0x00);
     if (file_.magic != PCC_MAGIC_NUMBER) {
-        Logger->error("Bad magic: 0x" + std::to_string(file_.magic));
+        Logger->error("Bad magic: {:#x}", file_.magic);
         raw_.clear();
+        return false;
+    }
+    file_.unrealVersion = static_cast<uint16_t>(readU32(raw_, 0x04) & 0xFFFF);
+    file_.licenseeVersion = static_cast<uint16_t>((readU32(raw_, 0x04) >> 16) & 0xFFFF);
+    file_.headerSize = readU32(raw_, 0x08);
+
+    size_t p = skipFolderName(raw_, 0x0C);
+    compStartOffset_ = p;
+    if (p + 4 <= raw_.size()) {
+        file_.packageFlags = readU32(raw_, p);
+    }
+
+    Logger->info("readPreliminary: version={}/{} headerSize={} pkgFlags={:#x} compStart={:#x} rawSize={}", file_.unrealVersion, file_.licenseeVersion,
+                 file_.headerSize, file_.packageFlags, compStartOffset_, raw_.size());
+    return true;
+}
+
+void PCCParser::readFullHeader() {
+    const auto& buf = decompressed_.empty() ? raw_ : decompressed_;
+    if (buf.size() < 16) {
         return;
     }
-    file_.unrealVersion = r16(0x04);
-    file_.licenseeVersion = r16(0x06);
-    file_.packageFlags = r32(0x15);
-    file_.compressionType = r32(0x75);
+    auto r32 = [&](size_t o) {
+        return readU32(buf, o);
+    };
+
+    size_t p = skipFolderName(buf, 0x0C);
+    if (p + 4 > buf.size()) {
+        return;
+    }
+
+    file_.packageFlags = r32(p);
+    p += 4;
+    p += 4; // LE3: unknown field (always 0) after PackageFlags
+    file_.nameCount = r32(p);
+    p += 4;
+    file_.nameOffset = r32(p);
+    p += 4;
+    file_.exportCount = r32(p);
+    p += 4;
+    file_.exportOffset = r32(p);
+    p += 4;
+    file_.importCount = r32(p);
+    p += 4;
+    file_.importOffset = r32(p);
+    p += 4;
+
+    uint32_t depOff = r32(p);
+    p += 4;
+    uint32_t hdrOff = r32(p);
+    p += 4;
+    uint32_t depCount = r32(p);
+    p += 4;
+    uint32_t headersCount = r32(p);
+    p += 4;
+    p += 4;  // LE3: extra zero field
+    p += 16; // GUID
+    uint32_t genCount = r32(p);
+    p += 4;
+    p += static_cast<size_t>(genCount) * 12; // generations
+    uint32_t engineVer = r32(p);
+    p += 4;
+    uint32_t cookerVer = r32(p);
+    p += 4;
+    p += 8; // LE3: two unknown fields
+
+    file_.compressionType = r32(p);
+    p += 4;
+    file_.compressedChunkCount = r32(p);
+    p += 4;
+    file_.compressedChunksOffset = p;
+
+    Logger->info("readFullHeader: pkgFlags={:#x} names={} nameOff={} exports={} exportOff={} imports={} importOff={} engine={} cooker={} compression={} "
+                 "chunks={} bufSize={}",
+                 file_.packageFlags, file_.nameCount, file_.nameOffset, file_.exportCount, file_.exportOffset, file_.importCount, file_.importOffset, engineVer,
+                 cookerVer, file_.compressionType, file_.compressedChunkCount, buf.size());
 }
 
 void PCCParser::decompress() {
     if (raw_.empty()) {
         return;
     }
+    if ((file_.packageFlags & static_cast<uint32_t>(PCCPackageFlags::FullyCompressed)) != 0) {
+        decompressFullyCompressed();
+        return;
+    }
+    decompressChunked();
+}
+
+void PCCParser::decompressFullyCompressed() {
+    if (!Oodle_init()) {
+        Logger->error("Oodle init failed for FullyCompressed");
+        return;
+    }
+    size_t compStart = compStartOffset_;
+    if (compStart >= raw_.size()) {
+        Logger->error("FullyCompressed: compStart {:#x} past file end {}", compStart, raw_.size());
+        return;
+    }
+    const uint8_t* compData = raw_.data() + compStart;
+    size_t compLen = raw_.size() - compStart;
+    size_t maxUncomp = compLen * 8;
+    std::vector<uint8_t> uncompBuf(compStart + maxUncomp);
+    std::memcpy(uncompBuf.data(), raw_.data(), compStart);
+    size_t written = Oodle_decompress(compData, compLen, uncompBuf.data() + compStart, maxUncomp);
+    if (written == 0) {
+        Logger->error("FullyCompressed: Oodle decompress failed");
+        return;
+    }
+    decompressed_.assign(uncompBuf.begin(), uncompBuf.begin() + compStart + written);
+    Logger->info("FullyCompressed: {} -> {} bytes, total={}", compLen, written, decompressed_.size());
+}
+
+void PCCParser::decompressChunked() {
     if (file_.compressionType == 0) {
         decompressed_ = raw_;
         return;
     }
     if (file_.compressionType != PCC_COMPRESSION_SCHEME) {
-        Logger->error("Unsupported compression: " + std::to_string(file_.compressionType));
+        Logger->error("Unsupported compression: {}", file_.compressionType);
         return;
     }
     if (!Oodle_init()) {
@@ -82,35 +232,62 @@ void PCCParser::decompress() {
         return;
     }
 
-    const uint32_t BLOCK_SIZE = 262144;
-    uint32_t chunkCount;
-    std::memcpy(&chunkCount, raw_.data() + 0x79, 4);
-    size_t tableOff = 0x7D;
+    constexpr uint32_t kBlockSize = 262144;
+    constexpr uint32_t kMaxChunks = 4096;
+    uint32_t chunkCount = file_.compressedChunkCount;
+    size_t tableOff = file_.compressedChunksOffset;
 
     struct Chunk {
             int32_t uncompOffset, uncompSize, compOffset, compSize;
     };
+    if (chunkCount > kMaxChunks || tableOff + static_cast<size_t>(chunkCount) * 16 > raw_.size()) {
+        Logger->error("Chunk table out of bounds");
+        return;
+    }
     std::vector<Chunk> chunks(chunkCount);
     size_t maxEnd = 0;
     for (uint32_t i = 0; i < chunkCount; ++i) {
         std::memcpy(&chunks[i], raw_.data() + tableOff + i * 16, 16);
-        maxEnd = std::max<size_t>(maxEnd, static_cast<size_t>(chunks[i].uncompOffset + chunks[i].uncompSize));
+        if (chunks[i].uncompOffset >= 0 && chunks[i].uncompSize > 0 && chunks[i].uncompSize < (1 << 30)) {
+            maxEnd = (std::max)(maxEnd, static_cast<size_t>(chunks[i].uncompOffset) + static_cast<size_t>(chunks[i].uncompSize));
+        }
+    }
+    if (maxEnd == 0 || maxEnd > (1u << 31)) {
+        Logger->error("Invalid decompressed size");
+        return;
     }
     decompressed_.resize(maxEnd);
-    std::memcpy(decompressed_.data(), raw_.data(), 0x83);
+    size_t rawHeaderEnd = tableOff + static_cast<size_t>(chunkCount) * 16;
+    if (rawHeaderEnd > raw_.size()) {
+        rawHeaderEnd = raw_.size();
+    }
+    if (rawHeaderEnd > maxEnd) {
+        rawHeaderEnd = maxEnd;
+    }
+    std::memcpy(decompressed_.data(), raw_.data(), rawHeaderEnd);
 
     for (const auto& c : chunks) {
-        if (c.uncompSize <= 0) {
+        if (c.uncompSize <= 0 || c.uncompOffset < 0 || c.compOffset < 0 || c.compSize <= 0) {
             continue;
         }
-        uint32_t blockCount = (static_cast<uint32_t>(c.uncompSize) + BLOCK_SIZE - 1) / BLOCK_SIZE;
+        size_t uOff = static_cast<size_t>(c.uncompOffset);
+        size_t uSize = static_cast<size_t>(c.uncompSize);
+        if (uOff + uSize > decompressed_.size()) {
+            Logger->error("Chunk target out of bounds, skipping");
+            continue;
+        }
+        uint32_t blockCount = (static_cast<uint32_t>(c.uncompSize) + kBlockSize - 1) / kBlockSize;
         size_t hdrs = 16 + static_cast<size_t>(blockCount) * 8;
         size_t dataOff = static_cast<size_t>(c.compOffset) + hdrs;
+        if (dataOff >= raw_.size() || static_cast<size_t>(c.compSize) < hdrs || dataOff + (static_cast<size_t>(c.compSize) - hdrs) > raw_.size()) {
+            Logger->error("Chunk source out of bounds, skipping");
+            continue;
+        }
         size_t dataLen = static_cast<size_t>(c.compSize) - hdrs;
         std::vector<uint8_t> tmp(static_cast<size_t>(c.uncompSize));
         size_t written = Oodle_decompress(raw_.data() + dataOff, dataLen, tmp.data(), tmp.size());
         if (written != static_cast<size_t>(c.uncompSize)) {
-            Logger->error("Oodle decompress failed");
+            Logger->error("Oodle decompress failed for chunk");
             decompressed_.clear();
             return;
         }
@@ -118,24 +295,54 @@ void PCCParser::decompress() {
     }
 }
 
+static void appendUtf8(std::string& out, wchar_t c) {
+    if (c < 0x80) {
+        out += static_cast<char>(c);
+    } else if (c < 0x800) {
+        out += static_cast<char>(0xC0 | (c >> 6));
+        out += static_cast<char>(0x80 | (c & 0x3F));
+    } else {
+        out += static_cast<char>(0xE0 | (c >> 12));
+        out += static_cast<char>(0x80 | ((c >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (c & 0x3F));
+    }
+}
+
 void PCCParser::parseNameTable() {
-    uint32_t nameCount, nameOff;
-    std::memcpy(&nameCount, raw_.data() + 0x19, 4);
-    std::memcpy(&nameOff, raw_.data() + 0x1D, 4);
-    file_.names.reserve(nameCount);
-    size_t pos = nameOff;
-    for (uint32_t i = 0; i < nameCount; ++i) {
+    constexpr int kMaxNameLen = 4096;
+    size_t pos = file_.nameOffset;
+    file_.names.reserve(file_.nameCount);
+    for (uint32_t i = 0; i < file_.nameCount; ++i) {
         if (pos + 4 > decompressed_.size()) {
             break;
         }
-        int32_t nameLen;
+        int32_t nameLen = 0;
         std::memcpy(&nameLen, decompressed_.data() + pos, 4);
         pos += 4;
-        if (nameLen <= 0 || pos + static_cast<size_t>(nameLen) > decompressed_.size()) {
-            break;
+        if (nameLen == 0) {
+            file_.names.emplace_back();
+            continue;
         }
-        file_.names.emplace_back(reinterpret_cast<const char*>(decompressed_.data() + pos), nameLen - 1);
-        pos += nameLen;
+        if (nameLen < 0) {
+            int wcount = -nameLen; // wchar count including null
+            if (wcount > kMaxNameLen || pos + static_cast<size_t>(wcount) * 2 > decompressed_.size()) {
+                break;
+            }
+            const wchar_t* w = reinterpret_cast<const wchar_t*>(decompressed_.data() + pos);
+            std::string s;
+            s.reserve(static_cast<size_t>(wcount));
+            for (int k = 0; k < wcount && w[k] != 0; ++k) {
+                appendUtf8(s, w[k]);
+            }
+            file_.names.push_back(std::move(s));
+            pos += static_cast<size_t>(wcount) * 2;
+        } else {
+            if (nameLen > kMaxNameLen || pos + static_cast<size_t>(nameLen) > decompressed_.size()) {
+                break;
+            }
+            file_.names.emplace_back(reinterpret_cast<const char*>(decompressed_.data() + pos), nameLen - 1);
+            pos += nameLen;
+        }
     }
 }
 
@@ -163,12 +370,9 @@ std::string PCCParser::resolveObjectIndex(int32_t objectIndex) const {
 }
 
 void PCCParser::parseImportTable() {
-    uint32_t impCount, impOff;
-    std::memcpy(&impCount, raw_.data() + 0x29, 4);
-    std::memcpy(&impOff, raw_.data() + 0x2D, 4);
-    file_.imports.reserve(impCount);
-    size_t pos = impOff;
-    for (uint32_t i = 0; i < impCount; ++i) {
+    size_t pos = file_.importOffset;
+    file_.imports.reserve(file_.importCount);
+    for (uint32_t i = 0; i < file_.importCount; ++i) {
         if (pos + 28 > decompressed_.size()) {
             break;
         }
@@ -188,13 +392,10 @@ void PCCParser::parseImportTable() {
 }
 
 void PCCParser::parseExportTable() {
-    uint32_t expCount, expOff;
-    std::memcpy(&expCount, raw_.data() + 0x21, 4);
-    std::memcpy(&expOff, raw_.data() + 0x25, 4);
-    file_.exports.reserve(expCount);
-    size_t pos = expOff;
+    size_t pos = file_.exportOffset;
+    file_.exports.reserve(file_.exportCount);
 
-    for (uint32_t i = 0; i < expCount; ++i) {
+    for (uint32_t i = 0; i < file_.exportCount; ++i) {
         if (pos + 40 > decompressed_.size()) {
             break;
         }

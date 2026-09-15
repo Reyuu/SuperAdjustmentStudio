@@ -3,11 +3,12 @@
 
 #include "hook_manager.h"
 #include "sdk.h"
+#include "settings.h"
 #include "util.h"
 #include <string>
 #include <vector>
 
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 #define GET_MEMBER_SLOT_POINTER(cls, parent, request) (BYTE*)parent + offsetof(cls, request);
 
@@ -45,6 +46,9 @@ class Gizmo {
         bool& clickSelect() {
             return clickSelectState;
         }
+        bool& showBonePivot() {
+            return showBonePivotState;
+        }
 
         void initHooks(HookManager& hooks, SDKContext& sdk);
         void setTarget(AActor* actor);
@@ -54,11 +58,12 @@ class Gizmo {
         void processEvent(UObject* Context, UFunction* Function, void* Parms, void* Result);
 
     private:
-        bool showGizmoState = false;
-        bool drawTracerState = false;
-        bool debugAlwaysOnTopState = false;
-        bool highlightSelectedState = false;
-        bool clickSelectState = false;
+        bool showGizmoState = SETTINGS_TOGGLE_OFF;
+        bool drawTracerState = SETTINGS_TOGGLE_OFF;
+        bool debugAlwaysOnTopState = SETTINGS_TOGGLE_OFF;
+        bool highlightSelectedState = SETTINGS_TOGGLE_OFF;
+        bool clickSelectState = SETTINGS_TOGGLE_OFF;
+        bool showBonePivotState = SETTINGS_TOGGLE_OFF;
 
         // original UObject::ProcessEvent, to forward after batching
         ProcessEventFn origProcessEvent = nullptr;

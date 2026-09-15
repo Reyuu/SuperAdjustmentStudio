@@ -133,7 +133,7 @@ static bool computeActorWorldBounds(AActor* target, FVector& outOrigin, FVector&
     localOrigin.Y *= target->DrawScale3D.Y;
     localOrigin.Z *= target->DrawScale3D.Z;
     FVector worldOriginOffset = RotateVector(localOrigin, target->Rotation);
-    FVector origin = target->Location;
+    FVector origin = target->LOCATION;
     origin.X += worldOriginOffset.X;
     origin.Y += worldOriginOffset.Y;
     origin.Z += worldOriginOffset.Z;
@@ -289,7 +289,7 @@ void PrefabManager::nudgeLights(int idx) {
             continue;
         }
 
-        FVector loc = light->Location;
+        FVector loc = light->LOCATION;
         FVector nudge{loc.X + 1.0f, loc.Y, loc.Z};
         light->SetLocation(nudge);
         light->SetLocation(loc);
@@ -582,9 +582,9 @@ void PrefabManager::spawnPrefab(const std::string& name) {
         UClass* cls = arcActor->Class;
         FVector loc = baseLoc;
         FRotator rot = baseRot;
-        loc.X += arcActor->Location.X;
-        loc.Y += arcActor->Location.Y;
-        loc.Z += arcActor->Location.Z;
+        loc.X += arcActor->LOCATION.X;
+        loc.Y += arcActor->LOCATION.Y;
+        loc.Z += arcActor->LOCATION.Z;
         rot.Pitch += arcActor->Rotation.Pitch;
         rot.Yaw += arcActor->Rotation.Yaw;
         rot.Roll += arcActor->Rotation.Roll;
@@ -599,7 +599,11 @@ void PrefabManager::spawnPrefab(const std::string& name) {
             cdo->bNoDelete = 0;
         }
 
+#ifdef SDK_TARGET_LE3
+        AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, arcActor, NULL, 1);
+#else
         AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, arcActor, NULL, 1, 0);
+#endif
         if (cdo) {
             cdo->bStatic = cdoStatic;
             cdo->bNoDelete = cdoNoDelete;
@@ -630,8 +634,12 @@ void PrefabManager::spawnPrefab(const std::string& name) {
             prim->bCastDynamicShadow = 1;
             if (co->IsA(UStaticMeshComponent::StaticClass())) {
                 UStaticMeshComponent* smc = static_cast<UStaticMeshComponent*>(co);
+#ifdef SDK_TARGET_LE3
+                smc->bUsePrecomputedShadows = 0;
+#else
                 smc->LightmassSettings.bUseTwoSidedLighting = 0;
                 smc->bUsePrecomputedShadows = 0;
+#endif
             }
         }
         spawnedActors.push_back(spawned);
@@ -684,7 +692,6 @@ void PrefabManager::removePrefabByName(const std::string& name, const std::strin
         fixupSelectedActive();
     }
 
-    // use same mechanism as Target menu (Engine::removeActor)
     for (AActor* actor : entry.actors) {
         if (!actor) {
             continue;
@@ -698,33 +705,20 @@ void PrefabManager::removePrefabByName(const std::string& name, const std::strin
         if (!nm.empty()) {
             Application::instance().engine().removeActor(nm);
         }
-        if (isLiveObject(actor)) {
-            if (!actor->Destroy()) {
-                actor->LifeSpan = 0.001f;
-            }
-        }
     }
 
     for (AActor* light : entry.lights) {
         if (!light) {
             continue;
         }
-
         std::string nm;
         try {
             nm = FStringToUtf8(light->GetName());
         } catch (...) {
             nm = "";
         }
-
         if (!nm.empty()) {
             Application::instance().engine().removeActor(nm);
-        }
-
-        if (isLiveObject(light)) {
-            if (!light->Destroy()) {
-                light->LifeSpan = 0.001f;
-            }
         }
     }
 }
@@ -829,7 +823,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
             }
         }
     }
-    if (ImGui::DragFloat(t("ui.prefabs_table.brightness_all"), &allB, 0.1f, 0.0f, 20.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.brightness_all"), &allB, 0.1f, SETTINGS_PREFAB_BRIGHTNESS_MIN, SETTINGS_PREFAB_BRIGHTNESS_MAX)) {
         lightBrightness = allB;
         int sa = selActive;
         float b = allB;
@@ -856,7 +850,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
             nudgeLights(sa);
         });
     }
-    if (ImGui::DragFloat(t("ui.prefabs_table.radius_all"), &allR, 10.0f, 0.0f, 3000.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.radius_all"), &allR, 10.0f, SETTINGS_PREFAB_RADIUS_MIN, SETTINGS_PREFAB_RADIUS_MAX)) {
         lightRadius = allR;
         int sa = selActive;
         float r = allR;
@@ -907,7 +901,7 @@ void PrefabManager::renderLightBulkControls(const std::vector<PrefabEntry>& entr
 // Expansion slider; throttled while dragging, final update on release
 void PrefabManager::renderLightExpansionControl() {
     float curExp = lightExpansion;
-    if (ImGui::DragFloat(t("ui.prefabs_table.expansion_all"), &curExp, 5.0f, -200.0f, 500.0f)) {
+    if (ImGui::DragFloat(t("ui.prefabs_table.expansion_all"), &curExp, 5.0f, SETTINGS_PREFAB_EXPANSION_MIN, SETTINGS_PREFAB_EXPANSION_MAX)) {
         lightExpansion = curExp;
         if (ImGui::GetTime() - lastExpansionUpdate > 0.25f) {
             lastExpansionUpdate = ImGui::GetTime();
@@ -997,15 +991,8 @@ void PrefabManager::renderLightRow(AActor* light, size_t lightIndex) {
     if (ImGui::Button((std::string(t("ui.prefabs_table.delete")) + "##light" + std::to_string(lightIndex)).c_str())) {
         std::string lName = FStringToUtf8(light->GetName());
         Application::instance().engine().postGameThreadTask([this, lName]() {
-            // same mechanism as Target menu: Engine::removeActor handles spawnedNames + Destroy
             if (!lName.empty()) {
                 Application::instance().engine().removeActor(lName);
-            }
-            AActor* found = Application::instance().engine().findActorByName(lName);
-            if (isLiveObject(found)) {
-                if (!found->Destroy()) {
-                    found->LifeSpan = 0.001f;
-                }
             }
             std::lock_guard<std::recursive_mutex> lock(mutex);
             for (auto& entry : prefabEntries) {
@@ -1013,17 +1000,6 @@ void PrefabManager::renderLightRow(AActor* light, size_t lightIndex) {
                 for (size_t k = 0; k < lights.size(); ++k) {
                     AActor* lk = lights[k];
                     if (lk && FStringToUtf8(lk->GetName()) == lName) {
-                        // ensure destroyed if still live
-                        if (isLiveObject(lk)) {
-                            if (!lk->Destroy()) {
-                                lk->LifeSpan = 0.001f;
-                            }
-                        }
-                        lights.erase(lights.begin() + k);
-                        return;
-                    }
-                    // also match by pointer if name mismatch
-                    if (lk == found) {
                         lights.erase(lights.begin() + k);
                         return;
                     }

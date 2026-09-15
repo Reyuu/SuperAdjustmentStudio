@@ -1,4 +1,52 @@
+CompileFlags:
+  Compiler: clang-cl
+  Add:
+    - --target=x86_64-pc-windows-msvc
+    - -fms-compatibility
+    - -fms-extensions
+    - -std=c++20
+    - -DWIN32_LEAN_AND_MEAN
+    - -DUNICODE
+    - -D_UNICODE
+    - -DSDK_TARGET_LE2
+    - -Wno-microsoft
+    - -Wno-nonportable-include-path
+    - -Wno-macro-redefined
+  Remove:
+    - /MP*
+    - /FS
+    - /Fd*
+    - /Fo*
+    - /Fe*
+    - /showIncludes*
+    - /nologo
+    - /Yu*
+    - /Fp*
+    - /Yc*
+    - /Zm*
+    - /O*
+    - /Ob*
+
+Completion:
+  AllScopes: Yes
+
+Hover:
+  ShowAKA: Yes
+
 Diagnostics:
-  Ignore:
-    - Matches: ".*/src/particles\.(h|cpp)"
-    - Matches: ".*/src/vfx\.(h|cpp)"
+  UnusedIncludes: None
+
+Index:
+  Background: Build
+
+---
+If:
+  PathMatch: .*/src/(particles|vfx)\.(h|cpp)
+Diagnostics:
+  Suppress: '*'
+
+---
+If:
+  PathMatch: .*/(build|out)/.*
+Index:
+  Background: Skip

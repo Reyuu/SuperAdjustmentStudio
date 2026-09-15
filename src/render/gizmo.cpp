@@ -12,12 +12,28 @@
 #include <sstream>
 
 #include <LESDK/Common/Math.hpp>
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 #include "imgui.h"
 #include "tracy.h"
 
 static void DrawWorldLineOnTop(ABioHUD* hud, FVector a, FVector b, const FColor& color);
+static bool GetCameraView(ABioHUD* hud, FVector& loc, FVector& fwd);
+static bool ClipSegment(const FVector& camLoc, const FVector& camFwd, float nearDist, FVector& a, FVector& b);
+
+// invoke fn(p0, p1) for each segment of a circle in the plane of u and v
+template <typename Fn> static void ForCircle(const FVector& center, const float u[3], const float v[3], float radius, int segments, Fn&& fn) {
+    constexpr float tau = 2.0f * static_cast<float>(std::numbers::pi);
+    for (int i = 0; i < segments; ++i) {
+        float a0 = static_cast<float>(i) / static_cast<float>(segments) * tau;
+        float a1 = static_cast<float>(i + 1) / static_cast<float>(segments) * tau;
+        float c0 = std::cos(a0), s0 = std::sin(a0);
+        float c1 = std::cos(a1), s1 = std::sin(a1);
+        FVector p0{center.X + radius * (c0 * u[0] + s0 * v[0]), center.Y + radius * (c0 * u[1] + s0 * v[1]), center.Z + radius * (c0 * u[2] + s0 * v[2])};
+        FVector p1{center.X + radius * (c1 * u[0] + s1 * v[0]), center.Y + radius * (c1 * u[1] + s1 * v[1]), center.Z + radius * (c1 * u[2] + s1 * v[2])};
+        fn(p0, p1);
+    }
+}
 
 // X=forward, Y=right, Z=up
 static void RotatorToBasis(const FRotator& r, float outF[3], float outR[3], float outU[3]) {
@@ -34,16 +50,9 @@ static void RotatorToBasis(const FRotator& r, float outF[3], float outR[3], floa
     outU[2] = m.ZPlane.Z;
 }
 
-// in-engine drawing
-static void DrawWorldGizmo(ULineBatchComponent* lineBatcher, AActor* actor) {
-    float ax[3];
-    float ay[3];
-    float az[3];
-
-    RotatorToBasis(actor->Rotation, ax, ay, az);
-    FVector origin{actor->Location.X, actor->Location.Y, actor->Location.Z};
-    const float len = 80.0f;
-    const float thickness = 2.5f;
+// in-engine drawing: RGB axes from an origin + basis (X=red, Y=green, Z=blue)
+static void DrawAxes(ULineBatchComponent* lineBatcher, const FVector& origin, const float ax[3], const float ay[3], const float az[3], float len,
+                     float thickness) {
     const float* axes[3] = {ax, ay, az};
     const FLinearColor colors[3] = {
         {1, 0, 0, 1}, // RED
@@ -63,6 +72,123 @@ static void DrawWorldGizmo(ULineBatchComponent* lineBatcher, AActor* actor) {
     DrawLine(self, origin, endX, colors[0], 1, 0);
 }
 
+// in-engine drawing
+static void DrawWorldGizmo(ULineBatchComponent* lineBatcher, AActor* actor) {
+    float ax[3];
+    float ay[3];
+    float az[3];
+
+    RotatorToBasis(actor->Rotation, ax, ay, az);
+    FVector origin{actor->LOCATION.X, actor->LOCATION.Y, actor->LOCATION.Z};
+    DrawAxes(lineBatcher, origin, ax, ay, az, 80.0f, 2.5f);
+}
+
+// bone pivot gizmo in the bone's own orientation (local space), for the bone selected in the UI
+static bool ResolveBonePivot(FVector& pos, float b[3][3]) {
+    std::string pawn;
+    int target = 0, listPos = 0, bIdx = -1;
+    if (!Application::instance().ui().getSelectedBone(pawn, target, listPos, bIdx)) {
+        return false;
+    }
+    FVector x, y, z;
+    if (!Application::instance().bones().getBoneWorldBasis(pawn, (MeshTarget)target, bIdx, pos, x, y, z)) {
+        return false;
+    }
+    static std::string lastPivotKey;
+    std::string key = pawn + "/" + std::to_string(target) + "/" + std::to_string(bIdx);
+    if (key != lastPivotKey) {
+        lastPivotKey = key;
+        std::ostringstream ss;
+        ss << "ResolveBonePivot: '" << key << "' at (" << pos.X << "," << pos.Y << "," << pos.Z << ")";
+        Logger->debug(ss.str());
+    }
+    b[0][0] = x.X;
+    b[0][1] = x.Y;
+    b[0][2] = x.Z;
+    b[1][0] = y.X;
+    b[1][1] = y.Y;
+    b[1][2] = y.Z;
+    b[2][0] = z.X;
+    b[2][1] = z.Y;
+    b[2][2] = z.Z;
+    return true;
+}
+
+static void DrawBonePivot(ULineBatchComponent* lineBatcher) {
+    FVector pos;
+    float b[3][3];
+    if (!ResolveBonePivot(pos, b)) {
+        return;
+    }
+    void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
+    auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
+    const FLinearColor colors[3] = {
+        {1, 0, 0, 1},
+        {0, 1, 0, 1},
+        {0, 0, 1, 1}
+    };
+    auto draw = [&](const FVector& p0, const FVector& p1, const FLinearColor& c) {
+        DrawLine(self, p0, p1, c, 1, 2.0f);
+    };
+    ForCircle(pos, b[1], b[2], 20.0f, 48, [&](const FVector& p0, const FVector& p1) {
+        draw(p0, p1, colors[0]);
+    });
+    ForCircle(pos, b[0], b[2], 20.0f, 48, [&](const FVector& p0, const FVector& p1) {
+        draw(p0, p1, colors[1]);
+    });
+    ForCircle(pos, b[0], b[1], 20.0f, 48, [&](const FVector& p0, const FVector& p1) {
+        draw(p0, p1, colors[2]);
+    });
+}
+
+// solid pivot dot (size in px, FColor carries opacity)
+static void DrawPivotDot(ABioHUD* hud, const FVector& worldPos, float size, const FColor& color) {
+    UCanvas* canvas = hud ? hud->Canvas : nullptr;
+    FVector camLoc, camFwd;
+    if (!canvas || !GetCameraView(hud, camLoc, camFwd)) {
+        return;
+    }
+    FVector a = worldPos;
+    if (!ClipSegment(camLoc, camFwd, 20.0f, a, a)) {
+        return;
+    }
+    FVector s = canvas->Project(a);
+
+    const float orgX = canvas->OrgX;
+    const float orgY = canvas->OrgY;
+    const float clipX = canvas->ClipX;
+    const float clipY = canvas->ClipY;
+    const float curX = canvas->CurX;
+    const float curY = canvas->CurY;
+    const FColor draw = canvas->DrawColor;
+
+    canvas->OrgX = 0.0f;
+    canvas->OrgY = 0.0f;
+    canvas->ClipX = (float)canvas->SizeX;
+    canvas->ClipY = (float)canvas->SizeY;
+    canvas->CurX = s.X - size * 0.5f;
+    canvas->CurY = s.Y - size * 0.5f;
+    canvas->DrawColor = color;
+    canvas->DrawBox(size, size);
+
+    canvas->OrgX = orgX;
+    canvas->OrgY = orgY;
+    canvas->ClipX = clipX;
+    canvas->ClipY = clipY;
+    canvas->CurX = curX;
+    canvas->CurY = curY;
+    canvas->DrawColor = draw;
+}
+
+static void DrawBonePivotDot(ABioHUD* hud) {
+    FVector pos;
+    float b[3][3];
+    if (!ResolveBonePivot(pos, b)) {
+        return;
+    }
+    DrawPivotDot(hud, pos, 10.0f, FColor{255, 255, 255, 77});
+}
+
 static void DrawLightRadius(ULineBatchComponent* lineBatcher, AActor* actor) {
     if (!actor || !actor->IsA(ALight::StaticClass())) {
         return;
@@ -78,7 +204,7 @@ static void DrawLightRadius(ULineBatchComponent* lineBatcher, AActor* actor) {
     }
     void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
     auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
-    FVector center = actor->Location;
+    FVector center = actor->LOCATION;
     const FLinearColor color{1.0f, 0.85f, 0.1f, 1.0f};
     constexpr int segments = 24;
     constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
@@ -132,7 +258,7 @@ static void DrawLightOrientation(ULineBatchComponent* lineBatcher, AActor* actor
     float length = (point->Radius > 100.0f) ? point->Radius : 100.0f;
     void* self = GET_MEMBER_SLOT_POINTER(ULineBatchComponent, lineBatcher, FPrimitiveDrawInterfaceVfTable);
     auto DrawLine = lineBatcher->FPrimitiveDrawInterfaceVfTable->DrawLine;
-    FVector origin = actor->Location;
+    FVector origin = actor->LOCATION;
     FVector tip{origin.X + forward[0] * length, origin.Y + forward[1] * length, origin.Z + forward[2] * length};
     const FLinearColor dirColor{0.2f, 0.8f, 1.0f, 1.0f};
     const FLinearColor outerColor{0.2f, 0.8f, 1.0f, 1.0f};
@@ -176,7 +302,7 @@ static void DrawLightRadiusOnTop(ABioHUD* hud, AActor* actor) {
         return;
     }
     float radius = static_cast<UPointLightComponent*>(component)->Radius;
-    FVector center = actor->Location;
+    FVector center = actor->LOCATION;
     constexpr int segments = 24;
     constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
     const FColor color{26, 217, 255, 255};
@@ -207,7 +333,7 @@ static void DrawLightOrientationOnTop(ABioHUD* hud, AActor* actor) {
     RotatorToBasis(actor->Rotation, forward, right, up);
     UPointLightComponent* point = static_cast<UPointLightComponent*>(component);
     float length = (point->Radius > 100.0f) ? point->Radius : 100.0f;
-    FVector origin = actor->Location;
+    FVector origin = actor->LOCATION;
     FVector tip{origin.X + forward[0] * length, origin.Y + forward[1] * length, origin.Z + forward[2] * length};
     const FColor dirColor{255, 204, 51, 255};
     const FColor outerColor{255, 204, 51, 255};
@@ -320,15 +446,7 @@ static void DrawWorldLineOnTop(ABioHUD* hud, FVector a, FVector b, const FColor&
     canvas->ClipY = clipY;
 }
 
-static void DrawWorldGizmoOnTop(ABioHUD* hud, AActor* actor) {
-    float ax[3];
-    float ay[3];
-    float az[3];
-
-    RotatorToBasis(actor->Rotation, ax, ay, az);
-    FVector origin = actor->Location;
-
-    const float len = 80.0f;
+static void DrawAxesOnTop(ABioHUD* hud, const FVector& origin, const float ax[3], const float ay[3], const float az[3], float len) {
     const float* axes[3] = {ax, ay, az};
     const FColor colors[3] = {
         {0,   0,   255, 255}, // RED
@@ -340,6 +458,38 @@ static void DrawWorldGizmoOnTop(ABioHUD* hud, AActor* actor) {
         FVector end{origin.X + axes[i][0] * len, origin.Y + axes[i][1] * len, origin.Z + axes[i][2] * len};
         DrawWorldLineOnTop(hud, origin, end, colors[i]);
     }
+}
+
+static void DrawWorldGizmoOnTop(ABioHUD* hud, AActor* actor) {
+    float ax[3];
+    float ay[3];
+    float az[3];
+
+    RotatorToBasis(actor->Rotation, ax, ay, az);
+    FVector origin = actor->LOCATION;
+    DrawAxesOnTop(hud, origin, ax, ay, az, 80.0f);
+}
+
+static void DrawBonePivotOnTop(ABioHUD* hud) {
+    FVector pos;
+    float b[3][3];
+    if (!ResolveBonePivot(pos, b)) {
+        return;
+    }
+    const FColor colors[3] = {
+        {255, 0,   0,   255},
+        {0,   255, 0,   255},
+        {0,   0,   255, 255}
+    };
+    ForCircle(pos, b[1], b[2], 20.0f, 48, [&](const FVector& p0, const FVector& p1) {
+        DrawWorldLineOnTop(hud, p0, p1, colors[0]);
+    });
+    ForCircle(pos, b[0], b[2], 20.0f, 48, [&](const FVector& p0, const FVector& p1) {
+        DrawWorldLineOnTop(hud, p0, p1, colors[1]);
+    });
+    ForCircle(pos, b[0], b[1], 20.0f, 48, [&](const FVector& p0, const FVector& p1) {
+        DrawWorldLineOnTop(hud, p0, p1, colors[2]);
+    });
 }
 
 static void DrawTracerOnTop(ABioHUD* hud, const FVector& from, const FVector& to) {
@@ -405,8 +555,8 @@ static bool GetActorBoundsBox(AActor* actor, FBox& out) {
         const float hY = 50.0f * (s.Y > 0.01f ? s.Y : 1.0f);
         const float hZ = 50.0f * (s.Z > 0.01f ? s.Z : 1.0f);
 
-        out.Min = {actor->Location.X - hX, actor->Location.Y - hY, actor->Location.Z - hZ};
-        out.Max = {actor->Location.X + hX, actor->Location.Y + hY, actor->Location.Z + hZ};
+        out.Min = {actor->LOCATION.X - hX, actor->LOCATION.Y - hY, actor->LOCATION.Z - hZ};
+        out.Max = {actor->LOCATION.X + hX, actor->LOCATION.Y + hY, actor->LOCATION.Z + hZ};
         out.IsValid = 1;
     }
     return out.IsValid != 0;
@@ -457,7 +607,7 @@ static bool GetActorOBB(AActor* actor, FVector out[8]) {
         return FVector{v.X * f[0] + v.Y * r[0] + v.Z * u[0], v.X * f[1] + v.Y * r[1] + v.Z * u[1], v.X * f[2] + v.Y * r[2] + v.Z * u[2]};
     };
 
-    FVector worldOrigin = actor->Location;
+    FVector worldOrigin = actor->LOCATION;
     FVector ro = rotate(localOrigin);
     worldOrigin.X += ro.X;
     worldOrigin.Y += ro.Y;
@@ -651,7 +801,11 @@ void Gizmo::pickFromScreen(ABioHUD* hud, float mouseX, float mouseY) {
     FTraceHitInfo hitInfo;
     AActor* hit = nullptr;
     if (hud->PlayerOwner && isObjectStillLive(hud->PlayerOwner)) {
+#ifdef SDK_TARGET_LE3
+        hit = hud->PlayerOwner->Trace(end, origin, 1, FVector{0.0f, 0.0f, 0.0f}, 0, &hitLocation, &hitNormal, &hitInfo);
+#else
         hit = hud->PlayerOwner->Trace(end, origin, 1, FVector{0.0f, 0.0f, 0.0f}, 0, 0, &hitLocation, &hitNormal, &hitInfo);
+#endif
     }
     if (hit && isObjectStillLive(hit)) {
         Application::instance().ui().selectActor(hit);
@@ -694,29 +848,33 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                 checkClickSelect(hud);
             }
             // avoid expensive GObj scan when no gizmo visuals enabled
-            if (!showGizmoState && !highlightSelectedState && !drawTracerState && !debugAlwaysOnTopState) {
+            if (!showGizmoState && !highlightSelectedState && !drawTracerState && !debugAlwaysOnTopState && !showBonePivotState) {
                 actor = nullptr;
             } else {
                 actor = gizmoActor();
             }
             if (debugAlwaysOnTopState) {
                 drawOnTop = actor != nullptr;
-            } else if (actor) {
+            } else {
                 UWorld* world = GWorld ? *GWorld : nullptr;
                 ULineBatchComponent* lb = world ? world->PersistentLineBatcher : nullptr;
                 if (lb && lb->FPrimitiveDrawInterfaceVfTable) {
-                    if (showGizmoState) {
+                    if (showGizmoState && actor) {
                         DrawWorldGizmo(lb, actor);
                         DrawLightRadius(lb, actor);
                         DrawLightOrientation(lb, actor);
                     }
-                    if (highlightSelectedState) {
+                    if (highlightSelectedState && actor) {
                         DrawWorldOBB(lb, actor);
+                    }
+                    if (showBonePivotState) {
+                        DrawBonePivot(lb);
+                        DrawBonePivotDot(hud);
                     }
 
                     APawn* playerPawn = GetPlayerPawn(hud);
-                    if (drawTracerState && playerPawn) {
-                        DrawTracer(lb, playerPawn->Location, actor->Location);
+                    if (drawTracerState && actor && playerPawn) {
+                        DrawTracer(lb, playerPawn->LOCATION, actor->LOCATION);
                     }
                 }
             }
@@ -747,11 +905,15 @@ void Gizmo::processEvent(UObject* Context, UFunction* Function, void* Parms, voi
                 DrawLightRadiusOnTop(hud, actor);
                 DrawLightOrientationOnTop(hud, actor);
             }
+            if (showBonePivotState) {
+                DrawBonePivotOnTop(hud);
+                DrawBonePivotDot(hud);
+            }
             if (highlightSelectedState) {
                 DrawWorldOBBOnTop(hud, actor);
             }
             if (drawTracerState && playerPawn) {
-                DrawTracerOnTop(hud, playerPawn->Location, actor->Location);
+                DrawTracerOnTop(hud, playerPawn->LOCATION, actor->LOCATION);
             }
         }
     } SAS_HOOK_CATCH_VOID

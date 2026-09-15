@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 #include <windows.h>
@@ -94,73 +95,107 @@ void Settings::clampAndValidate() {
         options.theme = "default";
     }
 
-    options.freecamMoveSpeed = std::clamp(options.freecamMoveSpeed, SETTINGS_FREECAM_MOVE_SPEED_MIN, SETTINGS_FREECAM_MOVE_SPEED_MAX);
+    options.shotMultiplier = std::clamp(options.shotMultiplier, SETTINGS_SHOT_MULTIPLIER_MIN, SETTINGS_SHOT_MULTIPLIER_MAX);
+    options.shotOverlap = std::clamp(options.shotOverlap, SETTINGS_SHOT_OVERLAP_MIN, SETTINGS_SHOT_OVERLAP_MAX);
+    if (options.shotFormat != "png" && options.shotFormat != "bmp" && options.shotFormat != "jpeg") {
+        options.shotFormat = "png";
+    }
+
     options.fontSize = std::clamp(options.fontSize, SETTINGS_FONT_SIZE_MIN, SETTINGS_FONT_SIZE_MAX);
-    int vk = VK_F10;
-    if (!tryVkFromName(options.showOverlay, &vk)) {
+    OverlayHotkey hotkey;
+    if (!Settings::tryParseHotkey(options.showOverlay, &hotkey) || Settings::nameFromVk(hotkey.key).empty()) {
         options.showOverlay = "F10";
     } else {
-        const std::string canonical = nameFromVk(vk);
-        if (canonical.empty()) {
-            options.showOverlay = "F10";
-        } else {
-            options.showOverlay = canonical;
-        }
+        options.showOverlay = Settings::formatHotkey(hotkey);
     }
 }
 
 void Settings::loadFromJson(const nlohmann::json& j) {
-    SettingOptions next = options;
-    if (j.contains("language") && j["language"].is_string()) {
-        next.language = j["language"].get<std::string>();
-    }
-
-    if (j.contains("fontSize") && j["fontSize"].is_number()) {
-        next.fontSize = j["fontSize"].get<int>();
-    }
-
-    if (j.contains("theme") && j["theme"].is_string()) {
-        next.theme = j["theme"].get<std::string>();
-    }
-
-    if (j.contains("showOverlay") && j["showOverlay"].is_string()) {
-        next.showOverlay = j["showOverlay"].get<std::string>();
-    }
-
-    const auto loadFreecamFloat = [&](const char* key, float& field) {
-        if (j.contains(key) && j[key].is_number()) {
-            field = j[key].get<float>();
+    SettingsOptions next = options;
+    auto loadValue = [](const nlohmann::json& object, const char* key, auto& value) {
+        const auto it = object.find(key);
+        if (it == object.end()) {
+            return;
         }
+
+        using Value = std::remove_cvref_t<decltype(value)>;
+        if constexpr (std::is_same_v<Value, std::string>) {
+            if (!it->is_string()) {
+                return;
+            }
+        } else if constexpr (std::is_same_v<Value, bool>) {
+            if (!it->is_boolean()) {
+                return;
+            }
+        } else if (!it->is_number()) {
+            return;
+        }
+        value = it->get<Value>();
     };
-    loadFreecamFloat("freecamMoveSpeed", next.freecamMoveSpeed);
-    loadFreecamFloat("freecamFOV", next.freecamFOV);
-    loadFreecamFloat("freecamRoll", next.freecamRoll);
-    loadFreecamFloat("freecamDofDistance", next.freecamDofDistance);
-    loadFreecamFloat("freecamDofInnerRadius", next.freecamDofInnerRadius);
-    loadFreecamFloat("freecamDofFStop", next.freecamDofFStop);
-    loadFreecamFloat("freecamDofIntensity", next.freecamDofIntensity);
-    loadFreecamFloat("freecamBloomThreshold", next.freecamBloomThreshold);
-    loadFreecamFloat("freecamBloomScale", next.freecamBloomScale);
-    loadFreecamFloat("freecamContrast", next.freecamContrast);
-    loadFreecamFloat("freecamBright", next.freecamBright);
-    loadFreecamFloat("freecamSat", next.freecamSat);
+
+    loadValue(j, "language", next.language);
+    loadValue(j, "fontSize", next.fontSize);
+    loadValue(j, "theme", next.theme);
+    loadValue(j, "showOverlay", next.showOverlay);
+    loadValue(j, "shotMultiplier", next.shotMultiplier);
+    loadValue(j, "shotOverlap", next.shotOverlap);
+    loadValue(j, "shotFormat", next.shotFormat);
+    loadValue(j, "shotSaveDir", next.shotSaveDir);
+    loadValue(j, "shotExtraUnlit", next.shotExtraUnlit);
+
+    if (j.contains("lutLayers") && j["lutLayers"].is_array()) {
+        next.lutLayers.clear();
+        for (const auto& layer : j["lutLayers"]) {
+            if (!layer.is_object()) {
+                continue;
+            }
+            LutLayerOptions outLayer;
+            loadValue(layer, "ref", outLayer.ref);
+            if (outLayer.ref.empty()) {
+                continue;
+            }
+            loadValue(layer, "enabled", outLayer.enabled);
+            loadValue(layer, "blend", outLayer.blend);
+            loadValue(layer, "chroma", outLayer.chroma);
+            loadValue(layer, "luma", outLayer.luma);
+            loadValue(layer, "useDepth", outLayer.useDepth);
+            loadValue(layer, "depthFocus", outLayer.depthFocus);
+            loadValue(layer, "depthRange", outLayer.depthRange);
+            loadValue(layer, "blendMin", outLayer.blendMin);
+            loadValue(layer, "blendMax", outLayer.blendMax);
+            loadValue(layer, "previewDepth", outLayer.previewDepth);
+            loadValue(layer, "heatPreview", outLayer.heatPreview);
+            next.lutLayers.push_back(outLayer);
+        }
+    }
+    loadValue(j, "lutDepthCapture", next.lutDepthCapture);
+    loadValue(j, "lutDepthShowTexture", next.lutDepthShowTexture);
+    loadValue(j, "lutDepthSource", next.lutDepthSource);
+    loadValue(j, "lutDepthLinearize", next.lutDepthLinearize);
+    loadValue(j, "lutDepthInvert", next.lutDepthInvert);
+    loadValue(j, "lutDepthNear", next.lutDepthNear);
+    loadValue(j, "lutDepthFar", next.lutDepthFar);
+    loadValue(j, "lutDepthEveryN", next.lutDepthEveryN);
 
     bool changed = false;
     changed |= next.language != options.language;
     changed |= next.fontSize != options.fontSize;
     changed |= next.theme != options.theme;
-    changed |= next.freecamMoveSpeed != options.freecamMoveSpeed;
-    changed |= next.freecamFOV != options.freecamFOV;
-    changed |= next.freecamRoll != options.freecamRoll;
-    changed |= next.freecamDofDistance != options.freecamDofDistance;
-    changed |= next.freecamDofInnerRadius != options.freecamDofInnerRadius;
-    changed |= next.freecamDofFStop != options.freecamDofFStop;
-    changed |= next.freecamDofIntensity != options.freecamDofIntensity;
-    changed |= next.freecamBloomThreshold != options.freecamBloomThreshold;
-    changed |= next.freecamBloomScale != options.freecamBloomScale;
-    changed |= next.freecamContrast != options.freecamContrast;
-    changed |= next.freecamBright != options.freecamBright;
-    changed |= next.freecamSat != options.freecamSat;
+    changed |= next.showOverlay != options.showOverlay;
+    changed |= next.shotMultiplier != options.shotMultiplier;
+    changed |= next.shotOverlap != options.shotOverlap;
+    changed |= next.shotFormat != options.shotFormat;
+    changed |= next.shotSaveDir != options.shotSaveDir;
+    changed |= next.shotExtraUnlit != options.shotExtraUnlit;
+    changed |= next.lutLayers != options.lutLayers;
+    changed |= next.lutDepthCapture != options.lutDepthCapture;
+    changed |= next.lutDepthShowTexture != options.lutDepthShowTexture;
+    changed |= next.lutDepthSource != options.lutDepthSource;
+    changed |= next.lutDepthLinearize != options.lutDepthLinearize;
+    changed |= next.lutDepthInvert != options.lutDepthInvert;
+    changed |= next.lutDepthNear != options.lutDepthNear;
+    changed |= next.lutDepthFar != options.lutDepthFar;
+    changed |= next.lutDepthEveryN != options.lutDepthEveryN;
 
     options = next;
     clampAndValidate();
@@ -175,18 +210,39 @@ nlohmann::json Settings::toJson() const {
     j["fontSize"] = options.fontSize;
     j["theme"] = options.theme;
     j["showOverlay"] = options.showOverlay;
-    j["freecamMoveSpeed"] = options.freecamMoveSpeed;
-    j["freecamFOV"] = options.freecamFOV;
-    j["freecamRoll"] = options.freecamRoll;
-    j["freecamDofDistance"] = options.freecamDofDistance;
-    j["freecamDofInnerRadius"] = options.freecamDofInnerRadius;
-    j["freecamDofFStop"] = options.freecamDofFStop;
-    j["freecamDofIntensity"] = options.freecamDofIntensity;
-    j["freecamBloomThreshold"] = options.freecamBloomThreshold;
-    j["freecamBloomScale"] = options.freecamBloomScale;
-    j["freecamContrast"] = options.freecamContrast;
-    j["freecamBright"] = options.freecamBright;
-    j["freecamSat"] = options.freecamSat;
+
+    j["shotMultiplier"] = options.shotMultiplier;
+    j["shotOverlap"] = options.shotOverlap;
+    j["shotFormat"] = options.shotFormat;
+    j["shotSaveDir"] = options.shotSaveDir;
+    j["shotExtraUnlit"] = options.shotExtraUnlit;
+
+    nlohmann::json layers = nlohmann::json::array();
+    for (const auto& layer : options.lutLayers) {
+        nlohmann::json out;
+        out["ref"] = layer.ref;
+        out["enabled"] = layer.enabled;
+        out["blend"] = layer.blend;
+        out["chroma"] = layer.chroma;
+        out["luma"] = layer.luma;
+        out["useDepth"] = layer.useDepth;
+        out["depthFocus"] = layer.depthFocus;
+        out["depthRange"] = layer.depthRange;
+        out["blendMin"] = layer.blendMin;
+        out["blendMax"] = layer.blendMax;
+        out["previewDepth"] = layer.previewDepth;
+        out["heatPreview"] = layer.heatPreview;
+        layers.push_back(out);
+    }
+    j["lutLayers"] = layers;
+    j["lutDepthCapture"] = options.lutDepthCapture;
+    j["lutDepthShowTexture"] = options.lutDepthShowTexture;
+    j["lutDepthSource"] = options.lutDepthSource;
+    j["lutDepthLinearize"] = options.lutDepthLinearize;
+    j["lutDepthInvert"] = options.lutDepthInvert;
+    j["lutDepthNear"] = options.lutDepthNear;
+    j["lutDepthFar"] = options.lutDepthFar;
+    j["lutDepthEveryN"] = options.lutDepthEveryN;
 
     return j;
 }
@@ -391,21 +447,25 @@ static std::string displayNameForVk(int vk) {
             return "MEDIANEXT";
         case VK_MEDIA_PREV_TRACK:
             return "MEDIAPREV";
-        case VK_MEDIA_STOP:
+        case VK_MEDIA_STOP: {
             return "MEDIASTOP";
-        case VK_MEDIA_PLAY_PAUSE:
+        case VK_MEDIA_PLAY_PAUSE: {
             return "MEDIAPLAYPAUSE";
-        case VK_LAUNCH_MAIL:
-            return "LAUNCHMAIL";
-        case VK_LAUNCH_MEDIA_SELECT:
-            return "LAUNCHMEDIA";
-        case VK_LAUNCH_APP1: {
-            return "LAUNCHAPP1";
-        case VK_LAUNCH_APP2: {
-            return "LAUNCHAPP2";
-            default: {
-                break;
+            case VK_LAUNCH_MAIL: {
+                return "LAUNCHMAIL";
+                case VK_LAUNCH_MEDIA_SELECT: {
+                    return "LAUNCHMEDIA";
+                    case VK_LAUNCH_APP1: {
+                        return "LAUNCHAPP1";
+                        case VK_LAUNCH_APP2: {
+                            return "LAUNCHAPP2";
+                            default: {
+                                break;
         }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -425,6 +485,78 @@ static std::string displayNameForVk(int vk) {
         return {};
     }
     return normalizeKeyName(buf);
+}
+
+bool Settings::isModifierKey(int vk) {
+    return vk == VK_SHIFT || vk == VK_LSHIFT || vk == VK_RSHIFT || vk == VK_CONTROL || vk == VK_LCONTROL || vk == VK_RCONTROL || vk == VK_MENU ||
+           vk == VK_LMENU || vk == VK_RMENU;
+}
+
+void Settings::queryModdifiers(bool* ctrl, bool* alt, bool* shift) {
+    if (ctrl) {
+        *ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+    }
+    if (alt) {
+        *alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+    }
+    if (shift) {
+        *shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+    }
+}
+
+bool Settings::tryParseHotkey(const std::string& text, OverlayHotkey* hotkey) {
+    OverlayHotkey hotkeyOut;
+    std::string token;
+    std::istringstream iss(text);
+    std::vector<std::string> tokens;
+    while (std::getline(iss, token, '+')) {
+        std::string t = trimUpper(token);
+        if (!t.empty()) {
+            tokens.push_back(t);
+        }
+    }
+
+    if (tokens.empty()) {
+        return false;
+    }
+    for (size_t i = 0; i + 1 < tokens.size(); ++i) {
+        if (tokens[i] == "CTRL" || tokens[i] == "CONTROL") {
+            hotkeyOut.ctrl = true;
+        } else if (tokens[i] == "ALT" || tokens[i] == "MENU") {
+            hotkeyOut.alt = true;
+        } else if (tokens[i] == "SHIFT") {
+            hotkeyOut.shift = true;
+        }
+    }
+    int vk = 0;
+    if (!tryVkFromName(tokens.back(), &vk)) {
+        return false;
+    }
+    if (isModifierKey(vk) || vk == VK_LWIN || vk == VK_RWIN || vk == VK_ESCAPE) {
+        return false;
+    }
+    hotkeyOut.key = vk;
+    if (hotkey) {
+        *hotkey = hotkeyOut;
+    }
+    return true;
+}
+
+std::string Settings::formatHotkey(const OverlayHotkey& hotkey) {
+    std::string result;
+    if (hotkey.ctrl) {
+        result += "Ctrl+";
+    }
+    if (hotkey.alt) {
+        result += "Alt+";
+    }
+    if (hotkey.shift) {
+        result += "Shift+";
+    }
+    if (hotkey.key != 0) {
+        result += displayNameForVk(hotkey.key);
+    }
+    return result;
 }
 
 static std::unordered_map<std::string, int> buildVkNameTable() {
@@ -512,7 +644,7 @@ void Settings::renderSettingsWindow(bool* open) {
         return;
     }
 
-    SettingOptions& opts = options;
+    SettingsOptions& opts = options;
     auto& toasts = Application::instance().ui().toastManager;
 
     int langCount = 0;
@@ -588,49 +720,75 @@ void Settings::renderSettingsWindow(bool* open) {
     }
     ImGui::PopItemWidth();
 
-    static const std::vector<std::string> allHotkeys = [] {
-        std::vector<std::string> out;
-        for (int n = 1; n <= 24; ++n) {
-            out.push_back("F" + std::to_string(n));
-        }
-        for (int vk = 0x08; vk <= 0xFF; ++vk) {
-            if (vk >= VK_F1 && vk <= VK_F24) {
-                continue;
-            }
-            std::string nm = Settings::nameFromVk(vk);
-            if (nm.empty()) {
-                continue;
-            }
-            int round = 0;
-            if (!Settings::tryVkFromName(nm, &round) || round != vk) {
-                continue;
-            }
-            out.push_back(nm);
-        }
-        std::sort(out.begin() + 24, out.end());
-        return out;
-    }();
-    int hotkeyIndex = 0;
-    for (int i = 0; i < (int)allHotkeys.size(); ++i) {
-        if (opts.showOverlay == allHotkeys[i]) {
-            hotkeyIndex = i;
-            break;
-        }
-    }
     ImGui::Text(t("ui.settings_table.overlay_hotkey"));
     ImGui::PushItemWidth(-100);
-    if (hotkeyIndex < (int)allHotkeys.size() && ImGui::BeginCombo("##settings_hotkey", allHotkeys[hotkeyIndex].c_str())) {
-        for (int i = 0; i < (int)allHotkeys.size(); ++i) {
-            const bool selected = (i == hotkeyIndex);
-            if (ImGui::Selectable((allHotkeys[i] + "##" + std::to_string(i)).c_str(), selected)) {
-                opts.showOverlay = allHotkeys[i];
-                markChanged();
+    {
+        SettingsOptions& o = opts;
+        if (!capturingHotkey) {
+            ImGui::TextUnformatted(o.showOverlay.c_str());
+            ImGui::SameLine();
+            if (ImGui::Button(t("ui.settings_table.capture_hotkey"))) {
+                capturingHotkey = true;
+                for (int i = 0; i < 256; ++i) {
+                    capturePrevDown[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
+                }
             }
-            if (selected) {
-                ImGui::SetItemDefaultFocus();
+        } else {
+            ImGui::TextUnformatted(t("ui.settings_table.capturing_hotkey"));
+            ImGui::SameLine();
+            if (ImGui::Button(t("ui.settings_table.cancel_hotkey"))) {
+                capturingHotkey = false;
+            } else {
+                bool cur[256];
+                for (int i = 0; i < 256; ++i) {
+                    cur[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
+                }
+
+                auto edge = [&](int key) {
+                    return cur[key] && !capturePrevDown[key];
+                };
+
+                if (edge(VK_ESCAPE)) {
+                    capturingHotkey = false;
+                } else {
+                    // ignore certain keys when capturing hotkey
+                    // modifiers are captured separately and should be ignored here
+                    static const int keysSkip[] = {VK_SHIFT, VK_LSHIFT,  VK_RSHIFT,  VK_CONTROL, VK_LCONTROL, VK_RCONTROL, VK_MENU, VK_LMENU,
+                                                   VK_RMENU, VK_CAPITAL, VK_NUMLOCK, VK_SCROLL,  VK_LWIN,     VK_RWIN,     VK_APPS, VK_ESCAPE};
+                    auto skippable = [&](int key) {
+                        for (int k : keysSkip) {
+                            if (k == key) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
+                    for (int vk = 0x08; vk <= 0xFF; ++vk) {
+                        if (skippable(vk)) {
+                            continue;
+                        }
+                        if (!edge(vk)) {
+                            continue;
+                        }
+
+                        bool controlState;
+                        bool shiftState;
+                        bool altState;
+
+                        Settings::queryModdifiers(&controlState, &altState, &shiftState);
+                        OverlayHotkey hk{controlState, altState, shiftState, vk};
+                        o.showOverlay = Settings::formatHotkey(hk);
+                        markChanged();
+                        capturingHotkey = false;
+                        break;
+                    }
+                }
+                for (int i = 0; i < 256; ++i) {
+                    capturePrevDown[i] = cur[i];
+                }
             }
         }
-        ImGui::EndCombo();
     }
     ImGui::PopItemWidth();
 

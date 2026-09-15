@@ -7,7 +7,7 @@ build/
 .cache/
 compile_commands.json
 package-lock.json
-.build_last_config
+.build_last_config*
 fix-sdk-layout.patch
 patches/fix-sdk-layout.patch
 # Byte-compiled / optimized / DLL files

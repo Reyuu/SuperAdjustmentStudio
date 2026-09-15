@@ -9,22 +9,69 @@
 #include "util.h"
 
 #include "vfx.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 #include "tracy.h"
 
-static UBioVFXTemplate* findVFXTemplateByName(const std::string& name) {
-    UBioVFXTemplate* vfxTemplate = nullptr;
-    forEachOf<UBioVFXTemplate>([&](UBioVFXTemplate* vfx) {
+#ifdef SDK_TARGET_LE3
+#include "le3_compat.h"
+#endif
+
+VfxTemplateT* VFXManager::findTemplateByName(const std::string& name) {
+    VfxTemplateT* found = nullptr;
+    forEachOf<VfxTemplateT>([&](VfxTemplateT* vfx) {
         if (vfx && toLowerStr(FStringToUtf8(vfx->GetName())).find(toLowerStr(name)) != std::string::npos) {
-            vfxTemplate = vfx;
+            found = vfx;
         }
     });
-
-    return vfxTemplate;
+    return found;
 }
 
-void VFXManager::addVFX(UBioVFXTemplate* vfxTemplate, AActor* actor, const std::string& boneName, float lifeTime, double spawnTime) {
+#ifdef SDK_TARGET_LE3
+void VFXManager::addVFX(VfxTemplateT* vfxTemplate, AActor* actor, const std::string& boneName, float lifeTime, double spawnTime) {
+    if (!vfxTemplate) {
+        Logger->debug("addVFX: vfxTemplate is null");
+        return;
+    }
+    if (!actor) {
+        Logger->debug("addVFX: actor is null");
+        return;
+    }
+    URvrClientEffectManager* mgr = GetCEManager();
+    if (!mgr) {
+        Logger->debug("addVFX: no CE manager available");
+        return;
+    }
+    FRvrClientEffectTarget target{};
+    target.HitActor = actor;
+    if (!boneName.empty()) {
+        target.HitBone = SFXName(boneName.c_str(), 0);
+    }
+    FGuid guid = mgr->StartOnTarget(vfxTemplate, actor, &target);
+    if (IsGuidZero(guid)) {
+        Logger->debug("addVFX: StartOnTarget failed for '{}'", FStringToUtf8(vfxTemplate->GetName()));
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(vfxMtx);
+        VFXEntry entry;
+        entry.name = FStringToUtf8(vfxTemplate->GetName());
+        entry.path = FStringToUtf8(vfxTemplate->GetFullPath());
+        entry.pawnName = FStringToUtf8(actor->GetName());
+        entry.boneName = boneName;
+        entry.lifeTime = lifeTime;
+        entry.spawnTime = spawnTime;
+        entry.templateRef = vfxTemplate;
+        entry.effectGuid = guid;
+        entry.effectOwner = actor;
+        entry.loop = loopVFX;
+        entry.loopDelay = loopDelayVFX;
+        vfxEntries.push_back(entry);
+    }
+    applyVFXLiveState(vfxEntries.back());
+}
+#else
+void VFXManager::addVFX(VfxTemplateT* vfxTemplate, AActor* actor, const std::string& boneName, float lifeTime, double spawnTime) {
     if (!vfxTemplate) {
         Logger->debug("addVFX: vfxTemplate is null");
         return;
@@ -57,23 +104,22 @@ void VFXManager::addVFX(UBioVFXTemplate* vfxTemplate, AActor* actor, const std::
         }
     }
 
-    // if (vfxTemplate->bIsCrustEffect) {...}
-
+    if (!isLiveObject(donor)) {
+        Logger->debug("addVFX: no donor effect available");
+        return;
+    }
     ABioVisualEffect* vfxActor = nullptr;
     vfxActor = donor->CreateCrustEffect(vfxTemplate, actor, lifeTime, 0);
-    // attach to bone
     if (!vfxActor && actor->IsA(APawn::StaticClass())) {
         vfxActor = donor->CreateVFXOnMesh(vfxTemplate, actor, SFXName(boneName.c_str(), 0), lifeTime, static_cast<APawn*>(actor)->Mesh, 0);
     }
-
     if (!vfxActor && actor->IsA(ASFXPawn::StaticClass())) {
         ASFXPawn* sfxPawn = static_cast<ASFXPawn*>(actor);
         sfxPawn->CreateVisualEffect(vfxTemplate, &vfxActor);
     }
 
-    // go on, make it live
     if (vfxActor) {
-        // capture originals before any camera stripping, for later restore
+        // capture originals before camera stripping, for later restore
         {
             std::lock_guard<std::mutex> lock(vfxMtx);
             VFXEntry entry;
@@ -93,9 +139,26 @@ void VFXManager::addVFX(UBioVFXTemplate* vfxTemplate, AActor* actor, const std::
         applyVFXLiveState(vfxEntries.back());
     }
 }
+#endif
+
+static void eraseEntry(std::vector<VFXEntry>& entries, VFXEntry& entry) {
+    for (auto it = entries.begin(); it != entries.end(); ++it) {
+        if (&(*it) == &entry) {
+            entries.erase(it);
+            return;
+        }
+    }
+}
 
 void VFXManager::removeVFX(VFXEntry& entry) {
     std::lock_guard<std::mutex> lock(vfxMtx);
+#ifdef SDK_TARGET_LE3
+    if (entry.templateRef && !IsGuidZero(entry.effectGuid) && entry.effectOwner) {
+        if (URvrClientEffectManager* mgr = GetCEManager()) {
+            mgr->Stop(entry.templateRef, entry.effectGuid, 0, entry.effectOwner);
+        }
+    }
+#else
     if (entry.actor) {
         entry.actor->SetPaused(1, true);
         entry.actor->SetLifeTime(0.0f);
@@ -105,35 +168,52 @@ void VFXManager::removeVFX(VFXEntry& entry) {
         entry.actor->fStateDurations[1] = 0.0f; // LIFE
         entry.actor->bActive = 0;
         entry.actor->bPaused = 1;
-        entry.actor->SetState(2, true, true, false); // BVFX_DE
+        entry.actor->SetState(2, true, true, false); // BVFX_DEATH
         entry.actor->eventOnComplete();
         entry.actor = nullptr;
     }
-
-    // pop the entry from the list
-    for (auto it = vfxEntries.begin(); it != vfxEntries.end(); ++it) {
-        if (&(*it) == &entry) {
-            vfxEntries.erase(it);
-            break;
-        }
-    }
+#endif
+    eraseEntry(vfxEntries, entry);
 }
 
 void VFXManager::removeAllVFX() {
-    for (VFXEntry& entry : vfxEntries) {
-        if (entry.actor) {
-            removeVFX(entry);
+    std::lock_guard<std::mutex> lock(vfxMtx);
+#ifdef SDK_TARGET_LE3
+    URvrClientEffectManager* mgr = GetCEManager();
+    for (VFXEntry& e : vfxEntries) {
+        if (mgr && e.templateRef && !IsGuidZero(e.effectGuid) && e.effectOwner) {
+            mgr->Stop(e.templateRef, e.effectGuid, 0, e.effectOwner);
         }
     }
+#else
+    for (VFXEntry& e : vfxEntries) {
+        if (e.actor && isLiveObject(e.actor)) {
+            e.actor->SetPaused(1, true);
+            e.actor->SetLifeTime(0.0f);
+            e.actor->LoopDuration(0);
+            e.actor->PauseOnDeath(1);
+            e.actor->fStateDurations[0] = 0.0f; // SPAWN
+            e.actor->fStateDurations[1] = 0.0f; // LIFE
+            e.actor->bActive = 0;
+            e.actor->bPaused = 1;
+            e.actor->SetState(2, true, true, false); // BVFX_DEATH
+            e.actor->eventOnComplete();
+        }
+        e.actor = nullptr;
+    }
+#endif
+    vfxEntries.clear();
 }
 
 void VFXManager::applyVFXLiveState(VFXEntry& entry) {
+#ifdef SDK_TARGET_LE3
+    (void)entry; // manager owns lifetime and looping in LE3
+#else
     ABioVisualEffect* a = entry.actor;
     if (!a) {
         return;
     }
     if (ignoreCameraMovement) {
-        // strip any camera movement the VFX template would apply
         a->m_cameraShake = nullptr;
         a->m_cameraShakenActor = nullptr;
     } else {
@@ -148,11 +228,42 @@ void VFXManager::applyVFXLiveState(VFXEntry& entry) {
     a->fStateDurations[1] = entry.lifeTime; // LIFE
     a->bActive = 1;
     a->bPaused = 0;
-    a->bDeleteSelf = 0; // keep the revived effect alive; otherwise the engine would delete it right after we re-trigger
-    // eCurrentState is an enum, 0=SPAWN, 1=LIFE, 2=DEATH
+    a->bDeleteSelf = 0; // keep the revived effect alive past re-trigger
+    // eCurrentState: 0 SPAWN, 1 LIFE, 2 DEATH
     a->SetState(1, true, true, false); // BVFX_LIFE
+#endif
 }
 
+#ifdef SDK_TARGET_LE3
+void VFXManager::updateActiveVFX() {
+    std::lock_guard<std::mutex> lock(vfxMtx);
+    double now = ImGui::GetTime();
+    for (auto it = vfxEntries.begin(); it != vfxEntries.end();) {
+        VFXEntry& e = *it;
+        if (e.loop) {
+            if (e.nextLoopTime == 0.0) {
+                e.nextLoopTime = now + e.loopDelay;
+            } else if (now >= e.nextLoopTime) {
+                if (URvrClientEffectManager* mgr = GetCEManager(); mgr && e.templateRef && e.effectOwner) {
+                    mgr->Stop(e.templateRef, e.effectGuid, 0, e.effectOwner);
+                    FRvrClientEffectTarget target{};
+                    target.HitActor = e.effectOwner;
+                    if (!e.boneName.empty()) {
+                        target.HitBone = SFXName(e.boneName.c_str(), 0);
+                    }
+                    e.effectGuid = mgr->StartOnTarget(e.templateRef, e.effectOwner, &target);
+                }
+                e.nextLoopTime = 0.0;
+            }
+            ++it;
+        } else if ((now - e.spawnTime) >= (double)e.lifeTime) {
+            it = vfxEntries.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+#else
 void VFXManager::updateActiveVFX() {
     std::lock_guard<std::mutex> lock(vfxMtx);
     double now = ImGui::GetTime();
@@ -163,11 +274,9 @@ void VFXManager::updateActiveVFX() {
             continue;
         }
         if (e.loop) {
-            // re-trigger a finished effect so it visibly loops, waiting loopDelay between cycles
             bool ended = !e.actor->bActive || e.actor->bDeleteSelf || e.actor->eCurrentState == 2;
             if (ended) {
                 if (e.nextLoopTime == 0.0) {
-                    // effect just ended: schedule the next re-trigger after the wait duration
                     e.nextLoopTime = now + e.loopDelay;
                 } else if (now >= e.nextLoopTime) {
                     applyVFXLiveState(e);
@@ -176,15 +285,15 @@ void VFXManager::updateActiveVFX() {
             }
             ++it;
         } else if ((now - e.spawnTime) >= (double)e.lifeTime) {
-            // auto-remove once our own lifetime has elapsed
             it = vfxEntries.erase(it);
         } else {
             ++it;
         }
     }
 }
+#endif
 
-bool VFXTemplateNameLess::operator()(UBioVFXTemplate* a, UBioVFXTemplate* b) const {
+bool VFXTemplateNameLess::operator()(VfxTemplateT* a, VfxTemplateT* b) const {
     return toLowerStr(FStringToUtf8(a->GetName())) < toLowerStr(FStringToUtf8(b->GetName()));
 }
 
@@ -194,10 +303,16 @@ void VFXManager::findAvailableTemplates(bool forceRefresh) {
         return;
     }
     availableTemplates.clear();
-    forEachOf<UBioVFXTemplate>([&](UBioVFXTemplate* vfx) {
-        if (vfx && vfx->bIsInitialized) {
-            availableTemplates.insert(vfx);
+    forEachOf<VfxTemplateT>([&](VfxTemplateT* vfx) {
+        if (!vfx) {
+            return;
         }
+#ifdef SDK_TARGET_LE3
+        availableTemplates.insert(vfx);
+#else
+        if (vfx->bIsInitialized)
+            availableTemplates.insert(vfx);
+#endif
     });
 }
 
@@ -208,9 +323,7 @@ void VFXManager::renderUI() {
     }
 
     static std::string selectedVFXName;
-    findAvailableTemplates(); // populate availableTemplates on first use
-
-    // periodically auto-remove expired (non-looping) VFX from the active list
+    findAvailableTemplates(); // populate on first use
     {
         static float lastAutoPrune = 0.0f;
         if (ImGui::GetTime() - lastAutoPrune > 0.25f) {
@@ -222,8 +335,7 @@ void VFXManager::renderUI() {
     }
 
     ImGui::Indent();
-    // list available templates
-    // allow user to select a template and spawn it on a selected pawn
+
     static std::string boneSelect;
     static std::string cachedPawnForBones;
     static std::vector<BonePoseInfo> cachedBones;
@@ -237,6 +349,7 @@ void VFXManager::renderUI() {
             }
         }
     }
+
     std::vector<BonePoseInfo>& bones = cachedBones;
     if (showBoneSelection) {
         if (boneSelect.empty() && !bones.empty()) {
@@ -254,7 +367,6 @@ void VFXManager::renderUI() {
         }
         ImGui::PopItemWidth();
     } else {
-        // select first bone by default if no selection
         boneSelect = bones.empty() ? "" : bones[0].boneName;
     }
 
@@ -268,23 +380,23 @@ void VFXManager::renderUI() {
     std::string filterLower = toLowerStr(vfxSearchFilter);
     ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT)) {
+    if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##vfx_refresh")) {
         findAvailableTemplates(true);
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_PLUS "##vfx_spawn_btn")) {
-        // spawn the selected VFX on the selected pawn
         AActor* actor = Application::instance().engine().findActorByName(Application::instance().ui().getSelectedPawnName());
         if (actor) {
-            UBioVFXTemplate* vfxTemplate = findVFXTemplateByName(selectedVFXName);
-            if (vfxTemplate) {
+            VfxTemplateT* tmpl = VFXManager::findTemplateByName(selectedVFXName);
+            if (tmpl) {
                 double spawnTime = ImGui::GetTime();
-                Application::instance().engine().postGameThreadTask([this, vfxTemplate, actor, boneSelect = boneSelect, spawnTime]() {
-                    addVFX(vfxTemplate, actor, boneSelect.c_str(), vfxDuration, spawnTime);
+                Application::instance().engine().postGameThreadTask([this, tmpl, actor, boneSelect = boneSelect, spawnTime]() {
+                    addVFX(tmpl, actor, boneSelect.c_str(), vfxDuration, spawnTime);
                 });
             }
         }
     }
+
     {
         ChildScope child("##vfx_available_list", ImVec2(0, 120), true);
         if (child.open) {
@@ -292,28 +404,29 @@ void VFXManager::renderUI() {
             filteredNames.clear();
             if (filterLower.empty()) {
                 filteredNames.reserve(availableTemplates.size());
-                for (UBioVFXTemplate* vfxTemplate : availableTemplates) {
-                    if (!vfxTemplate) {
+                for (auto* tmpl : availableTemplates) {
+                    if (!tmpl) {
                         continue;
                     }
-                    filteredNames.push_back(FStringToUtf8(vfxTemplate->GetName()));
+                    filteredNames.push_back(FStringToUtf8(tmpl->GetName()));
                 }
                 ImGuiListClipper clipper;
                 clipper.Begin((int)filteredNames.size());
                 while (clipper.Step()) {
                     for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                         const std::string& name = filteredNames[n];
-                        if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
+                        std::string id = name + "##" + std::to_string(n);
+                        if (ImGui::Selectable(id.c_str(), selectedVFXName == name)) {
                             selectedVFXName = name;
                         }
                     }
                 }
             } else {
-                for (UBioVFXTemplate* vfxTemplate : availableTemplates) {
-                    if (!vfxTemplate) {
+                for (auto* tmpl : availableTemplates) {
+                    if (!tmpl) {
                         continue;
                     }
-                    std::string name = FStringToUtf8(vfxTemplate->GetName());
+                    std::string name = FStringToUtf8(tmpl->GetName());
                     if (toLowerStr(name).find(filterLower) == std::string::npos) {
                         continue;
                     }
@@ -327,7 +440,8 @@ void VFXManager::renderUI() {
                     while (clipper.Step()) {
                         for (int n = clipper.DisplayStart; n < clipper.DisplayEnd; ++n) {
                             const std::string& name = filteredNames[n];
-                            if (ImGui::Selectable(name.c_str(), selectedVFXName == name)) {
+                            std::string id = name + "##f" + std::to_string(n);
+                            if (ImGui::Selectable(id.c_str(), selectedVFXName == name)) {
                                 selectedVFXName = name;
                             }
                         }
@@ -343,36 +457,37 @@ void VFXManager::renderUI() {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     if (ImGui::Checkbox((std::string(ICON_FA_CAMERA " ") + t("ui.vfx_table.ignore_cam_movement") + "##vfx_ignore_cam").c_str(), &ignoreCameraMovement)) {
-        // apply/restore the camera-shake setting on all currently active VFX
         Application::instance().engine().postGameThreadTask([this]() {
             std::lock_guard<std::mutex> lock(vfxMtx);
-            for (VFXEntry& entry : vfxEntries) {
-                if (!entry.actor) {
+#ifndef SDK_TARGET_LE3
+            for (VFXEntry& e : vfxEntries) {
+                if (!e.actor) {
                     continue;
                 }
                 if (ignoreCameraMovement) {
-                    entry.actor->m_cameraShake = nullptr;
-                    entry.actor->m_cameraShakenActor = nullptr;
+                    e.actor->m_cameraShake = nullptr;
+                    e.actor->m_cameraShakenActor = nullptr;
                 } else {
-                    entry.actor->m_cameraShake = entry.cameraShake;
-                    entry.actor->m_cameraShakenActor = entry.cameraShakenActor;
+                    e.actor->m_cameraShake = e.cameraShake;
+                    e.actor->m_cameraShakenActor = e.cameraShakenActor;
                 }
             }
+#endif
         });
     }
     ImGui::TableNextColumn();
 
     if (ImGui::Checkbox((std::string(ICON_FA_REPEAT " ") + t("ui.vfx_table.loop") + "##vfx_loop").c_str(), &loopVFX)) {
-        // apply/restore looping on all currently active VFX
         Application::instance().engine().postGameThreadTask([this]() {
             std::lock_guard<std::mutex> lock(vfxMtx);
-            for (VFXEntry& entry : vfxEntries) {
-                if (entry.actor) {
-                    entry.actor->LoopDuration(loopVFX ? 1 : 0);
-                    entry.loop = loopVFX;
-                    entry.loopDelay = loopDelayVFX;
-                    entry.nextLoopTime = 0.0;
-                }
+            for (VFXEntry& e : vfxEntries) {
+                e.loop = loopVFX;
+                e.loopDelay = loopDelayVFX;
+                e.nextLoopTime = 0.0;
+#ifndef SDK_TARGET_LE3
+                if (e.actor)
+                    e.actor->LoopDuration(loopVFX ? 1 : 0);
+#endif
             }
         });
     }
@@ -383,25 +498,21 @@ void VFXManager::renderUI() {
 
     ImGui::PushItemWidth(-100);
     ImGui::Text(t("ui.vfx_table.loop_delay"));
-    ImGui::DragFloat("##vfx_loop_delay", &loopDelayVFX, 0.1f, 0.0f, 60.0f, "%.1f");
+    ImGui::DragFloat("##vfx_loop_delay", &loopDelayVFX, 0.1f, SETTINGS_FX_LOOP_DELAY_MIN, SETTINGS_FX_LOOP_DELAY_MAX, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::PushItemWidth(-100);
     ImGui::Text(t("ui.vfx_table.playback_dur"));
-    ImGui::DragFloat("##vfx_duration_drag", &vfxDuration, 0.1f, 0.1f, 60.0f, "%.1f");
+    ImGui::DragFloat("##vfx_duration_drag", &vfxDuration, 0.1f, SETTINGS_FX_DURATION_MIN, SETTINGS_FX_DURATION_MAX, "%.1f");
     ImGui::PopItemWidth();
 
     ImGui::Separator();
-
     ImGui::Text(t("ui.vfx_table.active"));
+
     {
         ChildScope childActive("##vfx_active_list", ImVec2(0, 220), true);
         if (childActive.open) {
-            // list active VFX as selectables
-            // allow user to remove a VFX
-            // align the refresh button to the left
             if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT "##vfx_active_refresh")) {
-                // refresh the active list: prune dead entries / re-loop
                 Application::instance().engine().postGameThreadTask([this]() {
                     updateActiveVFX();
                 });
@@ -411,18 +522,16 @@ void VFXManager::renderUI() {
                 ImGui::TextDisabled(t("ui.vfx_table.no_active"));
             } else {
                 for (size_t i = 0; i < vfxEntries.size(); ++i) {
-                    VFXEntry& entry = vfxEntries[i];
+                    VFXEntry& e = vfxEntries[i];
                     std::ostringstream ss;
-                    ss << entry.name << " on " << entry.pawnName << " at " << entry.boneName;
+                    ss << e.name << " on " << e.pawnName << " at " << e.boneName;
                     ImGui::Text("%s", ss.str().c_str());
                     ImGui::SameLine();
-                    if (ImGui::Button((std::string(ICON_FA_TRASH_CAN) + "##" + entry.name + std::to_string(i)).c_str())) {
-                        // capture the index and pawn name, not references, since the vector can be resized before this task runs
-                        Application::instance().engine().postGameThreadTask([this, i, pawnName = entry.pawnName]() {
+                    if (ImGui::Button((std::string(ICON_FA_TRASH_CAN) + "##" + e.name + std::to_string(i)).c_str())) {
+                        Application::instance().engine().postGameThreadTask([this, i, pawnName = e.pawnName]() {
                             if (i < vfxEntries.size()) {
                                 removeVFX(vfxEntries[i]);
                             }
-                            // reset the pawn's animation and refresh the active list
                             Application::instance().animation().resetAnimation(pawnName);
                             updateActiveVFX();
                         });

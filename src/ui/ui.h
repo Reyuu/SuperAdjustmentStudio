@@ -73,6 +73,9 @@ class UI {
         void applyUIInputState(GameWindow& window);
         void renderOverlayContents(NativeRenderer& renderer);
 
+        // selected bone for the pivot gizmo
+        bool getSelectedBone(std::string& pawn, int& target, int& listPos, int& boneIndex);
+
         ToastNotificationManager toastManager;
 
     private:

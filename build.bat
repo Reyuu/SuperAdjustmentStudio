@@ -1,68 +1,76 @@
 @echo off
-REM build.bat [Debug|Release] [clean]
+REM build.bat [Debug|Release] [clean] [ME1|ME2|ME3]
 
 setlocal enabledelayedexpansion
 if exist "%~dp0env.bat" call "%~dp0env.bat"
 
-REM Clean if requested (either position)
-if /I "%~1"=="clean" set "DO_CLEAN=1"
-if /I "%~2"=="clean" set "DO_CLEAN=1"
-
-REM Configuration
-if "%~1"=="" (
-    set "CONFIGURATION=Release"
-) else if /I not "%~1"=="clean" (
-    set "CONFIGURATION=%~1"
-)
-if /I not "%CONFIGURATION%"=="Debug" if /I not "%CONFIGURATION%"=="Release" (
-    echo Unknown configuration "%CONFIGURATION%", defaulting to Release.
-    set "CONFIGURATION=Release"
+set "CONFIGURATION=Release"
+set "DO_CLEAN=0"
+set "SINGLE_GAME="
+for %%A in (%*) do (
+    if /I "%%A"=="clean" set "DO_CLEAN=1"
+    if /I "%%A"=="Debug" set "CONFIGURATION=Debug"
+    if /I "%%A"=="Release" set "CONFIGURATION=Release"
+    if /I "%%A"=="ME1" set "SINGLE_GAME=ME1"
+    if /I "%%A"=="ME2" set "SINGLE_GAME=ME2"
+    if /I "%%A"=="ME3" set "SINGLE_GAME=ME3"
 )
 
-REM Get root
 set "ROOT_DIR=%~dp0"
-REM Remove trailing backslash if present
 if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
-set "BUILD_DIR=%ROOT_DIR%\build"
 
-if defined DO_CLEAN (
-    echo Cleaning build directory...
-    rmdir /s /q "%BUILD_DIR%"
+if "!DO_CLEAN!"=="1" (
+    if defined SINGLE_GAME (
+        echo Cleaning build directory for !SINGLE_GAME!...
+        rmdir /s /q "%ROOT_DIR%\build\!SINGLE_GAME!" 2>nul
+    ) else (
+        echo Cleaning build directory...
+        rmdir /s /q "%ROOT_DIR%\build"
+    )
 )
 
-if not exist "%BUILD_DIR%" (
-    mkdir "%BUILD_DIR%"
-)
-
-REM Get Visual Studio dev environment using vswhere
 for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath`) do (
     set "VS_PATH=%%i"
 )
 echo Found Visual Studio at: !VS_PATH!
 call "!VS_PATH!\VC\Auxiliary\Build\vcvarsall.bat" x64
 
-REM Configure CMake
-set "GENERATOR=Visual Studio 18 2026"
-echo Configuring CMake with generator: !GENERATOR! and configuration: !CONFIGURATION!
-cmake -S "%ROOT_DIR%" -B "%BUILD_DIR%" -G "!GENERATOR!" -A x64
-if errorlevel 1 (
-    echo Failed to configure CMake with generator: !GENERATOR! and configuration: !CONFIGURATION!
-    echo Trying to configure CMake with generic generator.
-    cmake -S "%ROOT_DIR%" -B "%BUILD_DIR%" -G "Visual Studio" -A x64
+set "GAMES=ME1 ME2 ME3"
+if defined SINGLE_GAME set "GAMES=!SINGLE_GAME!"
+
+set "FAIL_COUNT=0"
+for %%G in (!GAMES!) do (
+    set "GAME=%%G"
+    set "BUILD_DIR=%ROOT_DIR%\build\!GAME!"
+
+    echo.
+    echo ===== Building !GAME! (!CONFIGURATION!^) =====
+    if not exist "!BUILD_DIR!" mkdir "!BUILD_DIR!"
+
+    cmake -S "%ROOT_DIR%" -B "!BUILD_DIR!" -G "Visual Studio 18 2026" -A x64 -DSAS_GAME=!GAME! >nul 2>nul
+    if errorlevel 1 cmake -S "%ROOT_DIR%" -B "!BUILD_DIR!" -G "Visual Studio" -A x64 -DSAS_GAME=!GAME! >nul 2>nul
     if errorlevel 1 (
-        echo Failed to configure CMake with generic generator.
-        exit /b 1
+        echo FAILED: CMake configure for !GAME!
+        set /a FAIL_COUNT+=1
+    ) else (
+        cmake --build "!BUILD_DIR!" --config "!CONFIGURATION!" -- /m
+        if errorlevel 1 (
+            echo FAILED: Build for !GAME!
+            set /a FAIL_COUNT+=1
+        ) else (
+            echo !GAME! build succeeded.
+            echo !CONFIGURATION!>"%~dp0.build_last_config_!GAME!"
+        )
     )
 )
 
-REM Build
-echo Building with configuration: !CONFIGURATION!
-cmake --build "%BUILD_DIR%" --config "!CONFIGURATION!" -- /m
-if errorlevel 1 (
-    echo Build failed with configuration: !CONFIGURATION!
+if !FAIL_COUNT! GTR 0 (
+    echo.
+    echo !FAIL_COUNT! game^(s^) failed to build.
     exit /b 1
 )
 
-echo Build succeeded with configuration: !CONFIGURATION!
+echo.
+echo All games built successfully with configuration: !CONFIGURATION!
 echo !CONFIGURATION!>"%~dp0.build_last_config"
 exit /b 0

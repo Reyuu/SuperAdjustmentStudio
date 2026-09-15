@@ -12,13 +12,19 @@
 #include "util.h"
 
 #include <LESDK/Common/Math.hpp>
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 
 #include "tracy.h"
 
 // UGameEngine::Tick
 using gameEngineTickType = void(void*, float);
 static gameEngineTickType* origGameEngineTick = nullptr;
+
+using engineExecType = unsigned(void*, wchar_t*, void*);
+static engineExecType* origEngineExec = nullptr;
+
+// from LExSDK, it only has a single virtual (Exec at slot 0)
+constexpr ptrdiff_t VIEWPORT_FEXEC_OFFSET = 0x68;
 
 static void hkGameEngineTick(void* self, float dt) {
     SAS_HOOK_TRY {
@@ -71,6 +77,35 @@ void Engine::drainGameThreadTasks() {
             fn();
         }
     }
+}
+
+void Engine::consoleCommand(const std::string& command) {
+    postGameThreadTask([command]() {
+        UEngine* engine = GEngine ? *GEngine : nullptr;
+        if (!engine || !engine->GameViewport) {
+            Logger->error("consoleCommand: GEngine/GameViewport not initialized");
+            return;
+        }
+
+        FString cmd;
+        cmd.AppendUtf8(command.c_str());
+        const wchar_t* chars = cmd.Chars();
+        std::vector<wchar_t> buf(chars, chars + cmd.Length() + 1);
+        void* outDevice = (GError && *GError) ? *GError : nullptr;
+
+        UGameViewportClient* viewport = engine->GameViewport;
+        void* fexec = (char*)viewport + VIEWPORT_FEXEC_OFFSET;
+        // get the virtual function table of the fexec object
+        void** vft = *(void***)fexec;
+        // get the first function in the virtual function table
+        engineExecType* viewportExec = (engineExecType*)vft[0];
+        unsigned result = viewportExec(fexec, buf.data(), outDevice);
+        Logger->debug("consoleCommand: executed command '" + command + "' with result " + std::to_string(result));
+
+        if (result == 0) {
+            Logger->debug("consoleCommand: command '" + command + "' failed with result " + std::to_string(result));
+        }
+    });
 }
 
 void Engine::postPackageLoad(const std::string& package, std::function<void()> onLoaded) {
@@ -195,24 +230,32 @@ USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName) {
 }
 
 void Engine::setPause(bool pause) {
-    APlayerController* playerController = findFirstPlayerController();
-    if (!playerController) {
-        Logger->debug("setPause: no player controller");
-        return;
-    }
-    AWorldInfo* worldInfo = playerController->WorldInfo;
-    if (!worldInfo) {
-        Logger->debug("setPause: no WorldInfo");
-        return;
-    }
-    if (pause && !playerController->PlayerReplicationInfo) {
-        Logger->debug("setPause: no player replication info, cannot pause");
-        return;
-    }
-    worldInfo->Pauser = pause ? playerController->PlayerReplicationInfo : nullptr;
-    std::ostringstream ss;
-    ss << "setPause: " << (pause ? "paused" : "resumed");
-    Logger->debug(ss.str());
+    // flip bPlayersOnly directly
+    constexpr uintptr_t playersOnlyOffsetConst = 0x7C0; // AWorldInfo bitfield in all three games
+    constexpr uint32_t playersOnlyConst = 0x400u;
+    constexpr uint32_t playersOnlyPendingConst = 0x800u;
+    postGameThreadTask([this, pause]() {
+        AWorldInfo* wi = nullptr;
+        forEachOf<AWorldInfo>([&](AWorldInfo* w) {
+            if (wi || !w) {
+                return;
+            }
+            if (FStringToUtf8(w->GetName()).rfind("Default__", 0) == 0) {
+                return; // class default object
+            }
+            wi = w;
+        });
+        if (!wi) {
+            consoleCommand(pause ? "playersonly 1" : "playersonly 0");
+            return;
+        }
+        auto* flags = reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(wi) + playersOnlyOffsetConst);
+        if (pause) {
+            *flags |= playersOnlyConst | playersOnlyPendingConst;
+        } else {
+            *flags &= ~(playersOnlyConst | playersOnlyPendingConst);
+        }
+    });
 }
 
 AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
@@ -267,7 +310,11 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     const DWORD originalFlags = cls->ClassFlags;
     cls->ClassFlags |= CLASS_Placeable;
     cls->ClassFlags &= ~CLASS_NotPlaceable;
+#ifdef SDK_TARGET_LE3
+    AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, 1, 0);
+#else
     AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, NULL, 1, 0);
+#endif
     cls->ClassFlags = originalFlags;
     if (!spawned) {
         Logger->debug("spawnClass: spawn returned null, dumping class diagnostics:");
@@ -372,9 +419,9 @@ void Engine::loadTransformFromActor(AActor* actor, Transform& t) {
     if (!actor) {
         return;
     }
-    t.pos[0] = actor->Location.X;
-    t.pos[1] = actor->Location.Y;
-    t.pos[2] = actor->Location.Z;
+    t.pos[0] = actor->LOCATION.X;
+    t.pos[1] = actor->LOCATION.Y;
+    t.pos[2] = actor->LOCATION.Z;
     t.rot[0] = UnrealRotationUnitsToDegrees(actor->Rotation.Pitch);
     t.rot[1] = UnrealRotationUnitsToDegrees(actor->Rotation.Yaw);
     t.rot[2] = UnrealRotationUnitsToDegrees(actor->Rotation.Roll);
@@ -433,8 +480,8 @@ void Engine::setTransform(AActor* actor, const Transform& t) {
     }
 
     std::ostringstream ss;
-    ss << "Game_SetTransform: target='" << FStringToUtf8(actor->GetName()) << "' locOk=" << locOk << " loc=(" << actor->Location.X << "," << actor->Location.Y
-       << "," << actor->Location.Z << ")"
+    ss << "Game_SetTransform: target='" << FStringToUtf8(actor->GetName()) << "' locOk=" << locOk << " loc=(" << actor->LOCATION.X << "," << actor->LOCATION.Y
+       << "," << actor->LOCATION.Z << ")"
        << " phys=" << (int)oldPhys << " scaleOk=" << (scaleOk ? "true" : "false");
     Logger->debug(ss.str());
 }
@@ -497,16 +544,29 @@ void Engine::setFloat(const std::string& targetName, bool enable) {
 
 void Engine::applyHUDVisibility() {
     if (!isGameUIHiddenState && savedPanelVisibility.empty() && savedModeVisibility.empty() && savedHudVisibility.empty() && savedPoiHidden.empty() &&
-        savedPoiCompHidden.empty() && savedFlareActive.empty() && savedSelectionTargetable.empty()) {
+        savedPoiCompHidden.empty()
+#ifndef SDK_TARGET_LE1
+        && savedFlareActive.empty() && savedSelectionTargetable.empty()
+#endif
+    ) {
         return;
     }
     if (isGameUIHiddenState) {
+#ifdef SDK_TARGET_LE3
+        forEachOf<USFXGUIMovieLegacyAdapter>([this](USFXGUIMovieLegacyAdapter* p) {
+            if (savedPanelVisibility.find(p) == savedPanelVisibility.end()) {
+                savedPanelVisibility.emplace(p, true);
+            }
+            p->SetMovieVisibility(false);
+        });
+#else
         forEachOf<UBioSFPanel>([this](UBioSFPanel* p) {
             if (savedPanelVisibility.find(p) == savedPanelVisibility.end()) {
                 savedPanelVisibility.emplace(p, p->IsVisible != 0);
             }
             p->SetMovieVisibility(false);
         });
+#endif
         forEachOf<USFXGameModeBase>([this](USFXGameModeBase* m) {
             if (savedModeVisibility.find(m) == savedModeVisibility.end()) {
                 savedModeVisibility.emplace(m, HudModeFlags{m->bShowHUD != 0, m->bShowSelection != 0, m->bShowDamageIndicators != 0, m->bShowRadar != 0,
@@ -548,6 +608,7 @@ void Engine::applyHUDVisibility() {
                 prim->SetHidden(true);
             }
         });
+#ifndef SDK_TARGET_LE1
         forEachOf<ULensFlareComponent>([this](ULensFlareComponent* f) {
             if (savedFlareActive.find(f) == savedFlareActive.end()) {
                 savedFlareActive.emplace(f, f->bIsActive != 0);
@@ -559,12 +620,22 @@ void Engine::applyHUDVisibility() {
             if (savedSelectionTargetable.find(m) == savedSelectionTargetable.end()) {
                 savedSelectionTargetable.emplace(m, (unsigned char)((m->m_bTargetable ? 1 : 0) | (m->m_bCombatTargetable ? 2 : 0)));
             }
+#ifdef SDK_TARGET_LE3
+            m->SetTargetable(false, false);
+            m->SetCombatTargetable(false, false);
+#else
             m->SetTargetable(false);
             m->SetCombatTargetable(false);
+#endif
         });
+#endif
         forEachOf<UBioPlayerSelection>([](UBioPlayerSelection* s) {
             s->m_oCurrentSelectionTarget = nullptr;
+#ifdef SDK_TARGET_LE3
+            // m_oPendingSelectionTarget removed in LE3
+#else
             s->m_oPendingSelectionTarget = nullptr;
+#endif
             s->m_oLastSelectionTarget = nullptr;
             if (s->SelectionFlareComp) {
                 s->SelectionFlareComp->SetIsActive(false);
@@ -627,6 +698,7 @@ void Engine::applyHUDVisibility() {
             }
             it = savedPoiCompHidden.erase(it);
         }
+#ifndef SDK_TARGET_LE1
         for (auto it = savedFlareActive.begin(); it != savedFlareActive.end();) {
             if (isLiveObject(it->first)) {
                 it->first->SetIsActive(it->second);
@@ -636,11 +708,17 @@ void Engine::applyHUDVisibility() {
         }
         for (auto it = savedSelectionTargetable.begin(); it != savedSelectionTargetable.end();) {
             if (isLiveObject(it->first)) {
+#ifdef SDK_TARGET_LE3
+                it->first->SetTargetable((it->second & 1) != 0, false);
+                it->first->SetCombatTargetable((it->second & 2) != 0, false);
+#else
                 it->first->SetTargetable((it->second & 1) != 0);
                 it->first->SetCombatTargetable((it->second & 2) != 0);
+#endif
             }
             it = savedSelectionTargetable.erase(it);
         }
+#endif
     }
 }
 

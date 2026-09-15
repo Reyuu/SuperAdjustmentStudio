@@ -2,10 +2,11 @@
 #define SAS_PARTICLES_H
 
 #include "util.h"
-#include <LESDK/Includes.LE2.hpp>
+#include <LESDK/Includes.hpp>
 #include <LESDK/Common/Math.hpp>
 #include <mutex>
 #include <set>
+#include "settings.h"
 
 struct ParticleEntry {
     public:
@@ -35,16 +36,18 @@ class ParticleManager {
         void removeParticle(ParticleEntry& entry);
         void removeAllParticles();
         void updateActiveParticles();
+        static UParticleSystem* findTemplateByName(const std::string& name);
+
+        std::vector<ParticleEntry> particleEntries;
+        std::mutex particleMtx;
 
     private:
         void applyParticleLiveState(ParticleEntry& entry);
 
     private:
-        std::vector<ParticleEntry> particleEntries;
         std::set<UParticleSystem*, ParticleTemplateNameLess> availableTemplates;
-        std::mutex particleMtx;
-        bool loopParticles = false;
-        float loopDelayParticles = 0.0f;
-        float particleDuration = 10.0f;
+        bool loopParticles = SETTINGS_TOGGLE_OFF;
+        float loopDelayParticles = SETTINGS_FX_LOOP_DELAY_DEFAULT;
+        float particleDuration = SETTINGS_FX_DURATION_DEFAULT;
 };
 #endif // SAS_PARTICLES_H
