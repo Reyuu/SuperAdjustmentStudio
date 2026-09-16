@@ -138,7 +138,12 @@ void PCCParser::readFullHeader() {
 
     file_.packageFlags = r32(p);
     p += 4;
-    p += 4; // LE3: unknown field (always 0) after PackageFlags
+    // ME3/LE3 only: extra int32 after PackageFlags when cooked (licensee >= 194).
+    // LE2 (licensee 168) and LE1 (171) don't have it
+    const bool isLE3Header = file_.licenseeVersion >= 194 || file_.unrealVersion == 685;
+    if (isLE3Header) {
+        p += 4;
+    }
     file_.nameCount = r32(p);
     p += 4;
     file_.nameOffset = r32(p);
@@ -160,7 +165,7 @@ void PCCParser::readFullHeader() {
     p += 4;
     uint32_t headersCount = r32(p);
     p += 4;
-    p += 4;  // LE3: extra zero field
+    p += 4;  // thumbnail table offset (unused in ME games, present in all LE headers)
     p += 16; // GUID
     uint32_t genCount = r32(p);
     p += 4;
@@ -169,7 +174,7 @@ void PCCParser::readFullHeader() {
     p += 4;
     uint32_t cookerVer = r32(p);
     p += 4;
-    p += 8; // LE3: two unknown fields
+    p += 8; // Bio unk3[2] (1, 0) — present in all LE headers (licensee >= 37)
 
     file_.compressionType = r32(p);
     p += 4;
@@ -177,10 +182,10 @@ void PCCParser::readFullHeader() {
     p += 4;
     file_.compressedChunksOffset = p;
 
-    Logger->info("readFullHeader: pkgFlags={:#x} names={} nameOff={} exports={} exportOff={} imports={} importOff={} engine={} cooker={} compression={} "
-                 "chunks={} bufSize={}",
-                 file_.packageFlags, file_.nameCount, file_.nameOffset, file_.exportCount, file_.exportOffset, file_.importCount, file_.importOffset, engineVer,
-                 cookerVer, file_.compressionType, file_.compressedChunkCount, buf.size());
+    Logger->info("readFullHeader: pkgFlags={:#x} le3Header={} names={} nameOff={} exports={} exportOff={} imports={} importOff={} engine={} cooker={} "
+                 "compression={} chunks={} bufSize={}",
+                 file_.packageFlags, isLE3Header, file_.nameCount, file_.nameOffset, file_.exportCount, file_.exportOffset, file_.importCount,
+                 file_.importOffset, engineVer, cookerVer, file_.compressionType, file_.compressedChunkCount, buf.size());
 }
 
 void PCCParser::decompress() {
@@ -310,6 +315,12 @@ static void appendUtf8(std::string& out, wchar_t c) {
 
 void PCCParser::parseNameTable() {
     constexpr int kMaxNameLen = 4096;
+    // ME3 (licensee >= 142) stores no per-name
+    // ME2 stores a 4-byte dword per entry
+    size_t nameFlagsSize = 0;
+    if (file_.licenseeVersion < 142) {
+        nameFlagsSize = (file_.licenseeVersion >= 102) ? 4 : 8;
+    }
     size_t pos = file_.nameOffset;
     file_.names.reserve(file_.nameCount);
     for (uint32_t i = 0; i < file_.nameCount; ++i) {
@@ -321,9 +332,7 @@ void PCCParser::parseNameTable() {
         pos += 4;
         if (nameLen == 0) {
             file_.names.emplace_back();
-            continue;
-        }
-        if (nameLen < 0) {
+        } else if (nameLen < 0) {
             int wcount = -nameLen; // wchar count including null
             if (wcount > kMaxNameLen || pos + static_cast<size_t>(wcount) * 2 > decompressed_.size()) {
                 break;
@@ -342,6 +351,12 @@ void PCCParser::parseNameTable() {
             }
             file_.names.emplace_back(reinterpret_cast<const char*>(decompressed_.data() + pos), nameLen - 1);
             pos += nameLen;
+        }
+        if (nameFlagsSize > 0) {
+            if (pos + nameFlagsSize > decompressed_.size()) {
+                break;
+            }
+            pos += nameFlagsSize;
         }
     }
 }
