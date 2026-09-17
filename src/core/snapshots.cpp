@@ -143,14 +143,18 @@ json SnapshotsManager::getLutData() const {
 }
 
 json SnapshotsManager::getAnimationData() const {
-    json animData;
+    json animData = json::array();
     Animation& anim = Application::instance().animation();
-    if (anim.playedAnimName.empty()) {
-        return animData;
+    for (const auto& kv : anim.played) {
+        if (kv.second.animName.empty()) {
+            continue;
+        }
+        json out;
+        out["pawn"] = kv.first;
+        out["anim"] = kv.second.animName;
+        out["loop"] = kv.second.loop;
+        animData.push_back(out);
     }
-    animData["pawn"] = anim.playedPawnName;
-    animData["anim"] = anim.playedAnimName;
-    animData["loop"] = anim.playedLoop;
     return animData;
 }
 
@@ -175,25 +179,28 @@ json SnapshotsManager::getVfxData() const {
 json SnapshotsManager::getBonesData() const {
     json bonesData = json::array();
     Bones& bones = Application::instance().bones();
-    std::lock_guard<std::mutex> lock(bones.bonePose.mtx);
-    if (bones.bonePose.posed.empty()) {
-        return bonesData;
+    std::lock_guard<std::mutex> lock(bones.poseMtx);
+    for (const auto& kv : bones.poses) {
+        const auto& pose = kv.second;
+        if (pose.posed.empty()) {
+            continue;
+        }
+        json entry;
+        entry["pawn"] = pose.pawn;
+        entry["target"] = (int)pose.target;
+        json posed = json::array();
+        for (const auto& bone : pose.posed) {
+            json out;
+            out["index"] = bone.index;
+            out["name"] = bone.boneName;
+            out["position"] = json::array({bone.pos[0], bone.pos[1], bone.pos[2]});
+            out["rotation"] = json::array({bone.rot[0], bone.rot[1], bone.rot[2]});
+            out["scale"] = json::array({bone.scale[0], bone.scale[1], bone.scale[2]});
+            posed.push_back(out);
+        }
+        entry["bones"] = posed;
+        bonesData.push_back(entry);
     }
-    json entry;
-    entry["pawn"] = bones.bonePose.pawn;
-    entry["target"] = (int)bones.bonePose.target;
-    json posed = json::array();
-    for (const auto& bone : bones.bonePose.posed) {
-        json out;
-        out["index"] = bone.index;
-        out["name"] = bone.boneName;
-        out["position"] = json::array({bone.pos[0], bone.pos[1], bone.pos[2]});
-        out["rotation"] = json::array({bone.rot[0], bone.rot[1], bone.rot[2]});
-        out["scale"] = json::array({bone.scale[0], bone.scale[1], bone.scale[2]});
-        posed.push_back(out);
-    }
-    entry["bones"] = posed;
-    bonesData.push_back(entry);
     return bonesData;
 }
 
@@ -470,6 +477,27 @@ void SnapshotsManager::applyLutData(const json& lutData) {
 }
 
 void SnapshotsManager::applyAnimationData(const json& animationData) {
+    if (animationData.is_array()) {
+        for (const auto& item : animationData) {
+            if (!item.is_object()) {
+                continue;
+            }
+            std::string pawn;
+            std::string anim;
+            bool loop = true;
+            SAS_JSON_READ_STRING(item, "pawn", pawn);
+            SAS_JSON_READ_STRING(item, "anim", anim);
+            SAS_JSON_READ_BOOL(item, "loop", loop);
+            if (anim.empty()) {
+                if (!pawn.empty()) {
+                    Application::instance().animation().resetAnimation(pawn);
+                }
+                continue;
+            }
+            Application::instance().animation().playAnimation(pawn, anim, loop);
+        }
+        return;
+    }
     if (!animationData.is_object()) {
         return;
     }
@@ -853,7 +881,7 @@ bool SnapshotsManager::hasSectionData(SnapshotSection section) {
             return !Application::instance().settings().options.lutLayers.empty();
         }
         case SnapshotAnimation: {
-            return !Application::instance().animation().playedAnimName.empty();
+            return !Application::instance().animation().played.empty();
         }
         case SnapshotVfx: {
             VFXManager& vfx = Application::instance().vfx();
@@ -862,8 +890,8 @@ bool SnapshotsManager::hasSectionData(SnapshotSection section) {
         }
         case SnapshotBones: {
             Bones& bones = Application::instance().bones();
-            std::lock_guard<std::mutex> lock(bones.bonePose.mtx);
-            return !bones.bonePose.posed.empty();
+            std::lock_guard<std::mutex> lock(bones.poseMtx);
+            return !bones.poses.empty();
         }
         case SnapshotSelection: {
             return !Application::instance().ui().getSelectedPawnName().empty();

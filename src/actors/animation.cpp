@@ -88,10 +88,13 @@ void Animation::resetAnimation(const std::string& pawnName) {
         return;
     }
 
-    if (customAnimSlot && isLiveObject(customAnimSlot)) {
-        customAnimSlot->StopCustomAnim(0.2f);
+    auto pit = played.find(pawnName);
+    if (pit != played.end()) {
+        if (pit->second.slot && isLiveObject(pit->second.slot)) {
+            pit->second.slot->StopCustomAnim(0.2f);
+        }
+        played.erase(pit);
     }
-    customAnimSlot = nullptr;
 
     if (!mesh->Animations) {
         Logger->debug("resetAnimation: mesh has no anim tree root");
@@ -115,15 +118,19 @@ void Animation::resetAnimation(const std::string& pawnName) {
         tree->bUseSavedPose = false;
     }
 
-    playedNode = nullptr;
-    playedNodeOrigSeq = nullptr;
-    playedNodeOrigName = SFXName();
-    playedPawnName.clear();
-    playedAnimName.clear();
-
     std::ostringstream ss;
     ss << "resetAnimation: released custom anim and resumed locomotion on '" << pawnName << "'";
     Logger->debug(ss.str());
+}
+
+void Animation::resetAllAnimations() {
+    std::vector<std::string> pawns;
+    for (auto& kv : played) {
+        pawns.push_back(kv.first);
+    }
+    for (auto& p : pawns) {
+        resetAnimation(p);
+    }
 }
 
 // TODO: more robust way of searching for unlinked animations and linking them from other pckgs
@@ -226,10 +233,11 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
 #else
     float pos = pawn->PawnPlayCustomAnim(slot, sfxAnim, 1.0f, 0.1f, 0.2f, bLoop ? 1 : 0, 1, 0.0f);
 #endif
-    customAnimSlot = slot;
-    playedPawnName = pawnName;
-    playedAnimName = animName;
-    playedLoop = bLoop;
+    PlayedAnimState st;
+    st.animName = animName;
+    st.loop = bLoop;
+    st.slot = slot;
+    played[pawnName] = st;
 
     std::ostringstream ss;
     ss << "playAnimation: '" << animName << "' on '" << pawnName << "' via PawnPlayCustomAnim slot='"
