@@ -55,7 +55,9 @@ jobs:
           $versions = @()
           git tag --list | ForEach-Object {
             $t = $_
-            if ($t -match '^(\d+)\.(\d+)beta$') {
+            if ($t -match '^(\d+)\.(\d+)\.(\d+)beta$') {
+              $versions += [version]::new([int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
+            } elseif ($t -match '^(\d+)\.(\d+)beta$') {
               $versions += [version]::new([int]$Matches[1], [int]$Matches[2], 0)
             } elseif ($t -match '^(\d+)\.(\d+)(?:\.(\d+))?$') {
               $patch = if ($Matches[3]) { [int]$Matches[3] } else { 0 }
@@ -67,7 +69,12 @@ jobs:
           if (-not $latest) { $latest = [version]::new(0, 0, 0) }
 
           if ($hotfix) {
-            $tag = "$([version]::new($latest.Major, $latest.Minor, ($latest.Build + 1)).ToString())beta"
+            $next = [version]::new($latest.Major, $latest.Minor, ($latest.Build + 1))
+            $tag = "$($next.ToString())beta"
+            while (git rev-parse --verify --quiet "refs/tags/$tag") {
+              $next = [version]::new($next.Major, $next.Minor, ($next.Build + 1))
+              $tag = "$($next.ToString())beta"
+            }
           } else {
             $maxBeta = 0
             git tag --list '0.*beta' | ForEach-Object {
