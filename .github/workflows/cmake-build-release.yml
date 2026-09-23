@@ -165,7 +165,7 @@ jobs:
 
       - name: Package release
         shell: pwsh
-        run: Compress-Archive -Path release\LE*\* -DestinationPath "SuperAdjustmentStudio-${{ needs.build.outputs.tag }}.zip"
+        run: Compress-Archive -Path release\LE* -DestinationPath "SuperAdjustmentStudio-${{ needs.build.outputs.tag }}.zip"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
