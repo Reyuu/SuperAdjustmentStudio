@@ -69,9 +69,13 @@ jobs:
           if (-not $latest) { $latest = [version]::new(0, 0, 0) }
 
           if ($hotfix) {
+            # NOTE: use `git tag --list` (always exits 0) instead of
+            # `git rev-parse --verify` here: a missing tag makes rev-parse
+            # exit 1, and the runner fails the step on a trailing
+            # non-zero $LASTEXITCODE.
             $next = [version]::new($latest.Major, $latest.Minor, ($latest.Build + 1))
             $tag = "$($next.ToString())beta"
-            while (git rev-parse --verify --quiet "refs/tags/$tag") {
+            while (git tag --list "$tag") {
               $next = [version]::new($next.Major, $next.Minor, ($next.Build + 1))
               $tag = "$($next.ToString())beta"
             }
