@@ -62,7 +62,8 @@ void resetValues(CustomShaderOptions& options, const std::vector<CustomShaderPar
 }
 
 bool renderParam(CustomShaderOptions& options, const CustomShaderParam& param, const char* id) {
-    const std::string label = param.name + "##cs_" + id;
+    ImGui::TextDisabled("%s", param.name.c_str());
+    const std::string label = std::string("##cs_") + id;
     bool changed = false;
 
     switch (param.kind) {

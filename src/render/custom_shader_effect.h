@@ -46,6 +46,7 @@ class CustomShaderEffect : public IEffect {
         CustomShaderSlot* ensureSlot(ID3D11Device* device, const std::filesystem::path& absPath);
         std::vector<ActiveSlot> collectActive(ID3D11Device* device);
         void pollReload(ID3D11Device* device);
+        double elapsedTime() const; // seconds since the first frame, what gTime carries
 
         mutable std::mutex mutex_;
         std::map<std::string, std::unique_ptr<CustomShaderSlot>> slots_;

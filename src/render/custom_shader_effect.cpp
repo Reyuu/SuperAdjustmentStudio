@@ -24,6 +24,8 @@ constexpr double RELOAD_INTERVAL_SECONDS = 1.0;
 
 } // namespace
 
+// seconds since the first frame, for gTime
+
 CustomShaderEffect::~CustomShaderEffect() {
     shutdown();
 }
@@ -48,6 +50,13 @@ void CustomShaderEffect::applyCpu(unsigned char* rgba, int w, int h) const {
     (void)rgba;
     (void)w;
     (void)h;
+}
+
+double CustomShaderEffect::elapsedTime() const {
+    if (startTime_ < 0.0) {
+        return 0.0;
+    }
+    return nowSeconds() - startTime_;
 }
 
 bool CustomShaderEffect::isEnabled() const {
@@ -178,7 +187,7 @@ void CustomShaderEffect::applyGpu(ID3D11Device* device, ID3D11DeviceContext* con
     ID3D11RenderTargetView* writeRtv = frame.scratchRtv;
     ID3D11ShaderResourceView* writeSrv = frame.scratchSrv;
 
-    const float time = (float)(now - startTime_);
+    const float time = (float)elapsedTime();
     for (size_t i = 0; i < active.size(); ++i) {
         const bool lastSlot = (i + 1 == active.size());
         const bool toBackbuffer = lastSlot && frame.isLast;
@@ -385,7 +394,9 @@ bool CustomShaderEffect::bakeGpu(ID3D11Device* device, ID3D11DeviceContext* cont
                 if (constants.size() != slot->cbSize()) {
                     constants.assign(slot->cbSize(), 0);
                 }
-                slot->packConstants(constants.data(), *active[i].options, 0.0f, (unsigned)w, (unsigned)h, flags);
+                // same elapsed time as the live view, so animated shaders look
+                // the same in the saved shot as they did on screen
+                slot->packConstants(constants.data(), *active[i].options, elapsedTime(), (unsigned)w, (unsigned)h, flags);
                 packed = constants;
             }
 

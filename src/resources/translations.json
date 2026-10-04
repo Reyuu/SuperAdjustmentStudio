@@ -314,9 +314,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -723,9 +721,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -1113,9 +1109,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -1503,9 +1497,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -1893,9 +1885,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -2283,9 +2273,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -2673,9 +2661,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Cząsteczki",
             "particles_table": {
@@ -3063,9 +3049,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -3453,9 +3437,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {

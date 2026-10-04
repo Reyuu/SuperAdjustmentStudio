@@ -24,6 +24,13 @@ static const char* embeddedExampleShared() {
         ;
 }
 
+// shipped shaders, seeded next to the examples
+static const char* embeddedFilmGrain() {
+    return
+#include "custom_shader_filmgrain_source.inc"
+        ;
+}
+
 static std::filesystem::path moduleDirectory() {
     HMODULE hModule = nullptr;
     if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCSTR>(&moduleDirectory),
@@ -271,5 +278,6 @@ void writeCustomShaderExamples() {
         std::filesystem::create_directories(root, ec);
         writeIfMissing(root / "example.hlsl", embeddedExampleShader());
         writeIfMissing(root / "shared.hlsl", embeddedExampleShared());
+        writeIfMissing(root / "filmgrain.hlsl", embeddedFilmGrain());
     }
 }

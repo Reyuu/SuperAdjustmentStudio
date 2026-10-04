@@ -174,6 +174,7 @@ endfunction()
 sas_embed_shader(src/render/lut_shader.hlsl Lut)
 sas_embed_shader(src/render/custom_shader_example.hlsl CustomShaderExample)
 sas_embed_shader(src/render/custom_shader_example_shared.hlsl CustomShaderExampleShared)
+sas_embed_shader(src/render/custom_shader_filmgrain.hlsl CustomShaderFilmGrain)
 
 target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

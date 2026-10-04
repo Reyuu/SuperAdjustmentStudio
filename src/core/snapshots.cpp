@@ -104,8 +104,6 @@ json SnapshotsManager::getFilterData() const {
     filterData["enabled"] = overlay.filterState;
     filterData["tint"] = json::array({overlay.tintColor[0], overlay.tintColor[1], overlay.tintColor[2]});
     filterData["tintStrength"] = overlay.tintStrength;
-    filterData["grainIntensity"] = overlay.grainIntensity;
-    filterData["grainOpacity"] = overlay.grainOpacity;
     filterData["noFog"] = overlay.noFogState;
     filterData["noLensFlare"] = overlay.noLensFlareState;
     return filterData;
@@ -425,8 +423,6 @@ void SnapshotsManager::applyFilterData(const json& filterData) {
     SAS_JSON_READ_BOOL(filterData, "enabled", overlay.filterState);
     SAS_JSON_READ_ARR3(filterData, "tint", overlay.tintColor);
     SAS_JSON_READ_NUMBER(filterData, "tintStrength", overlay.tintStrength);
-    SAS_JSON_READ_NUMBER(filterData, "grainIntensity", overlay.grainIntensity);
-    SAS_JSON_READ_NUMBER(filterData, "grainOpacity", overlay.grainOpacity);
     bool noFog = overlay.noFogState;
     SAS_JSON_READ_BOOL(filterData, "noFog", noFog);
     if (noFog != overlay.noFogState) {

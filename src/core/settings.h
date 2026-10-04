@@ -148,12 +148,6 @@ inline constexpr int SETTINGS_PHOTO_CLIP_MAX = 255;
 inline constexpr float SETTINGS_PHOTO_TINT_STRENGTH_DEFAULT = 0.0f;
 inline constexpr float SETTINGS_PHOTO_TINT_STRENGTH_MIN = 0.0f;
 inline constexpr float SETTINGS_PHOTO_TINT_STRENGTH_MAX = 1.0f;
-inline constexpr float SETTINGS_PHOTO_GRAIN_INTENSITY_DEFAULT = 0.0f;
-inline constexpr float SETTINGS_PHOTO_GRAIN_INTENSITY_MIN = 0.0f;
-inline constexpr float SETTINGS_PHOTO_GRAIN_INTENSITY_MAX = 1.0f;
-inline constexpr float SETTINGS_PHOTO_GRAIN_OPACITY_DEFAULT = 1.0f;
-inline constexpr float SETTINGS_PHOTO_GRAIN_OPACITY_MIN = 0.0f;
-inline constexpr float SETTINGS_PHOTO_GRAIN_OPACITY_MAX = 1.0f;
 
 inline constexpr float SETTINGS_LIGHT_BRIGHTNESS_DEFAULT = 1.0f;
 inline constexpr float SETTINGS_LIGHT_BRIGHTNESS_MIN = 0.0f;
