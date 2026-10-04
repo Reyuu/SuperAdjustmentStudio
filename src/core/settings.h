@@ -2,7 +2,9 @@
 #define SAS_SETTINGS_H
 
 #include "json.hpp"
+#include <array>
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -29,6 +31,30 @@ struct LutLayerOptions {
                    blendMax == other.blendMax && previewDepth == other.previewDepth && heatPreview == other.heatPreview;
         }
 };
+
+// one user-authored HLSL slot. values are keyed by annotation name, so
+// reordering annotations inside the shader never shifts a tuned value.
+// ref is a path relative to one of the shader roots (forward slashes) or an
+// absolute path for files added from elsewhere.
+struct CustomShaderOptions {
+        std::string ref;
+        bool enabled = true;
+
+        std::map<std::string, float> floats;                // slider/drag/input/toggle, radio/combo/listbox index
+        std::map<std::string, int> ints;                    // dragInt / inputInt widgets
+        std::map<std::string, std::array<float, 3>> colors; // color widgets
+
+        bool operator==(const CustomShaderOptions& other) const {
+            return ref == other.ref && enabled == other.enabled && floats == other.floats && ints == other.ints && colors == other.colors;
+        }
+};
+
+inline constexpr int CUSTOM_SHADER_MAX_SLOTS = 8; // chain length cap, mirrors LUT_MAX_LAYERS
+
+// one slot to json and back. settings, snapshots and anything else storing
+// slots share this, so the persisted shape lives in one place.
+bool loadCustomShaderSlot(const nlohmann::json& slot, CustomShaderOptions& out);
+void writeCustomShaderSlot(const CustomShaderOptions& slot, nlohmann::json& out);
 
 inline const std::string SUPPORTED_LANGUAGES[][2] = {
     {"en",    "English" },
@@ -239,6 +265,8 @@ struct SettingsOptions {
         float lutDepthNear = 1.0f;
         float lutDepthFar = 100.0f;
         int lutDepthEveryN = 2;
+
+        std::vector<CustomShaderOptions> customShaders;
 };
 
 struct OverlayHotkey {

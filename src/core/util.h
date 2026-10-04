@@ -9,7 +9,11 @@
 #include <numbers>
 #include <string>
 
+// folder picker (existing callers). opens in the last-used shell location.
 bool pickFolder(std::string& outPath);
+
+// single file picker. filter uses the common dialog convention
+bool pickFile(std::string& outPath, const char* filter);
 
 // UE3 -> transform in degrees for rotation and per-axis scale. Converted to whatever is usable at the engine.
 struct Transform {

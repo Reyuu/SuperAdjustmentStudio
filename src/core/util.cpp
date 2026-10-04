@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <string>
 #include <vector>
 #include <windows.h>
 #include <ShlObj.h>
@@ -11,7 +12,8 @@
 #include <LESDK/Common/Math.hpp>
 #include <LESDK/Includes.hpp>
 
-bool pickFolder(std::string& outPath) {
+// shared body for pickFolder/pickFile
+static bool pickPathWithDialog(std::string& outPath, DWORD extraOptions, const char* filter) {
     using Microsoft::WRL::ComPtr;
     ComPtr<IFileDialog> fileDialog;
     HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&fileDialog));
@@ -22,7 +24,29 @@ bool pickFolder(std::string& outPath) {
 
     DWORD options = 0;
     fileDialog->GetOptions(&options);
-    fileDialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
+    fileDialog->SetOptions(options | extraOptions | FOS_FORCEFILESYSTEM);
+
+    if (filter && filter[0]) {
+        // common dialog convention: "display name|pattern". without the bar the
+        // whole string serves as both name and pattern.
+        const std::string spec(filter);
+        std::string filterName;
+        std::string filterPattern;
+        const size_t bar = spec.find('|');
+        if (bar == std::string::npos) {
+            filterName = spec;
+            filterPattern = spec;
+        } else {
+            filterName = spec.substr(0, bar);
+            filterPattern = spec.substr(bar + 1);
+        }
+        COMDLG_FILTERSPEC filterSpec = {};
+        const std::wstring filterNameW = toWString(filterName);
+        const std::wstring filterPatternW = toWString(filterPattern);
+        filterSpec.pszName = filterNameW.c_str();
+        filterSpec.pszSpec = filterPatternW.c_str();
+        fileDialog->SetFileTypes(1, &filterSpec);
+    }
 
     hr = fileDialog->Show(nullptr);
     if (FAILED(hr)) {
@@ -35,18 +59,26 @@ bool pickFolder(std::string& outPath) {
         return false;
     }
 
-    PWSTR folderPath = nullptr;
-    hr = item->GetDisplayName(SIGDN_FILESYSPATH, &folderPath);
-    if (FAILED(hr) || !folderPath) {
+    PWSTR pickedPath = nullptr;
+    hr = item->GetDisplayName(SIGDN_FILESYSPATH, &pickedPath);
+    if (FAILED(hr) || !pickedPath) {
         return false;
     }
 
-    outPath = WStringToUtf8(folderPath);
-    CoTaskMemFree(folderPath);
+    outPath = WStringToUtf8(pickedPath);
+    CoTaskMemFree(pickedPath);
     if (outPath.empty()) {
         return false;
     }
     return true;
+}
+
+bool pickFolder(std::string& outPath) {
+    return pickPathWithDialog(outPath, FOS_PICKFOLDERS | FOS_PATHMUSTEXIST, nullptr);
+}
+
+bool pickFile(std::string& outPath, const char* filter) {
+    return pickPathWithDialog(outPath, FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST, filter);
 }
 
 // UE3 FString -> length-prefixed UTF-16 buffer

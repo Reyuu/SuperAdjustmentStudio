@@ -29,6 +29,7 @@ Please treat this release as <ins>**BETA**</ins>.
 - freecam - it can be used as a replacement to the game's default photo mode! It even works in conversations! 📷
 - photo utilities - grid overlay, basic photo adjustments and histogram
 - LUT support for color grading 🎨
+- custom HLSL shaders - write your own post-process effects with slider, drag, input, checkbox, radio, combo, listbox and color widgets 🎛️
 - saving and loading the snapshots! (saving the poses, the properties for the objects, transforms and so on)
 
 ### Known issues (what doesn't work)

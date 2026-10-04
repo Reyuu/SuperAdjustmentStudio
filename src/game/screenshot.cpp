@@ -128,6 +128,10 @@ bool Screenshot::convertBmpTo(const std::filesystem::path& source, const std::fi
     // bake the post chain as visible
     Application::instance().postChain().applyCpu(pixels, w, h);
 
+    // custom HLSL slots have no CPU equivalent: run them on the GPU so the
+    // saved shot matches the live view
+    Application::instance().postChain().bakeGpu(pixels, w, h);
+
     int ok = 0;
     switch (format) {
         case ScreenshotFormat::PNG: {

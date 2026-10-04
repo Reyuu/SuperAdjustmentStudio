@@ -422,6 +422,22 @@
                 "stack_is_full": "Stack is full.",
                 "title": "LUT",
                 "update_every_n": "Update every N"
+            },
+            "custom_shader": {
+                "title": "Custom shaders",
+                "add_hint": "Add shader (%d/%d)",
+                "chain_is_full": "All shader slots are used.",
+                "search": "Search shaders",
+                "add_file": "Add file...",
+                "file_filter_name": "HLSL shaders (*.hlsl)",
+                "no_shaders_found": "No shaders found in the SAS_Shaders folder.",
+                "no_slots": "No shader slots yet. Add one to run it after the LUT stack.",
+                "loaded_summary": "Loaded: %d float, %d int, %d color widgets",
+                "not_loaded": "Not loaded yet.",
+                "reset_defaults": "Reset to defaults",
+                "reset": "Reset",
+                "reload_one": "Recompile",
+                "baked_shots_hint": "Saved shots include the custom shaders."
             }
         },
         "toast": {

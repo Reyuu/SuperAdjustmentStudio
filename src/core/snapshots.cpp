@@ -2,6 +2,7 @@
 #include "IconsFontAwesome6.h"
 #include "imgui.h"
 #include "json.hpp"
+#include "settings.h"
 #include "snapshot_json.h"
 #include "application.h"
 
@@ -139,6 +140,15 @@ json SnapshotsManager::getLutData() const {
     lutData["depthNear"] = o.lutDepthNear;
     lutData["depthFar"] = o.lutDepthFar;
     lutData["depthEveryN"] = o.lutDepthEveryN;
+
+    // custom HLSL slots travel with the post-process section
+    json customShaders = json::array();
+    for (const auto& slot : o.customShaders) {
+        json outSlot;
+        writeCustomShaderSlot(slot, outSlot);
+        customShaders.push_back(outSlot);
+    }
+    lutData["customShaders"] = customShaders;
     return lutData;
 }
 
@@ -473,6 +483,21 @@ void SnapshotsManager::applyLutData(const json& lutData) {
     SAS_JSON_READ_NUMBER(lutData, "depthNear", o.lutDepthNear);
     SAS_JSON_READ_NUMBER(lutData, "depthFar", o.lutDepthFar);
     SAS_JSON_READ_NUMBER(lutData, "depthEveryN", o.lutDepthEveryN);
+
+    if (lutData.contains("customShaders") && lutData["customShaders"].is_array()) {
+        std::vector<CustomShaderOptions> customShaders;
+        for (const auto& slot : lutData["customShaders"]) {
+            if ((int)customShaders.size() >= CUSTOM_SHADER_MAX_SLOTS) {
+                break;
+            }
+            CustomShaderOptions next;
+            if (loadCustomShaderSlot(slot, next)) {
+                customShaders.push_back(next);
+            }
+        }
+        o.customShaders = customShaders;
+    }
+
     Application::instance().settings().markChanged();
 }
 

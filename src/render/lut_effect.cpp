@@ -339,6 +339,10 @@ void LutEffect::applyGpu(ID3D11Device* device, ID3D11DeviceContext* context, Pos
         }
     }
 
+    // publish the depth view for the nodes after this one (custom shaders bind
+    // it at t2); it stays null while the depth capture is off
+    frame.depthSrv = depthSrv;
+
     if (layers.empty()) {
         if (globalOptions.lutDepthShowTexture && depthSrv) {
             ID3D11RenderTargetView* debugDst = frame.isLast ? frame.backbuffer : frame.scratchRtv;

@@ -153,21 +153,27 @@ file(GLOB_RECURSE SAS_SOURCES
 message(STATUS "Adding build target: SuperAdjustmentStudio")
 add_library(SuperAdjustmentStudio SHARED ${SAS_SOURCES})
 
-set(SAS_LUT_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/render/lut_shader.hlsl")
-set(SAS_LUT_SHADER_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/generated/lut_shader_source.inc")
-add_custom_command(
-    OUTPUT "${SAS_LUT_SHADER_INCLUDE}"
-    COMMAND ${CMAKE_COMMAND}
-        -DINPUT="${SAS_LUT_SHADER_SOURCE}"
-        -DOUTPUT="${SAS_LUT_SHADER_INCLUDE}"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
-    DEPENDS "${SAS_LUT_SHADER_SOURCE}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
-    VERBATIM
-)
-add_custom_target(SAS_LutShaderSource DEPENDS "${SAS_LUT_SHADER_INCLUDE}")
-add_dependencies(SuperAdjustmentStudio SAS_LutShaderSource)
-set_source_files_properties("${SAS_LUT_SHADER_SOURCE}" PROPERTIES HEADER_FILE_ONLY TRUE)
-target_sources(SuperAdjustmentStudio PRIVATE "${SAS_LUT_SHADER_SOURCE}")
+function(sas_embed_shader SOURCE TARGET)
+    get_filename_component(sas_shader_base "${SOURCE}" NAME_WE)
+    set(sas_shader_include "${CMAKE_CURRENT_BINARY_DIR}/generated/${sas_shader_base}_source.inc")
+    add_custom_command(
+        OUTPUT "${sas_shader_include}"
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT="${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}"
+            -DOUTPUT="${sas_shader_include}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake"
+        VERBATIM
+    )
+    add_custom_target("SAS_${TARGET}ShaderSource" DEPENDS "${sas_shader_include}")
+    add_dependencies(SuperAdjustmentStudio "SAS_${TARGET}ShaderSource")
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}" PROPERTIES HEADER_FILE_ONLY TRUE)
+    target_sources(SuperAdjustmentStudio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}")
+endfunction()
+
+sas_embed_shader(src/render/lut_shader.hlsl Lut)
+sas_embed_shader(src/render/custom_shader_example.hlsl CustomShaderExample)
+sas_embed_shader(src/render/custom_shader_example_shared.hlsl CustomShaderExampleShared)
 
 target_include_directories(SuperAdjustmentStudio PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

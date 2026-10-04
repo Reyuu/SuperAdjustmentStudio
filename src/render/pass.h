@@ -6,6 +6,7 @@
 // caller also copies swapchain backbuffer into tempA before a multi-pass chain.
 
 #include <d3d11.h>
+#include <d3dcompiler.h>
 #include <string>
 #include <vector>
 
@@ -20,10 +21,15 @@ class FullscreenPass {
         FullscreenPass() = default;
         ~FullscreenPass();
 
-        bool initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize, const std::string& pixelEntry = "PS");
+        bool initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize, const std::string& pixelEntry = "PS",
+                        ID3DInclude* includeHandler = nullptr);
         void shutdown();
 
         // per-frame draw. binds inputs[0..2] to t0..t2, unbinding all 3 after.
+        // owns no targets: the caller supplies outputRtv and keeps it alive.
+        bool draw(ID3D11DeviceContext* context, const void* cbData, unsigned cbSize, ID3D11ShaderResourceView* const* inputs, unsigned inputCount,
+                  ID3D11RenderTargetView* outputRtv, unsigned width, unsigned height);
+
         bool run(ID3D11DeviceContext* context, const void* cbData, unsigned cbSize, ID3D11ShaderResourceView* const* inputs, unsigned inputCount,
                  ID3D11RenderTargetView* outputRtv, unsigned width, unsigned height, DXGI_FORMAT format);
 
@@ -65,6 +71,7 @@ class FullscreenPass {
 
     private:
         std::vector<PassShader> shaders_;
+        ID3DInclude* includeHandler_ = nullptr;
 
         ID3D11VertexShader* vertexShader_ = nullptr;
         ID3D11PixelShader* pixelShader_ = nullptr;
