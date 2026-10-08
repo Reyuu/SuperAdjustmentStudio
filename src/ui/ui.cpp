@@ -607,6 +607,9 @@ void UI::renderSelectionSection() {
     renderSelectionAnimation();
     Application::instance().vfx().renderUI();
     renderSelectionBones();
+#ifndef SDK_TARGET_LE1
+    Application::instance().npcs().renderSelectionUI();
+#endif
     renderSelectionOtherProps();
     ImGui::Unindent();
 }
@@ -638,13 +641,10 @@ void UI::renderSelectionTarget() {
     // might change this
     // only removes a pawn that we spawned, since removing for example Player pawn would be...
     // disastrous
-    auto& spawnedNames = Application::instance().engine().spawnedNames();
-    bool isFoundInCollection = false;
     bool isSpawned = false;
     if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
         const std::string& selectedPawn = pawnNamesVector[pawnIndexInt];
-        isFoundInCollection = std::find(spawnedNames.begin(), spawnedNames.end(), selectedPawn) != spawnedNames.end();
-        isSpawned = isFoundInCollection;
+        isSpawned = Application::instance().engine().isSpawnedName(selectedPawn);
         if (ImGui::Button(ICON_FA_TRASH "##sel_target_trash") && isSpawned && !advancedSelection) {
             Application::instance().engine().removeActor(selectedPawn);
         }
@@ -1189,6 +1189,9 @@ void UI::renderSpawnSection() {
         Application::instance().lights().renderUI();
         Application::instance().prefabs().renderUI();
         Application::instance().particles().renderUI();
+#ifndef SDK_TARGET_LE1
+        Application::instance().npcs().renderSpawnUI();
+#endif
         renderSpawnOtherProps();
     }
     ImGui::Unindent();

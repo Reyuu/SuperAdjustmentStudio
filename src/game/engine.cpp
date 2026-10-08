@@ -57,6 +57,21 @@ void Engine::initTickHook(HookManager& hookManager, SDKContext& sdk) {
 // This is engine task queue handling. Every time we have something to do on the Engine side,
 // we do it here.
 
+// one throwing task must not take the rest of the batch down with it: the batch
+// is a local swap, so an exception escaping the loop would silently discard every
+// task queued behind it (and skip the rest of the tick hook)
+static void runTaskGuarded(const std::function<void()>& fn) {
+    try {
+        if (fn) {
+            fn();
+        }
+    } catch (const std::exception& e) {
+        Logger->error("Engine task threw: {}", e.what());
+    } catch (...) {
+        Logger->error("Engine task threw: unknown (non-std)");
+    }
+}
+
 void Engine::postGameThreadTask(std::function<void()> fn) {
     std::lock_guard<std::mutex> lock(gameTasksMutex);
     gameTasks.push_back(std::move(fn));
@@ -73,9 +88,7 @@ void Engine::drainGameThreadTasks() {
         local.swap(gameTasks);
     }
     for (auto& fn : local) {
-        if (fn) {
-            fn();
-        }
+        runTaskGuarded(fn);
     }
 }
 
@@ -147,7 +160,7 @@ void Engine::drainPackageLoads() {
             return h.str();
         }() + ")");
         if (task.onLoaded) {
-            task.onLoaded();
+            runTaskGuarded(task.onLoaded);
         }
     }
 }
@@ -187,6 +200,22 @@ AActor* Engine::findActorByName(const std::string& name) {
         }
     });
     return found ? found : fallback;
+}
+
+AActor* Engine::findActorByExactName(const std::string& name) {
+    if (name.empty()) {
+        return nullptr;
+    }
+    AActor* found = nullptr;
+    forEachOf<AActor>([&](AActor* obj) {
+        if (found) {
+            return;
+        }
+        if (toLowerStr(FStringToUtf8(obj->GetName())) == toLowerStr(name)) {
+            found = obj;
+        }
+    });
+    return found;
 }
 
 AActor* Engine::playerPawn() {
@@ -326,9 +355,7 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     }
 
     std::string nm = FStringToUtf8(spawned->GetName());
-    if (std::find(spawnedNamesVector.begin(), spawnedNamesVector.end(), nm) == spawnedNamesVector.end()) {
-        spawnedNamesVector.push_back(nm);
-    }
+    addSpawnedName(nm);
 
     std::ostringstream ss;
     ss << "spawnClass: spawned '" << className << "' as '" << nm << "' at (" << t.pos[0] << "," << t.pos[1] << "," << t.pos[2] << ") via caller '"
@@ -387,8 +414,10 @@ void Engine::removeActor(const std::string& name) {
     }
 
     // TODO: make this emit a notification (toast) via TyomaVader/ImGuiNotify
-    if (actor->IsA(APawn::StaticClass())) {
-        Logger->debug("removeActor: refusing to delete pawn '" + name + "'");
+    // pawns are only removable when we spawned them ourselves, the level's own
+    // pawns (and the player) would break the game
+    if (actor->IsA(APawn::StaticClass()) && !isSpawnedName(name) && !isSpawnedName(FStringToUtf8(actor->GetName()))) {
+        Logger->debug("removeActor: refusing to delete the pawn '" + name + "' (not spawned by SAS)");
         return;
     }
     APlayerController* pc = findFirstPlayerController();
@@ -400,14 +429,8 @@ void Engine::removeActor(const std::string& name) {
     std::string nm = FStringToUtf8(actor->GetName());
     bool ok = actor->Destroy();
 
-    auto it = std::find(spawnedNamesVector.begin(), spawnedNamesVector.end(), name);
-    if (it != spawnedNamesVector.end()) {
-        spawnedNamesVector.erase(it);
-    }
-    it = std::find(spawnedNamesVector.begin(), spawnedNamesVector.end(), nm);
-    if (it != spawnedNamesVector.end()) {
-        spawnedNamesVector.erase(it);
-    }
+    removeSpawnedName(name);
+    removeSpawnedName(nm);
 
     std::ostringstream ss;
     ss << "removeActor: '" << nm << "' destroyed=" << (ok ? "true" : "false");

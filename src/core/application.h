@@ -13,6 +13,7 @@
 #include "logger.h"
 #include "mouse.h"
 #include "native_renderer.h"
+#include "npcs.h"
 #include "particles.h"
 #include "prefabs.h"
 #include "props.h"
@@ -93,6 +94,11 @@ class Application {
         ParticleManager& particles() {
             return particleInstance;
         }
+#ifndef SDK_TARGET_LE1
+        NPCManager& npcs() {
+            return npcsInstance;
+        }
+#endif
         LightManager& lights() {
             return lightsInstance;
         }
@@ -152,6 +158,9 @@ class Application {
         Freecam freecamInstance;
         VFXManager vfxInstance;
         ParticleManager particleInstance;
+#ifndef SDK_TARGET_LE1
+        NPCManager npcsInstance;
+#endif
         LightManager lightsInstance;
         PrefabManager prefabsInstance;
         Settings settingsInstance;

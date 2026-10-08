@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <algorithm>
+#include <functional>
 
 PCCParser::PCCParser(const std::string& filePath) : filePath_(filePath) {
     fileStream_.open(filePath, std::ios::binary);

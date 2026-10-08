@@ -5,8 +5,10 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 #include <atomic>
+#include <cstdlib>
 #include <dbghelp.h>
 #include <exception>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -24,6 +26,41 @@ inline std::shared_ptr<spdlog::logger> define_logger() {
 }
 
 inline std::shared_ptr<spdlog::logger> Logger = define_logger();
+
+// a real stack trace. spdlog's backtrace only holds log records, which cannot locate
+// a crash, so walk the frames and resolve symbols.
+inline void logCrashStackTrace() {
+    HANDLE process = GetCurrentProcess();
+    static std::once_flag symInitFlag;
+    std::call_once(symInitFlag, [process]() {
+        SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+        SymInitialize(process, nullptr, TRUE);
+    });
+
+    void* frames[62];
+    const USHORT captured = CaptureStackBackTrace(0, 62, frames, nullptr);
+    SYMBOL_INFO* symbol = static_cast<SYMBOL_INFO*>(calloc(1, sizeof(SYMBOL_INFO) + MAX_SYM_NAME));
+    if (!symbol) {
+        Logger->error("crash handler: could not allocate symbol buffer");
+        return;
+    }
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+    symbol->MaxNameLen = MAX_SYM_NAME - 1;
+
+    for (USHORT i = 0; i < captured; ++i) {
+        DWORD64 displacement = 0;
+        std::string name = "<unresolved>";
+        if (SymFromAddr(process, reinterpret_cast<DWORD64>(frames[i]), &displacement, symbol)) {
+            name = symbol->Name;
+            const size_t bang = name.rfind('!');
+            if (bang != std::string::npos) {
+                name = name.substr(bang + 1);
+            }
+        }
+        Logger->error("crash handler: #{} {} @{:p}", (int)i, name, frames[i]);
+    }
+    free(symbol);
+}
 
 inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
     static std::atomic<LONG> crashDumped{0};
@@ -76,6 +113,7 @@ inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
                 }
             }
             Logger->error("crash handler: dumping backtrace + stack");
+            logCrashStackTrace();
             Logger->dump_backtrace();
             Logger->flush();
         }

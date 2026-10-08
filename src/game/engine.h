@@ -38,8 +38,26 @@ class Engine {
         std::atomic<bool>& isCameraDragActive() {
             return isCameraDragActiveState;
         }
-        std::vector<std::string>& spawnedNames() {
+        // spawned names are written on the game thread (spawn / delete) and read on the
+        // render thread (selection lists), so this hands out copies and does the mutation
+        // behind a lock rather than leaking the vector
+        std::vector<std::string> Engine::spawnedNames() const {
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
             return spawnedNamesVector;
+        }
+        bool Engine::isSpawnedName(const std::string& name) const {
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
+            return std::find(spawnedNamesVector.begin(), spawnedNamesVector.end(), name) != spawnedNamesVector.end();
+        }
+        void Engine::addSpawnedName(const std::string& name) {
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
+            if (std::find(spawnedNamesVector.begin(), spawnedNamesVector.end(), name) == spawnedNamesVector.end()) {
+                spawnedNamesVector.push_back(name);
+            }
+        }
+        void Engine::removeSpawnedName(const std::string& name) {
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
+            spawnedNamesVector.erase(std::remove(spawnedNamesVector.begin(), spawnedNamesVector.end(), name), spawnedNamesVector.end());
         }
 
         void postGameThreadTask(std::function<void()> fn);
@@ -53,6 +71,8 @@ class Engine {
         void setPause(bool pause);
 
         AActor* findActorByName(const std::string& name);
+        // exact match, for telling SFXPawn_Jack_1 apart from SFXPawn_Jack_10
+        AActor* findActorByExactName(const std::string& name);
         AActor* playerPawn();
         USkeletalMeshComponent* findPawnMesh(const std::string& pawnName);
 
@@ -80,6 +100,7 @@ class Engine {
 
         bool isGameUIHiddenState = false;
         std::atomic<bool> isCameraDragActiveState{false};
+        mutable std::mutex spawnedNamesMtx;
         std::vector<std::string> spawnedNamesVector;
 
         // engine-level look freeze
