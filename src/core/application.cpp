@@ -32,6 +32,7 @@ bool Application::attach(ISharedProxyInterface* proxy) {
     sdkInstance.initSdkGlobals(proxy);
     hookManagerInstance.setSdkContext(&sdkInstance);
     initThread = std::thread(&Application::initHooksThread, this);
+    remoteInstance.start();
     return true;
 }
 
@@ -171,6 +172,7 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             SAS_HOOK_TRY {
                 ImGui::NewFrame();
                 imGuiFrameOpen = true;
+                app.remoteContent().poll();
                 const bool wasCapturingHotkey = app.settings().capturingHotkey;
                 if (app.photoOverlay().isActive()) {
                     app.photoOverlay().render(app.rendererInstance.device());

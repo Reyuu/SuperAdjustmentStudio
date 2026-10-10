@@ -2,6 +2,8 @@
 #include "application.h"
 #include "logger.h"
 #include "json.hpp"
+#include "plugin.h"
+#include "remote.h"
 #include "snapshot_json.h"
 #include "translation.h"
 
@@ -568,25 +570,26 @@ static std::string displayNameForVk(int vk) {
             return "VOLUMEDOWN";
         case VK_VOLUME_UP:
             return "VOLUMEUP";
-        case VK_MEDIA_NEXT_TRACK:
+        case VK_MEDIA_NEXT_TRACK: {
             return "MEDIANEXT";
         case VK_MEDIA_PREV_TRACK: {
             return "MEDIAPREV";
-        case VK_MEDIA_STOP: {
-            return "MEDIASTOP";
-            case VK_MEDIA_PLAY_PAUSE: {
-                return "MEDIAPLAYPAUSE";
-                case VK_LAUNCH_MAIL: {
-                    return "LAUNCHMAIL";
-                    case VK_LAUNCH_MEDIA_SELECT: {
-                        return "LAUNCHMEDIA";
-                        case VK_LAUNCH_APP1: {
-                            return "LAUNCHAPP1";
-                            case VK_LAUNCH_APP2: {
-                                return "LAUNCHAPP2";
-                                default: {
-                                    break;
+            case VK_MEDIA_STOP: {
+                return "MEDIASTOP";
+                case VK_MEDIA_PLAY_PAUSE: {
+                    return "MEDIAPLAYPAUSE";
+                    case VK_LAUNCH_MAIL: {
+                        return "LAUNCHMAIL";
+                        case VK_LAUNCH_MEDIA_SELECT: {
+                            return "LAUNCHMEDIA";
+                            case VK_LAUNCH_APP1: {
+                                return "LAUNCHAPP1";
+                                case VK_LAUNCH_APP2: {
+                                    return "LAUNCHAPP2";
+                                    default: {
+                                        break;
         }
+                                    }
                                 }
                             }
                         }
@@ -845,6 +848,25 @@ void Settings::renderSettingsWindow(bool* open) {
         ImGui::EndCombo();
     }
     ImGui::PopItemWidth();
+
+    ImGui::Separator();
+    ImGui::Text(t("ui.settings_table.version"));
+    ImGui::SameLine();
+    ImGui::TextUnformatted(PLUGIN_VERSION);
+
+    {
+        RemoteContent& remote = Application::instance().remoteContent();
+        if (remote.updateAvailable()) {
+            ImGui::Text(ICON_FA_DOWNLOAD " %s", remote.updateTag().c_str());
+            ImGui::SameLine();
+            if (ImGui::Button(t("ui.settings_table.open_release_page"))) {
+                ShellExecuteA(nullptr, "open", SAS_RELEASES_PAGE, nullptr, nullptr, SW_SHOWNORMAL);
+            }
+        }
+        if (ImGui::Button(t("ui.settings_table.check_updates"))) {
+            remote.startUpdateCheck(true); // manual: always answers, even when nothing needs doing
+        }
+    }
 
     ImGui::Text(t("ui.settings_table.overlay_hotkey"));
     ImGui::PushItemWidth(-100);

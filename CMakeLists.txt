@@ -284,6 +284,8 @@ if (WIN32)
 # d3dcompiler for the raw-D3D11 overlay gizmo shader compilation
 target_link_libraries(SuperAdjustmentStudio PRIVATE d3d11 dxgi d3dcompiler dinput8 dxguid)
 target_link_libraries(SuperAdjustmentStudio PRIVATE ole32 oleaut32 shell32 dbghelp)
+# winhttp for the update check and the remote translation download
+target_link_libraries(SuperAdjustmentStudio PRIVATE winhttp)
 target_compile_definitions(SuperAdjustmentStudio PRIVATE "WIN32_LEAN_AND_MEAN NOMINMAX")
 endif()
 

@@ -17,6 +17,7 @@
 #include "particles.h"
 #include "prefabs.h"
 #include "props.h"
+#include "remote.h"
 #include "snapshots.h"
 #include "sdk.h"
 #include "settings.h"
@@ -122,6 +123,10 @@ class Application {
             return translationInstance;
         }
 
+        RemoteContent& remoteContent() {
+            return remoteInstance;
+        }
+
         Screenshot& screenshot() {
             return screenshotInstance;
         }
@@ -163,6 +168,7 @@ class Application {
         PhotoOverlay photoOverlayInstance;
         PostChain postChainInstance;
         Translation translationInstance;
+        RemoteContent remoteInstance;
         Screenshot screenshotInstance;
         SnapshotsManager snapshotsInstance;
 
