@@ -508,7 +508,10 @@
             "le1chars": {
                 "hint": "LE1 has no per-character pawn classes: each entry spawns a pawn built from that character's own type. Spawned pawns stay fully editable with the mesh and bone pickers.",
                 "loading": "Loading %s...",
-                "headgear": "Helmet / visor / face plate",
+                "headgear": "Headgear",
+                "helmet": "Helmet",
+                "visor": "Visor",
+                "faceplate": "Face plate",
                 "headgear_hint": "LE1 armour spawns with these up. Untick to hide them on the selected pawn.",
                 "headgear_absent": "This pawn has no such component.",
                 "failed_no_pawn_class": "Cannot spawn %s: no usable pawn in this level to build one from."
