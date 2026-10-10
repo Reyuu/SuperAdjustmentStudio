@@ -45,7 +45,11 @@ USkeletalMeshComponent* Bones::findPawnMeshForTarget(const std::string& pawnName
         if (!actor->IsA(ABioPawn::StaticClass())) {
             return nullptr;
         }
+#ifdef SDK_TARGET_LE1
+        return ((ABioPawn*)actor)->m_oHeadMesh;
+#else
         return ((ABioPawn*)actor)->HeadMesh;
+#endif
     }
 
     if (!actor->IsA(APawn::StaticClass())) {

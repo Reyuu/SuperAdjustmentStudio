@@ -69,7 +69,12 @@ static USFXGameModePhoto* resolvePhotoGameMode() {
     if (!localPC) {
         return nullptr;
     }
-    USFXGameModeManager* manager = localPC->GameModeManager2;
+    USFXGameModeManager* manager = nullptr;
+#ifdef SDK_TARGET_LE1
+    manager = localPC->GameModeManager;
+#else
+    manager = localPC->GameModeManager2;
+#endif
     USFXGameModePhoto* photoGameMode = manager ? manager->GetPhotoMode() : nullptr;
     if (photoGameMode && isLiveObject(photoGameMode)) {
         return photoGameMode;
@@ -126,13 +131,13 @@ void Freecam::applyFreecamEnabled(bool enabled) {
                 USFXCameraMode_PhotoFree* target = photoGameMode->PhotoCamFree;
                 if (photoGameMode && isLiveObject(photoGameMode) && freecamCamera->CurrentCameraMode != target) {
                     freecamPreviousCameraMode = freecamCamera->CurrentCameraMode;
-#ifdef SDK_TARGET_LE3
+#if defined(SDK_TARGET_LE3) || defined(SDK_TARGET_LE1)
                     target->Initialize();
 #else
                     target->Initialize(localPC);
 #endif
                     cam->FreeCam = target;
-#ifndef SDK_TARGET_LE3
+#if !defined(SDK_TARGET_LE3) && !defined(SDK_TARGET_LE1)
                     cam->bFreeCamActive = true;
 #endif
                     localPC->bPhotoModeCameraUnlocked = true;
@@ -158,11 +163,11 @@ void Freecam::applyFreecamEnabled(bool enabled) {
         ABioPlayerController* localPC = findLocalBioPC();
         if (localPC) {
             if (freecamCamera) {
-#ifndef SDK_TARGET_LE3
+#if !defined(SDK_TARGET_LE3) && !defined(SDK_TARGET_LE1)
                 freecamCamera->bFreeCamActive = false;
 #endif
                 localPC->bPhotoModeCameraUnlocked = false;
-#ifdef SDK_TARGET_LE3
+#if defined(SDK_TARGET_LE3) || defined(SDK_TARGET_LE1)
                 FTViewTarget* vt = nullptr;
                 freecamCamera->PickCameraMode(0.0f, vt);
 #else

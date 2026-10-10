@@ -10,10 +10,10 @@
 #include <iosfwd>
 #include <map>
 #include <mutex>
+#include <array>
+#include <set>
 #include <string>
 #include <vector>
-
-#ifndef SDK_TARGET_LE1
 
 #include <LESDK/Includes.hpp>
 
@@ -72,6 +72,16 @@ struct PawnIndexRow {
         std::string category;
 };
 
+#ifdef SDK_TARGET_LE1
+// LE1 has no per-character pawn classes, a character is a "hench_<name>" package
+// of Bio_Appr_Character_* settings applied to a generic player pawn
+struct CharacterIndexRow {
+        std::string displayName;
+        std::string groupName;     // runtime package group, e.g. "hench_asari"
+        std::string sourcePackage; // the .pcc to open
+};
+#endif
+
 // authored display names, keyed by export name
 struct PawnPreset {
         const char* displayName;
@@ -107,6 +117,8 @@ class NPCManager {
         void applyLifeCrustToPawn(const std::string& pawnName, const std::string& templateName, float lifeTime);
 #endif
         void deleteNPC(const std::string& pawnName);
+        // destroy one instance, the name keyed path is ambiguous on LE1
+        void deleteNPCPawn(ABioPawn* pawn);
 
         std::string dumpPawn(ABioPawn* pawn);
 
@@ -151,6 +163,28 @@ class NPCManager {
         void renderLiveCustomization(ABioPawn* pawn, const std::string& pawnName);
         void renderSpawnedNpcList();
         void spawnFromIndexRow(const PawnIndexRow& row);
+#ifdef SDK_TARGET_LE1
+        void resolveCharacterGameNames();
+        // selection for the merged LE1 list
+        int selectedMergedRow = -1;
+        void spawnCharacter(const CharacterIndexRow& row);
+        int applyCharacterAppearance(ABioPawn* pawn, const std::string& groupName, UBio_Appr_Character* appr);
+        // prefer the tracked instance, a duplicate name makes the lookup ambiguous
+        ABioPawn* selectedPawn(const std::string& pawnName) const;
+        // every hench_<name> group the generated index knows about
+        std::vector<CharacterIndexRow> characterRows;
+        // hench_<group> -> the character's own name, read off the pawn type
+        std::map<std::string, std::string> characterGameNames;
+        // re-assert the head gear state, the game resets it every tick
+    public:
+        void applyHeadGearOverrides();
+
+    private:
+        std::set<std::string> loggedCharacterProperties;
+        // keyed by POINTER, SpawnPawn can hand back a name another actor already has
+        // and then every name lookup finds the wrong one
+        std::map<ABioPawn*, std::array<bool, 3>> headGearWanted;
+#endif
         void ensureIndexLoaded();
         void generateUserIndex();
         void pollUserIndex();
@@ -168,6 +202,11 @@ class NPCManager {
         void reapplyHeadMesh(ABioPawn* pawn);
         void applyMorphToPawn(ABioPawn* pawn);
         void logMorphBufferProbe(ABioPawn* pawn, const char* when);
+        // no MorphHead member on LE1's ABioPawn, so the association lives here. on
+        // LE2/LE3 it is the pawn's own field and these forward to it
+        UBioMorphFace* morphHeadFor(ABioPawn* pawn);
+        void setMorphHeadFor(ABioPawn* pawn, UBioMorphFace* morph);
+        void forgetMorphHead(ABioPawn* pawn);
         void handlePendingSelect();
         int referenceBonesForPicker(int picker) const;
         ABioPawn* currentPawn() const;
@@ -222,6 +261,11 @@ class NPCManager {
         mutable ABioPawn* cachedPawn = nullptr;
         mutable double cachedPawnTime = -1.0;
         std::vector<std::string> spawnedNpcNames;
+        std::vector<ABioPawn*> spawnedPawns; // same order as spawnedNpcNames
+        // the pawn we spawned or selected last, by pointer: a spawned pawn can reuse
+        // a name that already exists in the level
+        ABioPawn* trackedPawn = nullptr;
+        std::string trackedPawnName;
         double spawnedNpcRefreshTime = -1.0;
         std::vector<std::string> knownSpawnable; // pawn classes that spawned OK this session
 
@@ -231,6 +275,10 @@ class NPCManager {
         float spawnCrustLifeTime = 9999.0f;
 #endif
         bool spawnEmptyPawn = false;
+#ifdef SDK_TARGET_LE1
+        // pawn -> morph face, see morphHeadFor()
+        std::map<std::string, UBioMorphFace*> morphHeadsByPawn;
+#endif
         // MergeMeshes is additive, so composes start from the plain head mesh
         std::map<std::string, USkeletalMesh*> baseHeadByPawn;
         std::vector<float> morphColorValues; // rgba per color override
@@ -248,7 +296,5 @@ UBioMorphFace* findMorphHeadByPath(const std::string& path);
 #ifndef SDK_TARGET_LE3
 UBioVFXTemplate* findVFXTemplateByPath(const std::string& path);
 #endif
-
-#endif // SDK_TARGET_LE1
 
 #endif // SAS_NPCS_H

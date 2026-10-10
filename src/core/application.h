@@ -94,11 +94,9 @@ class Application {
         ParticleManager& particles() {
             return particleInstance;
         }
-#ifndef SDK_TARGET_LE1
         NPCManager& npcs() {
             return npcsInstance;
         }
-#endif
         LightManager& lights() {
             return lightsInstance;
         }
@@ -158,9 +156,7 @@ class Application {
         Freecam freecamInstance;
         VFXManager vfxInstance;
         ParticleManager particleInstance;
-#ifndef SDK_TARGET_LE1
         NPCManager npcsInstance;
-#endif
         LightManager lightsInstance;
         PrefabManager prefabsInstance;
         Settings settingsInstance;

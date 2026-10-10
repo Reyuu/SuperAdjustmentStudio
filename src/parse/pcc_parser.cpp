@@ -385,6 +385,123 @@ std::string PCCParser::resolveObjectIndex(int32_t objectIndex) const {
     return {};
 }
 
+// UE3 writes an FName as a single int32: a name-table index, or - when the top
+// bit is set - a plain number (index & 0x7fffffff) rather than a name.
+std::string PCCParser::readFName(int32_t raw) const {
+    if (raw == 0) {
+        return {}; // NAME_None
+    }
+    if ((static_cast<uint32_t>(raw) & 0x80000000u) != 0) {
+        return std::to_string(static_cast<int32_t>(static_cast<uint32_t>(raw) & 0x7fffffffu));
+    }
+    return resolveName(raw);
+}
+
+// UE3's tagged property tag, in the order the cooker writes it:
+//   name, type, size, arrayIndex, hasPropertyGuid [, guid]
+// A name of NAME_None (0) terminates the list.
+bool PCCParser::readExportProperties(size_t exportIndex, std::vector<PCCProperty>& out) const {
+    out.clear();
+    if (exportIndex >= file_.exports.size()) {
+        return false;
+    }
+    const PCCExport& ex = file_.exports[exportIndex];
+    if (ex.dataSize <= 0) {
+        return false;
+    }
+    size_t pos = static_cast<size_t>(ex.dataOffset);
+    const size_t end = pos + static_cast<size_t>(ex.dataSize);
+    if (end > decompressed_.size()) {
+        return false;
+    }
+
+    auto readI32 = [&](size_t at, int32_t& out32) -> bool {
+        if (at + 4 > decompressed_.size()) {
+            return false;
+        }
+        std::memcpy(&out32, decompressed_.data() + at, 4);
+        return true;
+    };
+
+    while (pos + 4 <= end) {
+        int32_t rawName = 0;
+        if (!readI32(pos, rawName)) {
+            break;
+        }
+        pos += 4;
+        if (rawName == 0) {
+            break; // NAME_None ends the list
+        }
+
+        int32_t rawType = 0;
+        int32_t size = 0;
+        int32_t arrayIndex = 0;
+        int32_t hasGuid = 0;
+        if (!readI32(pos, rawType) || !readI32(pos + 4, size) || !readI32(pos + 8, arrayIndex) || !readI32(pos + 12, hasGuid)) {
+            break;
+        }
+        pos += 16;
+        if (hasGuid != 0) {
+            pos += 16;
+        }
+
+        PCCProperty prop;
+        prop.name = readFName(rawName);
+        prop.typeName = readFName(rawType);
+        prop.size = size;
+        prop.arrayIndex = arrayIndex;
+        prop.isArray = size > 1;
+        prop.valueOffset = pos;
+
+        // Only an object-valued property has a usable size of 4; anything else is
+        // skipped by its declared byte size. A non-positive size means we have lost
+        // track of the stream, so stop rather than wander through the buffer.
+        if (size <= 0) {
+            break;
+        }
+        if (!prop.isArray) {
+            pos += static_cast<size_t>(size);
+        }
+        if (pos > end) {
+            break;
+        }
+        out.push_back(std::move(prop));
+    }
+    return !out.empty();
+}
+
+int32_t PCCParser::readObjectPropertyValue(size_t valueOffset) const {
+    if (valueOffset + 4 > decompressed_.size()) {
+        return 0;
+    }
+    int32_t v = 0;
+    std::memcpy(&v, decompressed_.data() + valueOffset, 4);
+    return v;
+}
+
+std::string PCCParser::objectPropertyPath(size_t valueOffset) const {
+    const int32_t index = readObjectPropertyValue(valueOffset);
+    if (index == 0) {
+        return {};
+    }
+    if (index < 0) {
+        const int32_t idx = -index - 1;
+        if (idx < 0 || idx >= static_cast<int32_t>(file_.imports.size())) {
+            return {};
+        }
+        const PCCImport& im = file_.imports[idx];
+        if (im.packageName.empty() || im.objectName.empty()) {
+            return {};
+        }
+        return im.packageName + "." + im.objectName;
+    }
+    const int32_t idx = index - 1;
+    if (idx < 0 || idx >= static_cast<int32_t>(file_.exports.size())) {
+        return {};
+    }
+    return file_.exports[idx].fullName;
+}
+
 void PCCParser::parseImportTable() {
     size_t pos = file_.importOffset;
     file_.imports.reserve(file_.importCount);

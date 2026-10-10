@@ -113,10 +113,13 @@ void VFXManager::addVFX(VfxTemplateT* vfxTemplate, AActor* actor, const std::str
     if (!vfxActor && actor->IsA(APawn::StaticClass())) {
         vfxActor = donor->CreateVFXOnMesh(vfxTemplate, actor, SFXName(boneName.c_str(), 0), lifeTime, static_cast<APawn*>(actor)->Mesh, 0);
     }
+#ifndef SDK_TARGET_LE1
+    // no ASFXPawn on LE1, CreateCrustEffect / CreateVFXOnMesh above are its route
     if (!vfxActor && actor->IsA(ASFXPawn::StaticClass())) {
         ASFXPawn* sfxPawn = static_cast<ASFXPawn*>(actor);
         sfxPawn->CreateVisualEffect(vfxTemplate, &vfxActor);
     }
+#endif
 
     if (vfxActor) {
         // capture originals before camera stripping, for later restore
@@ -138,6 +141,21 @@ void VFXManager::addVFX(VfxTemplateT* vfxTemplate, AActor* actor, const std::str
         }
         applyVFXLiveState(vfxEntries.back());
     }
+}
+#endif
+
+#if !defined(SDK_TARGET_LE3)
+// no scripted OnComplete on LE1, DestroyInstance() is its native teardown. LE2 keeps
+// the event so the completion kismet flushes first, LE3 never reaches this path
+static void finishVFXActor(ABioVisualEffect* effect) {
+    if (!effect) {
+        return;
+    }
+#ifdef SDK_TARGET_LE1
+    effect->DestroyInstance();
+#else
+    effect->eventOnComplete();
+#endif
 }
 #endif
 
@@ -169,7 +187,7 @@ void VFXManager::removeVFX(VFXEntry& entry) {
         entry.actor->bActive = 0;
         entry.actor->bPaused = 1;
         entry.actor->SetState(2, true, true, false); // BVFX_DEATH
-        entry.actor->eventOnComplete();
+        finishVFXActor(entry.actor);
         entry.actor = nullptr;
     }
 #endif
@@ -197,7 +215,7 @@ void VFXManager::removeAllVFX() {
             e.actor->bActive = 0;
             e.actor->bPaused = 1;
             e.actor->SetState(2, true, true, false); // BVFX_DEATH
-            e.actor->eventOnComplete();
+            finishVFXActor(e.actor);
         }
         e.actor = nullptr;
     }

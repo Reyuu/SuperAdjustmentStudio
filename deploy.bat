@@ -62,14 +62,23 @@ for %%G in (!GAMES!) do (
 
         copy "!BUILD_DIR!\*.asi" "!DEPLOY_DIR!" >nul
 
-        if /I "!CONFIGURATION!"=="Debug" (
-            copy "!BUILD_DIR!\SAS_SuperAdjustmentStudio.pdb" "!DEPLOY_DIR!" >nul 2>nul
-        )
-
         if errorlevel 1 (
             echo Deployment failed for !GAME!.
             set "FAIL=1"
         ) else (
+            REM Always ship the PDB, not just for Debug. A crash report gives offsets
+            REM into the .asi, and without a PDB that matches it exactly those
+            REM addresses cannot be resolved to anything useful.
+            REM Done inside the success branch so a missing or locked PDB cannot turn
+            REM a good deployment into a reported failure.
+            if exist "!BUILD_DIR!\SAS_SuperAdjustmentStudio.pdb" (
+                copy "!BUILD_DIR!\SAS_SuperAdjustmentStudio.pdb" "!DEPLOY_DIR!" >nul 2>nul
+                if exist "!DEPLOY_DIR!\SAS_SuperAdjustmentStudio.pdb" (
+                    echo   PDB deployed alongside the plugin.
+                ) else (
+                    echo   WARNING: PDB was not deployed; crash addresses will not resolve.
+                )
+            )
             echo !GAME! deployed successfully.
         )
     )

@@ -33,6 +33,10 @@ static void hkGameEngineTick(void* self, float dt) {
         }
         Application::instance().engine().drainPackageLoads();
         Application::instance().engine().drainGameThreadTasks();
+#ifdef SDK_TARGET_LE1
+        // the game resets head gear every tick, re-assert on the game thread too
+        Application::instance().npcs().applyHeadGearOverrides();
+#endif
         Application::instance().freecam().assertFreecamCache();
 
         static UWorld* s_lastWorld = nullptr;
@@ -255,7 +259,24 @@ USkeletalMeshComponent* Engine::findPawnMesh(const std::string& pawnName) {
         return nullptr;
     }
 
-    return ((APawn*)actor)->Mesh;
+    APawn* pawn = static_cast<APawn*>(actor);
+    if (pawn->Mesh) {
+        return pawn->Mesh;
+    }
+#ifdef SDK_TARGET_LE1
+    // LE1 keeps the skinned meshes in m_aoMeshes and often leaves APawn::Mesh
+    // unset, which silently broke animations and bone posing
+    if (actor->IsA(ABioPawn::StaticClass())) {
+        ABioPawn* bioPawn = static_cast<ABioPawn*>(actor);
+        for (int i = 0; i < (int)bioPawn->m_aoMeshes.Count(); ++i) {
+            USkeletalMeshComponent* mesh = bioPawn->m_aoMeshes.GetData()[i];
+            if (mesh) {
+                return mesh;
+            }
+        }
+    }
+#endif
+    return nullptr;
 }
 
 void Engine::setPause(bool pause) {
@@ -333,18 +354,27 @@ AActor* Engine::spawnClass(const std::string& className, const Transform& t) {
     rot.Yaw = DegreesToUnrealRotationUnits(t.rot[1]);
     rot.Roll = DegreesToUnrealRotationUnits(t.rot[2]);
 
-    // ME2's runtime Spawn enforces the Placeable class flag (lights marked non-placeable
-    // return NULL). Temporarily set CLASS_Placeable + clear CLASS_NotPlaceable, then
-    // restore the original flags right after Spawn returns.
+    // spawn with the flags untouched first. LE2 enforces the Placeable flag, so a
+    // refusal retries with it forced. LE1's values are unverified (util.h) and a
+    // wrong bit mislabels the class for good, so LE1 never pokes them
     const DWORD originalFlags = cls->ClassFlags;
-    cls->ClassFlags |= CLASS_Placeable;
-    cls->ClassFlags &= ~CLASS_NotPlaceable;
+    auto spawnAttempt = [&](DWORD flags) -> AActor* {
+        cls->ClassFlags = flags;
 #ifdef SDK_TARGET_LE3
-    AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, 1, 0);
+        AActor* res = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, 1, 0);
 #else
-    AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, NULL, 1, 0);
+        AActor* res = caller->Spawn(cls, NULL, SFXName(), loc, rot, NULL, NULL, 1, 0);
 #endif
-    cls->ClassFlags = originalFlags;
+        cls->ClassFlags = originalFlags;
+        return res;
+    };
+    AActor* spawned = spawnAttempt(originalFlags);
+#ifndef SDK_TARGET_LE1
+    if (!spawned) {
+        Logger->debug("spawnClass: '" + className + "' refused with its own flags, retrying with CLASS_Placeable forced");
+        spawned = spawnAttempt((originalFlags | CLASS_Placeable) & ~CLASS_NotPlaceable);
+    }
+#endif
     if (!spawned) {
         Logger->debug("spawnClass: spawn returned null, dumping class diagnostics:");
         Logger->debug(diagnoseClass(className));
@@ -427,7 +457,42 @@ void Engine::removeActor(const std::string& name) {
     }
 
     std::string nm = FStringToUtf8(actor->GetName());
+
+    // a duplicated name makes this ambiguous and the wrong actor would die with it,
+    // so refuse rather than guess
+    int sameName = 0;
+    AActor* firstMatch = nullptr;
+    forEachOf<AActor>([&](AActor* other) {
+        if (!other || FStringToUtf8(other->GetName()) != nm) {
+            return;
+        }
+        ++sameName;
+        if (!firstMatch) {
+            firstMatch = other;
+        }
+    });
+    if (sameName > 1) {
+        std::ostringstream dup;
+        dup << "removeActor: '" << nm << "' is ambiguous - " << sameName << " actors share that name, refusing to destroy";
+        Logger->debug(dup.str());
+        if (firstMatch != actor) {
+            Application::instance().ui().toastManager.addToastNotification(t("ui.npcs_table.failed_ambiguous_name"), ToastTypeError, 4.0);
+            return;
+        }
+    }
+
+    // pawns are commonly bNoDelete and the game re-asserts it, which makes Destroy()
+    // a no-op, so clear it for the call and put it back after
+    const bool savedNoDelete = actor->bNoDelete != 0;
+    actor->bNoDelete = 0;
     bool ok = actor->Destroy();
+    if (!ok && isLiveObject(actor)) {
+        actor->bNoDelete = 0;
+        ok = actor->Destroy();
+    }
+    if (!ok && isLiveObject(actor) && savedNoDelete) {
+        actor->bNoDelete = 1;
+    }
 
     removeSpawnedName(name);
     removeSpawnedName(nm);
@@ -566,10 +631,11 @@ void Engine::setFloat(const std::string& targetName, bool enable) {
 }
 
 void Engine::applyHUDVisibility() {
-    if (!isGameUIHiddenState && savedPanelVisibility.empty() && savedModeVisibility.empty() && savedHudVisibility.empty() && savedPoiHidden.empty() &&
-        savedPoiCompHidden.empty()
+    if (!isGameUIHiddenState && savedPanelVisibility.empty() && savedModeVisibility.empty() && savedHudVisibility.empty() && savedPoiCompHidden.empty()
 #ifndef SDK_TARGET_LE1
-        && savedFlareActive.empty() && savedSelectionTargetable.empty()
+        && savedPoiHidden.empty() && savedFlareActive.empty() && savedSelectionTargetable.empty()
+#else
+        && savedHudExtraFlags.empty() && savedSelectionsInRange.empty()
 #endif
     ) {
         return;
@@ -592,16 +658,23 @@ void Engine::applyHUDVisibility() {
 #endif
         forEachOf<USFXGameModeBase>([this](USFXGameModeBase* m) {
             if (savedModeVisibility.find(m) == savedModeVisibility.end()) {
+#ifdef SDK_TARGET_LE1
+                // no bShowSubtitle or bAllowMessageUI on LE1, the subtitles and
+                // message box passes below cover those
+                savedModeVisibility.emplace(m, HudModeFlags{m->bShowHUD != 0, m->bShowSelection != 0, m->bShowDamageIndicators != 0, m->bShowRadar != 0,
+                                                            m->bShowReticles != 0, false, false});
+#else
                 savedModeVisibility.emplace(m, HudModeFlags{m->bShowHUD != 0, m->bShowSelection != 0, m->bShowDamageIndicators != 0, m->bShowRadar != 0,
                                                             m->bShowReticles != 0, m->bShowSubtitle != 0, m->bAllowMessageUI != 0});
+                m->bShowSubtitle = 0;
+                m->bAllowMessageUI = 0;
+#endif
             }
             m->bShowHUD = 0;
             m->bShowSelection = 0;
             m->bShowDamageIndicators = 0;
             m->bShowRadar = 0;
             m->bShowReticles = 0;
-            m->bShowSubtitle = 0;
-            m->bAllowMessageUI = 0;
         });
         forEachOf<AHUD>([this](AHUD* h) {
             if (savedHudVisibility.find(h) == savedHudVisibility.end()) {
@@ -609,7 +682,22 @@ void Engine::applyHUDVisibility() {
             }
             h->bShowHUD = 0;
             h->bShowGameHUD = 0;
+#ifdef SDK_TARGET_LE1
+            // the message box and actor info overlay are drawn from these flags,
+            // UBioMessageBox itself is a canvas box with no visibility API
+            ABioHUD* bhud = static_cast<ABioHUD*>(h);
+            if (bhud && savedHudExtraFlags.find(bhud) == savedHudExtraFlags.end()) {
+                savedHudExtraFlags.emplace(
+                    bhud, (unsigned char)((bhud->m_bDisplayActorInfo ? 1 : 0) | (bhud->m_bDisplayDialogData ? 2 : 0) | (bhud->m_bShowHUDThisFrame ? 4 : 0)));
+            }
+            if (bhud) {
+                bhud->m_bDisplayActorInfo = 0;
+                bhud->m_bDisplayDialogData = 0;
+                bhud->m_bShowHUDThisFrame = 0;
+            }
+#endif
         });
+#ifndef SDK_TARGET_LE1
         forEachOf<ASFXPointOfInterest>([this](ASFXPointOfInterest* poi) {
             if (savedPoiHidden.find(poi) == savedPoiHidden.end()) {
                 savedPoiHidden.emplace(poi, poi->bHidden != 0);
@@ -631,7 +719,6 @@ void Engine::applyHUDVisibility() {
                 prim->SetHidden(true);
             }
         });
-#ifndef SDK_TARGET_LE1
         forEachOf<ULensFlareComponent>([this](ULensFlareComponent* f) {
             if (savedFlareActive.find(f) == savedFlareActive.end()) {
                 savedFlareActive.emplace(f, f->bIsActive != 0);
@@ -652,26 +739,60 @@ void Engine::applyHUDVisibility() {
 #endif
         });
 #endif
-        forEachOf<UBioPlayerSelection>([](UBioPlayerSelection* s) {
+        forEachOf<UBioPlayerSelection>([this](UBioPlayerSelection* s) {
             s->m_oCurrentSelectionTarget = nullptr;
 #ifdef SDK_TARGET_LE3
             // m_oPendingSelectionTarget removed in LE3
-#else
+#elif !defined(SDK_TARGET_LE1)
+            // neither m_oPendingSelectionTarget nor SelectionFlareComp on LE1
             s->m_oPendingSelectionTarget = nullptr;
 #endif
             s->m_oLastSelectionTarget = nullptr;
+#if !defined(SDK_TARGET_LE1)
             if (s->SelectionFlareComp) {
                 s->SelectionFlareComp->SetIsActive(false);
                 s->SelectionFlareComp->SetHidden(true);
             }
+#endif
+#ifdef SDK_TARGET_LE1
+            // no USFXSelectionModule on LE1, so there is no unselectable switch. the
+            // reticle comes from m_lSelectionsInRange, empty it instead
+            if (s->m_lSelectionsInRange.Count() > 0) {
+                if (savedSelectionsInRange.find(s) == savedSelectionsInRange.end()) {
+                    std::vector<FBioSelection> kept;
+                    for (int i = 0; i < (int)s->m_lSelectionsInRange.Count(); ++i) {
+                        kept.push_back(s->m_lSelectionsInRange.GetData()[i]);
+                    }
+                    savedSelectionsInRange.emplace(s, kept);
+                }
+                s->m_lSelectionsInRange.Clear();
+            }
+#endif
         });
+#ifdef SDK_TARGET_LE1
+        // subtitles live on ABioWorldInfo::m_Subtitles here, not the game mode.
+        // ClearHistory() is the API, leave m_sSubtitle alone: the SDK's FString owns
+        // its buffer and writing it would free the game's
+        forEachOf<ABioWorldInfo>([](ABioWorldInfo* wi) {
+            if (UBioSubtitles* subs = wi ? wi->GetSubtitles() : nullptr) {
+                subs->ClearHistory();
+            }
+        });
+#endif
         forEachOf<UPrimitiveComponent>([this](UPrimitiveComponent* prim) {
             std::string compName = FStringToString(prim->GetName());
             std::string compClass = FStringToString(prim->Class->GetName());
             bool shouldHide = (
                 // compName.find("Flare") != std::string::npos || compName.find("Selection") != std::string::npos ||
                 compName.find("Bracket") != std::string::npos || compName.find("Indicator") != std::string::npos ||
-                compName.find("Marker") != std::string::npos || compName.find("Reticle") != std::string::npos
+                compName.find("Marker") != std::string::npos ||
+                compName.find("Reticle") != std::string::npos
+#ifdef SDK_TARGET_LE1
+                // no ASFXPointOfInterest and no BioLoot package on LE1, so loot and
+                // interaction markers are matched by name instead
+                || compName.find("Loot") != std::string::npos || compName.find("Interact") != std::string::npos ||
+                compName.find("Pickup") != std::string::npos || compName.find("Container") != std::string::npos || compName.find("Supply") != std::string::npos
+#endif
                 // compClass.find("Particle") != std::string::npos || compClass.find("Sprite") != std::string::npos
             );
             if (shouldHide) {
@@ -696,8 +817,10 @@ void Engine::applyHUDVisibility() {
                 it->first->bShowDamageIndicators = it->second.damage;
                 it->first->bShowRadar = it->second.radar;
                 it->first->bShowReticles = it->second.reticles;
+#ifndef SDK_TARGET_LE1
                 it->first->bShowSubtitle = it->second.subtitles;
                 it->first->bAllowMessageUI = it->second.messages;
+#endif
             }
             it = savedModeVisibility.erase(it);
         }
@@ -708,12 +831,32 @@ void Engine::applyHUDVisibility() {
             }
             it = savedHudVisibility.erase(it);
         }
+#ifdef SDK_TARGET_LE1
+        for (auto it = savedHudExtraFlags.begin(); it != savedHudExtraFlags.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->m_bDisplayActorInfo = (it->second & 1) != 0;
+                it->first->m_bDisplayDialogData = (it->second & 2) != 0;
+                it->first->m_bShowHUDThisFrame = (it->second & 4) != 0;
+            }
+            it = savedHudExtraFlags.erase(it);
+        }
+        for (auto it = savedSelectionsInRange.begin(); it != savedSelectionsInRange.end();) {
+            if (isLiveObject(it->first)) {
+                it->first->m_lSelectionsInRange.Clear();
+                for (const FBioSelection& sel : it->second) {
+                    it->first->m_lSelectionsInRange.Add(sel);
+                }
+            }
+            it = savedSelectionsInRange.erase(it);
+        }
+#else
         for (auto it = savedPoiHidden.begin(); it != savedPoiHidden.end();) {
             if (isLiveObject(it->first)) {
                 it->first->SetHidden(it->second);
             }
             it = savedPoiHidden.erase(it);
         }
+#endif
         for (auto it = savedPoiCompHidden.begin(); it != savedPoiCompHidden.end();) {
             if (isLiveObject(it->first)) {
                 it->first->HiddenGame = it->second;

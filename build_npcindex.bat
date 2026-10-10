@@ -1,6 +1,6 @@
 @echo off
 REM Builds the static NPC index generator (tools/npc_index).
-REM Usage: build_npcindex.bat [ME2|ME3]   - defaults to ME2.
+REM Usage: build_npcindex.bat [ME1|ME2|ME3]   - defaults to ME2.
 setlocal enabledelayedexpansion
 for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath`) do (
     set "VS_PATH=%%i"
@@ -18,6 +18,10 @@ set "OUT=src\actors\npcs_index_le2.inc"
 if /I "%~1"=="ME3" (
     set "GAME=ME3"
     set "OUT=src\actors\npcs_index_le3.inc"
+)
+if /I "%~1"=="ME1" (
+    set "GAME=ME1"
+    set "OUT=src\actors\npcs_index_le1.inc"
 )
 
 echo index target: %GAME% to %OUT%

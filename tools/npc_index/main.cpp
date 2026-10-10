@@ -1,3 +1,4 @@
+#include <iostream>
 // builds the static NPC index by parsing every .pcc under BioGame and picking out
 // the pawn classes it contains. The result is a generated C++ table so SAS can offer
 // every character in the game, not only the ones the current level happened to load.
@@ -135,7 +136,7 @@ bool looksLikePawnName(const std::string& name) {
 // BioWare ships its own patch content under a DLC_MOD_ prefixed folder, so those
 // are kept even when mods are excluded
 bool isOfficialPatchDlc(const std::string& dir) {
-    return dir == "DLC_MOD_LE2PATCH";
+    return dir == "DLC_MOD_LE2PATCH" || dir == "DLC_MOD_LE3PATCH" || dir == "DLC_MOD_LE1PATCH";
 }
 
 bool isPawnSuper(const std::string& super) {
@@ -154,6 +155,72 @@ bool isPawnClassExport(const PCCExport& e) {
 }
 
 // ── read-only inspection mode, deliberately unable to reach the writer ─────────
+// prints the tagged properties of the exports matching a name filter, to see what
+// a game's data objects reference before building an index around them
+int dumpProperties(const char* packagePath, const char* nameFilter) {
+    PCCParser parser(packagePath);
+    if (!parser.parse()) {
+        std::fprintf(stderr, "parse failed\n");
+        return 1;
+    }
+    const PCCFile& data = parser.fileData();
+    std::fprintf(stderr, "%s: %zu exports, %zu imports\n", packagePath, data.exports.size(), data.imports.size());
+    const std::string needle = toLowerCase(nameFilter);
+    int shown = 0;
+    for (size_t i = 0; i < data.exports.size(); ++i) {
+        const PCCExport& e = data.exports[i];
+        if (toLowerCase(e.objectName).find(needle) == std::string::npos) {
+            continue;
+        }
+        std::vector<PCCProperty> props;
+        if (!parser.readExportProperties(i, props)) {
+            continue;
+        }
+        std::fprintf(stderr, "\n[%s]  class=[%s] super=[%s]\n", e.fullName.c_str(), e.className.c_str(), e.superName.c_str());
+        for (const PCCProperty& p : props) {
+            const std::string ref = parser.objectPropertyPath(p.valueOffset);
+            std::fprintf(stderr, "  %-44s type=%-28s size=%d%s%s\n", p.name.c_str(), p.typeName.c_str(), p.size, ref.empty() ? "" : "  -> ", ref.c_str());
+        }
+        if (++shown >= 8) {
+            std::fprintf(stderr, "(stopping after 8 matches)\n");
+            break;
+        }
+    }
+    return 0;
+}
+
+// dumps the package name table, every string the cooker recorded including the
+// ones only property data references. this is how to see what the game itself
+// calls things without guessing
+int dumpNames(const char* packagePath, const char* nameFilter) {
+    PCCParser parser(packagePath);
+    if (!parser.parse()) {
+        std::cerr << "parse failed" << std::endl;
+        return 1;
+    }
+    const PCCFile& data = parser.fileData();
+    const std::string needle = toLowerCase(nameFilter);
+    std::cerr << packagePath << ": " << data.names.size() << " names, " << data.exports.size() << " exports" << std::endl;
+    int shown = 0;
+    for (const std::string& name : data.names) {
+        if (needle != "*" && toLowerCase(name).find(needle) == std::string::npos) {
+            continue;
+        }
+        ++shown;
+        if (shown > 400) {
+            std::cerr << "(truncated)" << std::endl;
+            break;
+        }
+        std::cerr << "  name: " << name << std::endl;
+    }
+    if (needle == "*") {
+        for (const PCCExport& e : data.exports) {
+            std::cerr << "  export: " << e.objectName << "  class=[" << e.className << "]  full=[" << e.fullName << "]" << std::endl;
+        }
+    }
+    return 0;
+}
+
 int dumpPackage(const char* packagePath, const char* nameFilter) {
     PCCParser parser(packagePath);
     if (!parser.parse()) {
@@ -211,9 +278,16 @@ int main(int argc, char** argv) {
     if (argc >= 4 && strcmp(argv[1], "--dump") == 0) {
         return dumpPackage(argv[2], argv[3]);
     }
+    if (argc >= 4 && strcmp(argv[1], "--props") == 0) {
+        return dumpProperties(argv[2], argv[3]);
+    }
+    if (argc >= 4 && strcmp(argv[1], "--names") == 0) {
+        return dumpNames(argv[2], argv[3]);
+    }
     if (argc < 3) {
         std::fprintf(stderr, "usage: npc_index <BIOGame dir> <output .inc> [--verbose] [--confirm]\n");
         std::fprintf(stderr, "       npc_index --dump <package.pcc> <nameFilter>\n");
+        std::fprintf(stderr, "       npc_index --props <package.pcc> <nameFilter>\n");
         return 2;
     }
 
@@ -299,6 +373,9 @@ int main(int argc, char** argv) {
             std::string category; // authored name means a real character, rest is background
     };
     std::map<std::string, Entry> byExport;
+    // LE1 has no per-character pawn classes, a character is a "hench_<name>"
+    // package of Bio_Appr_Character_* settings applied to a generic player pawn
+    std::map<std::string, Entry> characters;
     size_t parsed = 0;
     size_t failed = 0;
 
@@ -313,6 +390,13 @@ int main(int argc, char** argv) {
         const PCCFile& data = parser.fileData();
         const std::string pccName = std::filesystem::path(path).stem().string();
         for (const PCCExport& e : data.exports) {
+            const size_t groupDot = e.fullName.find('.');
+            const std::string topGroup = groupDot == std::string::npos ? std::string() : e.fullName.substr(0, groupDot);
+            if (topGroup.rfind("hench_", 0) == 0) {
+                if (characters.find(topGroup) == characters.end()) {
+                    characters[topGroup] = Entry{topGroup, topGroup, pccName, inferName(topGroup.substr(6)), "Characters"};
+                }
+            }
             if (!isPawnClassExport(e)) {
                 continue;
             }
@@ -345,7 +429,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::fprintf(stderr, "parsed %zu packages (%zu failed), found %zu pawn classes\n", parsed, failed, byExport.size());
+    std::fprintf(stderr, "parsed %zu packages (%zu failed), found %zu pawn classes and %zu character groups\n", parsed, failed, byExport.size(),
+                 characters.size());
 
     std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
     if (!out) {
@@ -368,6 +453,19 @@ int main(int argc, char** argv) {
     }
     out << "};\n";
     out << "static const int staticPawnIndexCount = " << byExport.size() << ";\n";
+    out << "\n";
+    out << "struct StaticCharacterEntry {\n";
+    out << "    const char* displayName;\n";
+    out << "    const char* groupName;\n";
+    out << "    const char* sourcePackage;\n";
+    out << "};\n\n";
+    out << "static const StaticCharacterEntry staticCharacterIndex[] = {\n";
+    for (const auto& item : characters) {
+        out << "    {\"" << escape(item.second.displayName) << "\", \"" << escape(item.second.exportName) << "\", \"" << escape(item.second.sourcePackage)
+            << "\"},\n";
+    }
+    out << "};\n";
+    out << "static const int staticCharacterIndexCount = " << characters.size() << ";\n";
     out.close();
     std::fprintf(stderr, "wrote %s\n", outPath.string().c_str());
     return 0;

@@ -81,7 +81,15 @@ struct PCCFile {
         std::vector<int32_t> rootExports; // exports whose linkIndex == 0
 };
 
-// ── Parser ─────────────────────────────────────────────────────────────
+// one tagged property out of an export's serialized data
+struct PCCProperty {
+        std::string name;
+        std::string typeName;
+        int32_t size = 0; // byte size, or element count for arrays
+        int32_t arrayIndex = 0;
+        size_t valueOffset = 0; // offset into decompressedBuffer()
+        bool isArray = false;
+};
 
 class PCCParser {
     public:
@@ -107,6 +115,16 @@ class PCCParser {
             return decompressed_;
         }
 
+        // reads the tagged property list out of an export. only class defaults and
+        // archetypes carry properties, a plain instance can come back empty
+        bool readExportProperties(size_t exportIndex, std::vector<PCCProperty>& out) const;
+
+        // object index in the combined package namespace, 0 for none
+        int32_t readObjectPropertyValue(size_t valueOffset) const;
+
+        // "<package>.<name>" for an object index, empty when unresolvable
+        std::string objectPropertyPath(size_t valueOffset) const;
+
     private:
         void readRawFile();
         bool readPreliminaryHeader();
@@ -121,6 +139,8 @@ class PCCParser {
 
         std::string resolveName(int32_t index) const;              // 0-based index into name table
         std::string resolveObjectIndex(int32_t objectIndex) const; // combined namespace → name
+        // an FName on disk: a name-table index, or a number with the top bit set
+        std::string readFName(int32_t raw) const;
 
         std::string filePath_;
         std::ifstream fileStream_;

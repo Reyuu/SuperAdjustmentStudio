@@ -124,8 +124,73 @@ inline LONG WINAPI SASUnhandledExceptionFilter(EXCEPTION_POINTERS* info) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+// the filter above is easy to lose, the engine installs its own during startup and
+// the last call wins, so a real crash can end up unlogged. a vectored handler runs
+// first and cannot be replaced, so this catches it even on the first chance
+inline LONG WINAPI SASVectoredExceptionHandler(EXCEPTION_POINTERS* info) {
+    if (!info || !info->ExceptionRecord) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    EXCEPTION_RECORD* rec = info->ExceptionRecord;
+    const DWORD code = rec->ExceptionCode;
+    // only real damage, the rest is routine engine control flow and would be noise
+    const bool interesting = code == 0xC0000005     // access violation
+                             || code == 0xC0000374  // heap corruption
+                             || code == 0xC00000FD  // stack overflow
+                             || code == 0xC000001D  // illegal instruction
+                             || code == 0xC0000409; // stack buffer overrun
+    if (!interesting || !Logger) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    try {
+        std::ostringstream es;
+        es << "VECTORED crash: code=0x" << std::hex << code << std::dec << " addr=" << rec->ExceptionAddress << " nparams=" << rec->NumberParameters;
+        if (code == 0xC0000005 && rec->NumberParameters >= 2) {
+            es << " access=" << (rec->ExceptionInformation[0] ? "write" : "read") << " at=0x" << std::hex << rec->ExceptionInformation[1];
+        }
+        if (info->ContextRecord) {
+            HMODULE mod = nullptr;
+            char modName[MAX_PATH] = {};
+            DWORD ripOffset = 0;
+            const DWORD_PTR rip = info->ContextRecord->Rip;
+            if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCSTR>(rip),
+                                   &mod)) {
+                ripOffset = static_cast<DWORD>(rip - reinterpret_cast<DWORD_PTR>(mod));
+                GetModuleFileNameA(mod, modName, MAX_PATH);
+            }
+            es << " | rip=" << reinterpret_cast<void*>(rip) << " module=" << modName << "+0x" << std::hex << ripOffset << " rax=" << std::hex
+               << reinterpret_cast<void*>(info->ContextRecord->Rax) << " rcx=" << reinterpret_cast<void*>(info->ContextRecord->Rcx)
+               << " rdx=" << reinterpret_cast<void*>(info->ContextRecord->Rdx) << " r8=" << reinterpret_cast<void*>(info->ContextRecord->R8);
+        }
+        Logger->error(es.str());
+        // a few frames is enough to tell SAS from the game
+        void* frames[24];
+        const USHORT captured = CaptureStackBackTrace(0, 24, frames, nullptr);
+        for (USHORT i = 0; i < captured; ++i) {
+            HMODULE mod = nullptr;
+            char modName[MAX_PATH] = {};
+            DWORD off = 0;
+            if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCSTR>(frames[i]),
+                                   &mod)) {
+                off = static_cast<DWORD>(reinterpret_cast<DWORD_PTR>(frames[i]) - reinterpret_cast<DWORD_PTR>(mod));
+                GetModuleFileNameA(mod, modName, MAX_PATH);
+            }
+            Logger->error("VECTORED frame #" + std::to_string(i) + ": " + modName + "+0x" + [off] {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%llx", static_cast<unsigned long long>(off));
+                return std::string(buf);
+            }());
+        }
+        Logger->flush();
+    } catch (...) {
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 inline void installCrashHandler() {
     SetUnhandledExceptionFilter(&SASUnhandledExceptionFilter);
+    // front of the list so nothing can claim the fault first
+    AddVectoredExceptionHandler(1, &SASVectoredExceptionHandler);
 }
 
 #define SAS_HOOK_TRY try

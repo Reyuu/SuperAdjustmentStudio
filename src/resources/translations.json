@@ -108,7 +108,8 @@
                 "play": "Play",
                 "play_loop": "Play (loop)",
                 "reset": "Reset",
-                "include_all": "Include all animation sets"
+                "include_all": "Include all animation sets",
+                "le1_unsupported": "Not available in Mass Effect 1. Its pawns have no anim slots, and the game resolves animations through an internal anim-set map that the plugin cannot reach."
             },
             "bones": "Bones",
             "bones_table": {
@@ -301,7 +302,8 @@
                 "crust_not_found": "LifeCrust template not found: %s",
                 "crust_no_donor": "No VFX donor available for LifeCrust %s",
                 "crust_failed": "Failed to create LifeCrust %s",
-                "crust_applied": "LifeCrust applied: %s"
+                "crust_applied": "LifeCrust applied: %s",
+                "failed_ambiguous_name": "Two objects share that name, refusing to delete the wrong one."
             },
             "properties_table": {
                 "array_of": "(array of %s)",
@@ -502,6 +504,14 @@
                 "reset": "Reset",
                 "reload_one": "Recompile",
                 "baked_shots_hint": "Saved shots include the custom shaders."
+            },
+            "le1chars": {
+                "hint": "LE1 has no per-character pawn classes: each entry spawns a pawn built from that character's own type. Spawned pawns stay fully editable with the mesh and bone pickers.",
+                "loading": "Loading %s...",
+                "headgear": "Helmet / visor / face plate",
+                "headgear_hint": "LE1 armour spawns with these up. Untick to hide them on the selected pawn.",
+                "headgear_absent": "This pawn has no such component.",
+                "failed_no_pawn_class": "Cannot spawn %s: no usable pawn in this level to build one from."
             }
         },
         "toast": {

@@ -41,6 +41,35 @@ class Engine {
         // spawned names are written on the game thread (spawn / delete) and read on the
         // render thread (selection lists), so this hands out copies and does the mutation
         // behind a lock rather than leaking the vector
+        // the exact instances we spawned. LE1's SpawnPawn can reuse a name already in
+        // the level, so the name list cannot identify an actor on its own
+        std::vector<AActor*> Engine::spawnedActors() const {
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
+            return spawnedActorsVector;
+        }
+        bool Engine::isSpawnedActor(AActor* actor) const {
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
+            return std::find(spawnedActorsVector.begin(), spawnedActorsVector.end(), actor) != spawnedActorsVector.end();
+        }
+        void Engine::addSpawnedActor(AActor* actor) {
+            if (!actor) {
+                return;
+            }
+            // inline, addSpawnedName takes the same non-recursive mutex and would
+            // deadlock here
+            const std::string nm = FStringToUtf8(actor->GetName());
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
+            if (std::find(spawnedNamesVector.begin(), spawnedNamesVector.end(), nm) == spawnedNamesVector.end()) {
+                spawnedNamesVector.push_back(nm);
+            }
+            if (std::find(spawnedActorsVector.begin(), spawnedActorsVector.end(), actor) == spawnedActorsVector.end()) {
+                spawnedActorsVector.push_back(actor);
+            }
+        }
+        void Engine::removeSpawnedActor(AActor* actor) {
+            std::lock_guard<std::mutex> lock(spawnedNamesMtx);
+            spawnedActorsVector.erase(std::remove(spawnedActorsVector.begin(), spawnedActorsVector.end(), actor), spawnedActorsVector.end());
+        }
         std::vector<std::string> Engine::spawnedNames() const {
             std::lock_guard<std::mutex> lock(spawnedNamesMtx);
             return spawnedNamesVector;
@@ -102,6 +131,7 @@ class Engine {
         std::atomic<bool> isCameraDragActiveState{false};
         mutable std::mutex spawnedNamesMtx;
         std::vector<std::string> spawnedNamesVector;
+        std::vector<AActor*> spawnedActorsVector;
 
         // engine-level look freeze
         unsigned char savedIgnoreLook = 0;
@@ -123,11 +153,19 @@ class Engine {
 
         std::unordered_map<USFXGameModeBase*, HudModeFlags> savedModeVisibility;
         std::unordered_map<AHUD*, unsigned char> savedHudVisibility;
-        std::unordered_map<ASFXPointOfInterest*, bool> savedPoiHidden;
         std::unordered_map<UPrimitiveComponent*, bool> savedPoiCompHidden;
 #ifndef SDK_TARGET_LE1
+        std::unordered_map<ASFXPointOfInterest*, bool> savedPoiHidden;
         std::unordered_map<ULensFlareComponent*, bool> savedFlareActive;
         std::unordered_map<USFXSelectionModule*, unsigned char> savedSelectionTargetable;
+#endif
+#ifdef SDK_TARGET_LE1
+        // LE1 hides the overlay and reticle through different objects than LE2's
+        // USFXGameModeBase flags. the subtitles object refills itself as the
+        // conversation runs and UBioMessageBox has no visibility API at all, so
+        // both are driven through the ABioHUD flags and ClearHistory
+        std::unordered_map<ABioHUD*, unsigned char> savedHudExtraFlags;
+        std::unordered_map<UBioPlayerSelection*, std::vector<FBioSelection>> savedSelectionsInRange;
 #endif
 };
 

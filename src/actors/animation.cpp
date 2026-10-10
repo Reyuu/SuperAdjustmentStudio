@@ -202,6 +202,14 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
     collectTreeSequenceNodes(mesh->Animations, nodes);
     SFXName sfxAnim(animName.c_str(), 0);
 
+#ifdef SDK_TARGET_LE1
+    // no anim slots on LE1 and the game resolves names through
+    // UBioGestureAnimSetMgr::m_mapAnimSetRefCount, an FMap_Mirror with no accessor,
+    // so custom playback is not reachable. the UI is gated with the same reason, this
+    // is the backstop for any other caller
+    Logger->debug("playAnimation: '" + animName + "' on '" + pawnName + "' - custom animation playback is not supported on LE1");
+    return;
+#else
     TArray<UAnimNodeSlot*>& slots = pawn->BodyStanceNodes;
     if (slots.Count() == 0) {
         pawn->CacheAnimNodes();
@@ -244,4 +252,5 @@ void Animation::playAnimation(const std::string& pawnName, const std::string& an
        << (slot->NodeName.GetName() ? slot->NodeName.GetName() : "?") << "' (slots=" << slots.Count() << ", seqNodes=" << nodes.size() << ", pos=" << pos
        << ")";
     Logger->debug(ss.str());
+#endif // SDK_TARGET_LE1
 }

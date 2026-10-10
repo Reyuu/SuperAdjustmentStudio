@@ -164,18 +164,30 @@ HRESULT STDMETHODCALLTYPE Application::presentDetour(IDXGISwapChain* pSwapChain,
             ImGui_ImplWin32_NewFrame();
             app.mouse().cursorPassthrough() = false;
 
-            ImGui::NewFrame();
-            const bool wasCapturingHotkey = app.settings().capturingHotkey;
-            if (app.photoOverlay().isActive()) {
-                app.photoOverlay().render(app.rendererInstance.device());
+            // an opened frame must always be closed. if the content throws and
+            // EndFrame() is skipped ImGui stays mid-frame for good and every later
+            // NewFrame() throws too, so the overlay vanishes for the session
+            bool imGuiFrameOpen = false;
+            SAS_HOOK_TRY {
+                ImGui::NewFrame();
+                imGuiFrameOpen = true;
+                const bool wasCapturingHotkey = app.settings().capturingHotkey;
+                if (app.photoOverlay().isActive()) {
+                    app.photoOverlay().render(app.rendererInstance.device());
+                }
+                if (app.ui().showUI().load()) {
+                    app.ui().renderOverlayContents(app.rendererInstance);
+                }
+                app.hotkeyCaptureFinished = wasCapturingHotkey && !app.settings().capturingHotkey;
+            } SAS_HOOK_CATCH_VOID
+
+            if (imGuiFrameOpen) {
+                SAS_HOOK_TRY {
+                    ImGui::EndFrame();
+                    ImGui::Render();
+                    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+                } SAS_HOOK_CATCH_VOID
             }
-            if (app.ui().showUI().load()) {
-                app.ui().renderOverlayContents(app.rendererInstance);
-            }
-            app.hotkeyCaptureFinished = wasCapturingHotkey && !app.settings().capturingHotkey;
-            ImGui::EndFrame();
-            ImGui::Render();
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
         }
     } SAS_HOOK_CATCH_VOID
 

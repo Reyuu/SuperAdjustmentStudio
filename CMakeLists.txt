@@ -4,6 +4,13 @@ project(SuperAdjustmentStudio VERSION 1.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (MSVC)
+    # Debug builds generate a PDB, and every cl.exe writing the same one has to share it
+    # safely. Without /FS the parallel compilers fail with C1041; this bit spdlog in
+    # Debug builds, because only the main target had /Zi /FS.
+    add_compile_options(/FS)
+endif()
+
 # submodules
 #   LExSDKv2
 message(STATUS "Adding build target: thirdparty/LExSDKv2")
@@ -201,6 +208,10 @@ target_include_directories(SuperAdjustmentStudio PRIVATE
 
 if (TARGET LESDK-${SAS_LE})
     target_link_libraries(SuperAdjustmentStudio PRIVATE LESDK-${SAS_LE})
+    # the generated structs mirror the game's binary layout, so MSVC's alignment
+    # advice on them (C4315) cannot be acted on without corrupting that layout.
+    # silence it for the SDK only, never for our own code
+    target_compile_options(LESDK-${SAS_LE} PRIVATE /wd4315)
 else()
     message(FATAL_ERROR "No LESDK target found for ${SAS_GAME}. Please check the LExSDKv2 submodule.")
 endif()
@@ -303,7 +314,11 @@ if (MSVC)
 endif()
 
 target_compile_definitions(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:SAS_DEBUG>)
-target_compile_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/Zi /Od>)
-target_link_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/DEBUG>)
+# Debug carries symbols so crash addresses can be resolved; Release deliberately does
+# not, because /DEBUG inflated the shipped plugin from ~3.6 MB to ~17 MB on this
+# target. Build Debug when you need to symbolise a crash - deploy.bat ships the Debug
+# PDB alongside the plugin.
+target_compile_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/Zi /FS /Od>)
+target_link_options(SuperAdjustmentStudio PRIVATE $<$<CONFIG:Debug>:/DEBUG:FULL>)
 
 install(TARGETS SuperAdjustmentStudio DESTINATION bin)

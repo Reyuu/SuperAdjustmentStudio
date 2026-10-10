@@ -127,80 +127,106 @@ void ParticleManager::addParticle(UParticleSystem* particleTemplate, AActor* own
 }
 
 void ParticleManager::removeParticle(ParticleEntry& entry) {
-    std::lock_guard<std::mutex> lock(particleMtx);
-    if (isLiveObject(entry.psc)) {
-        entry.psc->SetActive(0);
-    }
-    entry.psc = nullptr;
-    if (isLiveObject(entry.emitterActor)) {
-        entry.emitterActor->Destroy();
-    }
-    entry.emitterActor = nullptr;
-    for (auto it = particleEntries.begin(); it != particleEntries.end(); ++it) {
-        if (&(*it) == &entry) {
-            particleEntries.erase(it);
-            break;
-        }
-    }
-}
-
-void ParticleManager::removeAllParticles() {
-    std::lock_guard<std::mutex> lock(particleMtx);
-    for (ParticleEntry& entry : particleEntries) {
+    // Destroy() runs EndPlay and tears down components, which can re-enter this
+    // manager and re-lock particleMtx, so destroy after dropping the entry
+    AActor* toDestroy = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(particleMtx);
         if (isLiveObject(entry.psc)) {
             entry.psc->SetActive(0);
         }
         entry.psc = nullptr;
         if (isLiveObject(entry.emitterActor)) {
-            entry.emitterActor->Destroy();
+            toDestroy = entry.emitterActor;
         }
         entry.emitterActor = nullptr;
+        for (auto it = particleEntries.begin(); it != particleEntries.end(); ++it) {
+            if (&(*it) == &entry) {
+                particleEntries.erase(it);
+                break;
+            }
+        }
     }
-    particleEntries.clear();
+    if (toDestroy && isLiveObject(toDestroy)) {
+        toDestroy->Destroy();
+    }
+}
+
+void ParticleManager::removeAllParticles() {
+    // see removeParticle, Destroy() must not run with particleMtx held
+    std::vector<AActor*> toDestroy;
+    {
+        std::lock_guard<std::mutex> lock(particleMtx);
+        for (ParticleEntry& entry : particleEntries) {
+            if (isLiveObject(entry.psc)) {
+                entry.psc->SetActive(0);
+            }
+            entry.psc = nullptr;
+            if (isLiveObject(entry.emitterActor)) {
+                toDestroy.push_back(entry.emitterActor);
+            }
+            entry.emitterActor = nullptr;
+        }
+        particleEntries.clear();
+    }
+    for (AActor* actor : toDestroy) {
+        if (isLiveObject(actor)) {
+            actor->Destroy();
+        }
+    }
 }
 
 void ParticleManager::updateActiveParticles() {
-    std::lock_guard<std::mutex> lock(particleMtx);
-    double now = ImGui::GetTime();
-    for (auto it = particleEntries.begin(); it != particleEntries.end();) {
-        ParticleEntry& e = *it;
+    // see removeParticle, teardown has to be outside particleMtx
+    std::vector<AActor*> toDestroy;
+    {
+        std::lock_guard<std::mutex> lock(particleMtx);
+        double now = ImGui::GetTime();
+        for (auto it = particleEntries.begin(); it != particleEntries.end();) {
+            ParticleEntry& e = *it;
 
-        bool pscLive = isLiveObject(e.psc);
-        bool actorLive = isLiveObject(e.emitterActor);
-        if (!pscLive || !actorLive) {
-            if (pscLive) {
-                e.psc->SetActive(0);
-            }
-            if (actorLive) {
-                e.emitterActor->Destroy();
-            }
-            e.psc = nullptr;
-            e.emitterActor = nullptr;
-            it = particleEntries.erase(it);
-            continue;
-        }
-
-        if (e.loop) {
-            if (!e.psc->bIsActive || e.psc->bWasCompleted) {
-                if (e.nextLoopTime == 0.0) {
-                    // effect just ended: schedule the next re-trigger after the wait duration
-                    e.nextLoopTime = now + e.loopDelay;
-                } else if (now >= e.nextLoopTime) {
-                    applyParticleLiveState(e);
-                    e.nextLoopTime = 0.0;
+            bool pscLive = isLiveObject(e.psc);
+            bool actorLive = isLiveObject(e.emitterActor);
+            if (!pscLive || !actorLive) {
+                if (pscLive) {
+                    e.psc->SetActive(0);
                 }
-            }
-            ++it;
-        } else if ((now - e.spawnTime) >= (double)e.lifeTime) {
-            e.psc->SetActive(0);
-            e.psc = nullptr;
-            if (e.emitterActor) {
-                e.emitterActor->Destroy();
+                if (actorLive) {
+                    toDestroy.push_back(e.emitterActor);
+                }
+                e.psc = nullptr;
                 e.emitterActor = nullptr;
+                it = particleEntries.erase(it);
+                continue;
             }
-            it = particleEntries.erase(it);
-        } else {
-            ++it;
+
+            if (e.loop) {
+                if (!e.psc->bIsActive || e.psc->bWasCompleted) {
+                    if (e.nextLoopTime == 0.0) {
+                        // effect just ended: schedule the next re-trigger after the wait duration
+                        e.nextLoopTime = now + e.loopDelay;
+                    } else if (now >= e.nextLoopTime) {
+                        applyParticleLiveState(e);
+                        e.nextLoopTime = 0.0;
+                    }
+                }
+                ++it;
+            } else if ((now - e.spawnTime) >= (double)e.lifeTime) {
+                e.psc->SetActive(0);
+                e.psc = nullptr;
+                if (e.emitterActor) {
+                    toDestroy.push_back(e.emitterActor);
+                    e.emitterActor = nullptr;
+                }
+                it = particleEntries.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+    for (AActor* actor : toDestroy) {
+        if (isLiveObject(actor)) {
+            actor->Destroy();
         }
     }
 }

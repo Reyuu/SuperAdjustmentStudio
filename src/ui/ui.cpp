@@ -607,9 +607,7 @@ void UI::renderSelectionSection() {
     renderSelectionAnimation();
     Application::instance().vfx().renderUI();
     renderSelectionBones();
-#ifndef SDK_TARGET_LE1
     Application::instance().npcs().renderSelectionUI();
-#endif
     renderSelectionOtherProps();
     ImGui::Unindent();
 }
@@ -769,6 +767,16 @@ void UI::renderSelectionAnimation() {
         return;
     }
     ImGui::Indent();
+#ifdef SDK_TARGET_LE1
+    // gated, measured rather than assumed: no UAnimNodeSlot exists in an LE1 tree,
+    // GetAnimLengthAndPos never resolves a custom anim, eventSetAnimPosition rejects
+    // every name, PlayCustomAnim* only stores the name, and the sequences are held by
+    // no node. all of it goes through UBioGestureAnimSetMgr::m_mapAnimSetRefCount, an
+    // FMap_Mirror with no SDK accessor
+    ImGui::TextDisabled(t("ui.animation_table.le1_unsupported"));
+    ImGui::Unindent();
+    return;
+#endif
     ImGui::TextDisabled(t("ui.animation_table.apply_desc"));
 
     if (!pawnNamesVector.empty()) {
@@ -1189,9 +1197,7 @@ void UI::renderSpawnSection() {
         Application::instance().lights().renderUI();
         Application::instance().prefabs().renderUI();
         Application::instance().particles().renderUI();
-#ifndef SDK_TARGET_LE1
         Application::instance().npcs().renderSpawnUI();
-#endif
         renderSpawnOtherProps();
     }
     ImGui::Unindent();
