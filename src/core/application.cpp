@@ -283,7 +283,7 @@ LRESULT CALLBACK Application::wndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                     app.freecam().cameraDragState() = state;
                     app.freecam().isCameraDragActive() = true;
                     seedDragOrigin(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-                    dragPassthrough = !app.freecam().freecamWanted().load();
+                    dragPassthrough = app.freecam().nativeOrbitAllowed();
                     {
                         std::ostringstream ss;
                         ss << "wndProc: RMB drag start mode=" << (int)state << (dragPassthrough ? " passthrough" : " consumed");

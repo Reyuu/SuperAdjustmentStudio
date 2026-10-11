@@ -69,6 +69,8 @@ class Freecam {
         const char* dragModeSuffix();
         bool isFreecamActive();
 
+        bool nativeOrbitAllowed();
+
         void moveFreecam(int dx, int dy, CameraDragState& state);
 
         void resetFreecamToPlayer();

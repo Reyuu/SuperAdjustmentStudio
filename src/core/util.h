@@ -57,6 +57,17 @@ struct PccFile {
 };
 std::vector<PccFile> collectGamePccFiles();
 
+// GObjObjects is mutated by the game thread (GC) while the render thread scans it,
+// so an entry's Class pointer can be stale and IsA walks Class->SuperField into freed
+// memory. the test must be SEH-guarded (no local objects, so __try is legal here).
+static bool safeIsA(UObject* o, UClass* cls) {
+    __try {
+        return o->IsA(cls);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 // first live object of type T in GObjObjects
 template <class T> T* findFirstOf() {
     if (!UObject::GObjObjects) {
@@ -64,7 +75,7 @@ template <class T> T* findFirstOf() {
     }
     for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
         UObject* o = UObject::GObjObjects->GetData()[i];
-        if (o && o->IsA(T::StaticClass())) {
+        if (o && safeIsA(o, T::StaticClass())) {
             return static_cast<T*>(o);
         }
     }
@@ -78,7 +89,7 @@ template <class T, class Fn> void forEachOf(Fn&& fn) {
     }
     for (int i = 0; i < (int)UObject::GObjObjects->Count(); ++i) {
         UObject* o = UObject::GObjObjects->GetData()[i];
-        if (o && o->IsA(T::StaticClass())) {
+        if (o && safeIsA(o, T::StaticClass())) {
             fn(static_cast<T*>(o));
         }
     }
@@ -107,14 +118,13 @@ static bool isLiveObject(UObject* obj) {
     if (!obj || !UObject::GObjObjects || !UObject::GObjObjects->GetData()) {
         return false;
     }
-    if (obj->Class == nullptr) {
-        return false;
-    }
+    // match by pointer identity first: obj may be a dangling pointer, so it must
+    // not be dereferenced until it is known to be a live object
     UObject** data = UObject::GObjObjects->GetData();
     const int n = (int)UObject::GObjObjects->Count();
     for (int i = 0; i < n; ++i) {
         if (data[i] == obj) {
-            return true;
+            return obj->Class != nullptr;
         }
     }
     return false;

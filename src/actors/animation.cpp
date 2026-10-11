@@ -33,6 +33,20 @@ static void collectAllSequenceNodes(std::vector<UAnimNodeSequence*>& out) {
     });
 }
 
+// a node held while paused can be freed by a pawn/level unload, so the raw write
+// is guarded like the raw reads elsewhere; false means the node is gone
+static bool trySetSequenceRate(UAnimNodeSequence* node, float rate) {
+    if (!node) {
+        return false;
+    }
+    __try {
+        node->Rate = rate;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 // freeze each sequence node play rate, since game's own pause does not stop skeletal animations... for some reason
 void Animation::pauseAnimations(bool pause) {
     if (pause) {
@@ -59,9 +73,7 @@ void Animation::pauseAnimations(bool pause) {
             return;
         }
         for (int i = 0; i < (int)pausedAnimNodes.size(); ++i) {
-            if (pausedAnimNodes[i]) {
-                pausedAnimNodes[i]->Rate = pausedAnimRates[i];
-            }
+            trySetSequenceRate(pausedAnimNodes[i], pausedAnimRates[i]);
         }
         pausedAnimNodes.clear();
         pausedAnimRates.clear();
@@ -74,11 +86,18 @@ void Animation::keepAnimationsPaused() {
     if (!animPauseActiveState) {
         return;
     }
-    for (UAnimNodeSequence* n : pausedAnimNodes) {
-        if (n) {
-            n->Rate = 0.0f;
+    // compact both vectors in lockstep so resume keeps its rate pairing, dropping
+    // any node that has since been freed
+    size_t w = 0;
+    for (size_t i = 0; i < pausedAnimNodes.size(); ++i) {
+        if (trySetSequenceRate(pausedAnimNodes[i], 0.0f)) {
+            pausedAnimNodes[w] = pausedAnimNodes[i];
+            pausedAnimRates[w] = pausedAnimRates[i];
+            ++w;
         }
     }
+    pausedAnimNodes.resize(w);
+    pausedAnimRates.resize(w);
 }
 
 void Animation::resetAnimation(const std::string& pawnName) {

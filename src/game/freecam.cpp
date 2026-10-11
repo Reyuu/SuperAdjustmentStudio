@@ -101,6 +101,17 @@ bool Freecam::isFreecamActive() {
     return freecamWantedState.load() && freecamHasPOV;
 }
 
+bool Freecam::nativeOrbitAllowed() {
+#ifdef SDK_TARGET_LE1
+    // RMB is the aim/combat control in ME1, so its window messages must never reach the
+    // game. DInput still passes the cursor through during a drag (see Mouse::d8FreezeIfUI)
+    // so the game camera orbits, but with the mouse buttons stripped of aim/combat.
+    return false;
+#else
+    return !freecamWantedState.load();
+#endif
+}
+
 void Freecam::applyFreecamEnabled(bool enabled) {
     if (enabled) {
         FVector loc{0.0f, 0.0f, 0.0f};

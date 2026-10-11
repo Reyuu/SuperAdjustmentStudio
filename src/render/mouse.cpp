@@ -98,6 +98,35 @@ static void** d8Vtbl(void* obj) {
     return *reinterpret_cast<void***>(obj);
 }
 
+// DIMOUSESTATE layout: lX(0) lY(4) lZ(8) rgbButtons[4](12..15). Keep the axes so the game
+// camera still follows the cursor, drop the buttons so a held RMB cannot fire aim/combat.
+static void stripButtonState(LPVOID lpvData, DWORD cbData) {
+    if (lpvData && cbData >= 16) {
+        memset(static_cast<unsigned char*>(lpvData) + 12, 0, 4);
+    }
+}
+
+// DIDEVICEOBJECTDATA[] (dwOfs,dwData,timestamp,sequence): drop the button events, keep the
+// axis events. DIMOFS_BUTTON0..3 are byte offsets 12..15.
+static void stripButtonEvents(void* rgdod, DWORD* pdwInOut, DWORD cbObjectData) {
+    if (!rgdod || !pdwInOut || cbObjectData < 16 || *pdwInOut == 0) {
+        return;
+    }
+    auto* base = static_cast<unsigned char*>(rgdod);
+    DWORD kept = 0;
+    for (DWORD i = 0; i < *pdwInOut; ++i) {
+        const DWORD ofs = *reinterpret_cast<const DWORD*>(base + static_cast<size_t>(i) * cbObjectData);
+        if (ofs >= 12 && ofs <= 15) {
+            continue;
+        }
+        if (kept != i) {
+            memcpy(base + static_cast<size_t>(kept) * cbObjectData, base + static_cast<size_t>(i) * cbObjectData, cbObjectData);
+        }
+        ++kept;
+    }
+    *pdwInOut = kept;
+}
+
 bool Mouse::d8FreezeIfUI(DWORD cbData, LPVOID lpvData, const char* variant) {
     const bool dragging = Application::instance().engine().isCameraDragActive().load() || Application::instance().freecam().isCameraDragActive().load();
     const bool nativeOrbit = dragging && !Application::instance().freecam().freecamWanted().load();
@@ -108,6 +137,13 @@ bool Mouse::d8FreezeIfUI(DWORD cbData, LPVOID lpvData, const char* variant) {
             return true;
         }
     }
+#ifdef SDK_TARGET_LE1
+    // ME1's RMB is the aim/combat control, so deferring it to the game enters combat.
+    // keep the cursor so the game camera still orbits, but hide the buttons.
+    if (nativeOrbit && Application::instance().ui().showUI().load()) {
+        stripButtonState(lpvData, cbData);
+    }
+#endif
     if (!di8PollLogged && lpvData && cbData >= 12) {
         const long lx = ((const long*)lpvData)[0];
         const long ly = ((const long*)lpvData)[1];
@@ -160,6 +196,11 @@ HRESULT Mouse::hookD8GetDeviceData(void* This, DWORD cbObjectData, void* rgdod, 
                 *pdwInOut = 0;
             }
         }
+#ifdef SDK_TARGET_LE1
+        else if (nativeOrbit) {
+            stripButtonEvents(rgdod, pdwInOut, cbObjectData);
+        }
+#endif
 
         bool& logged = isW ? di8DataLoggedW : di8DataLoggedA;
         if (!logged && rgdod && pdwInOut && *pdwInOut > 0) {
