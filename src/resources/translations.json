@@ -1,8 +1,7 @@
 {
-    "en":     {
+    "en": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
-
             "snapshots": {
                 "menu": "Snapshots",
                 "save": "Save snapshot...",
@@ -56,6 +55,13 @@
                 "reverted": "Settings reverted!",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel"
             },
             "debug": "Debug",
@@ -109,7 +115,8 @@
                 "play": "Play",
                 "play_loop": "Play (loop)",
                 "reset": "Reset",
-                "include_all": "Include all animation sets"
+                "include_all": "Include all animation sets",
+                "le1_unsupported": "Not available in Mass Effect 1. Its pawns have no anim slots, and the game resolves animations through an internal anim-set map that the plugin cannot reach."
             },
             "bones": "Bones",
             "bones_table": {
@@ -237,6 +244,74 @@
                 "bloom_sceen_threshold": "Bloom screen blend threshold",
                 "bloom_tint": "Bloom tint"
             },
+            "npcs": "NPCs",
+            "npcs_selection": "NPC/Pawn",
+            "npcs_presets_title": "Characters",
+            "npcs_presets": {
+                "search": "Search characters...",
+                "only_loaded": "Loaded only",
+                "no_results": "(no characters match)",
+                "index_tools": "Rebuild the index from the game files",
+                "include_mods": "Include mods",
+                "generate": "Generate index",
+                "scanning": "Scanning %d / %d packages, %d characters found so far..."
+            },
+            "npcs_table": {
+                "filter_assets": "type to filter...",
+                "body_mesh": "Body mesh (skeletal)",
+                "head_mesh": "Head mesh",
+                "morph_head": "Morph head",
+                "hair_mesh": "Hair mesh",
+                "headgear_mesh": "Head gear mesh",
+                "visor_mesh": "Visor mesh",
+                "faceplate_mesh": "Face plate mesh",
+                "life_crust": "LifeCrust VFX",
+                "slot": "slot",
+                "advanced": "Advanced",
+                "meshes": "Meshes",
+                "face_and_effects": "Face and effects",
+                "crust_lifetime": "LifeCrust lifetime:",
+                "show_all_assets": "Show all assets (including ones the game never uses here)",
+                "list_capped": "(showing 100, type to filter the rest)",
+                "known_good_only": "Showing only meshes the game uses in this slot.",
+                "bones_mismatch": "%s went from %d bones to %d bones - this mesh probably does not belong in that slot",
+                "spawn_empty": "Spawn with no body mesh",
+                "spawn_customized": "Spawn customized NPC",
+                "spawned": "Spawned NPC %s",
+                "select_a_pawn": "Select a BioPawn to edit its appearance.",
+                "target_pawn": "Target pawn:",
+                "customization": "Customization",
+                "no_component_note": "%s has no component on this pawn class",
+                "hair_merge_note": "Hair will be merged into the head mesh with MergeMeshes.",
+                "hair_merge_failed": "Could not merge hair %s into the head",
+                "slot_unchanged": "Could not find that asset, the slot was left unchanged",
+                "no_component_for": "Spawned, but this pawn class has no component for: %s",
+                "morph_face": "Morph face",
+                "morph_shared_warning": "The morph face is a shared asset - changes affect every pawn and NPC using it.",
+                "morph_params_unavailable": "Face shaping is not reachable at runtime; colours and materials still apply.",
+                "morph_loading": "Loading %s to get the morph face...",
+                "reapply_morph": "Re-apply morph",
+                "materials": "Materials",
+                "mesh_default": "(use the mesh default)",
+                "no_materials": "(this pawn has no material slots)",
+                "spawned_npcs": "Spawned NPCs:",
+                "no_spawned_npcs": "(no NPCs spawned by SAS)",
+                "dump_pawn": "Dump selected pawn",
+                "dumped": "Dumped %s to %s",
+                "failed_no_world": "Failed to spawn: no world loaded.",
+                "failed_no_class": "Failed to spawn: no pawn class selected.",
+                "failed_not_a_pawn": "Spawn failed: %s is not a BioPawn",
+                "failed_no_body": "That pawn has no body mesh - it will be invisible. Try a class marked as spawnable, or pick a body mesh.",
+                "failed_no_head": "Cannot apply a morph head to '%s': no head component.",
+                "fell_back": "That class was refused by the game, spawned %s instead (asked for %s)",
+                "preset_loading": "Loading %s - this opens a whole level package, it can take a while...",
+                "preset_package_missing": "No package named %s is installed",
+                "crust_not_found": "LifeCrust template not found: %s",
+                "crust_no_donor": "No VFX donor available for LifeCrust %s",
+                "crust_failed": "Failed to create LifeCrust %s",
+                "crust_applied": "LifeCrust applied: %s",
+                "failed_ambiguous_name": "Two objects share that name, refusing to delete the wrong one."
+            },
             "properties_table": {
                 "array_of": "(array of %s)",
                 "unreadable_array": "(unreadable array)",
@@ -314,9 +389,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -422,6 +495,33 @@
                 "stack_is_full": "Stack is full.",
                 "title": "LUT",
                 "update_every_n": "Update every N"
+            },
+            "custom_shader": {
+                "title": "Custom shaders",
+                "add_hint": "Add shader (%d/%d)",
+                "chain_is_full": "All shader slots are used.",
+                "search": "Search shaders",
+                "add_file": "Add file...",
+                "file_filter_name": "HLSL shaders (*.hlsl)",
+                "no_shaders_found": "No shaders found in the SAS_Shaders folder.",
+                "no_slots": "No shader slots yet. Add one to run it after the LUT stack.",
+                "loaded_summary": "Loaded: %d float, %d int, %d color widgets",
+                "not_loaded": "Not loaded yet.",
+                "reset_defaults": "Reset to defaults",
+                "reset": "Reset",
+                "reload_one": "Recompile",
+                "baked_shots_hint": "Saved shots include the custom shaders."
+            },
+            "le1chars": {
+                "hint": "LE1 has no per-character pawn classes: each entry spawns a pawn built from that character's own type. Spawned pawns stay fully editable with the mesh and bone pickers.",
+                "loading": "Loading %s...",
+                "headgear": "Headgear",
+                "helmet": "Helmet",
+                "visor": "Visor",
+                "faceplate": "Face plate",
+                "headgear_hint": "LE1 armour spawns with these up. Untick to hide them on the selected pawn.",
+                "headgear_absent": "This pawn has no such component.",
+                "failed_no_pawn_class": "Cannot spawn %s: no usable pawn in this level to build one from."
             }
         },
         "toast": {
@@ -432,7 +532,7 @@
             "error": "%s Error"
         }
     },
-    "de":     {
+    "de": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Settings",
@@ -447,6 +547,13 @@
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
                 "reverted": "Settings reverted!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -707,9 +814,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -822,7 +927,7 @@
             "error": "%s Error"
         }
     },
-    "es-ES":     {
+    "es-ES": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Settings",
@@ -837,6 +942,13 @@
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
                 "reverted": "Settings reverted!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -1097,9 +1209,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -1212,7 +1322,7 @@
             "error": "%s Error"
         }
     },
-    "fr":     {
+    "fr": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Settings",
@@ -1227,6 +1337,13 @@
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
                 "reverted": "Settings reverted!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -1487,9 +1604,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -1602,7 +1717,7 @@
             "error": "%s Error"
         }
     },
-    "it":     {
+    "it": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Settings",
@@ -1617,6 +1732,13 @@
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
                 "reverted": "Settings reverted!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -1877,9 +1999,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -1992,7 +2112,7 @@
             "error": "%s Error"
         }
     },
-    "ja":     {
+    "ja": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Settings",
@@ -2007,6 +2127,13 @@
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
                 "reverted": "Settings reverted!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -2267,9 +2394,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -2382,7 +2507,7 @@
             "error": "%s Error"
         }
     },
-    "pl":     {
+    "pl": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Ustawienia",
@@ -2397,6 +2522,13 @@
                 "saved": "Ustawienia zostały zapisane!",
                 "failed_saved": "Nie udało się zapisać ustawień. Sprawdź log, aby uzyskać szczegółowe informacje.",
                 "reverted": "Ustawienia zostały zapisane!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -2657,9 +2789,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Cząsteczki",
             "particles_table": {
@@ -2772,7 +2902,7 @@
             "error": "%s Błąd"
         }
     },
-    "zh-CN":     {
+    "zh-CN": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Settings",
@@ -2787,6 +2917,13 @@
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
                 "reverted": "Settings reverted!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -3047,9 +3184,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {
@@ -3162,7 +3297,7 @@
             "error": "%s Error"
         }
     },
-    "zh-TW":     {
+    "zh-TW": {
         "ui": {
             "program_name": "SuperAdjustmentStudio",
             "settings": "Settings",
@@ -3177,6 +3312,13 @@
                 "saved": "Settings saved!",
                 "failed_saved": "Failed to save settings. Check log for details.",
                 "reverted": "Settings reverted!",
+                "version": "Version:",
+                "check_updates": "Check for updates",
+                "update_available": "New version available",
+                "open_release_page": "Open release page",
+                "translations_updated": "Translations updated from the repository",
+                "up_to_date": "You are running the latest version",
+                "check_failed": "Could not reach GitHub. Check your connection.",
                 "cancel_hotkey": "Cancel",
                 "capture_hotkey": "Bind key",
                 "capturing_hotkey": "Press keys... (ESC to cancel)"
@@ -3437,9 +3579,7 @@
                 "enable": "Apply screen filter",
                 "hint": "Drawn into the frame, visible on screenshots.",
                 "tint": "Tint color / strength:",
-                "vignette": "Vignette:",
-                "grain": "Film grain intensity:",
-                "grain_opacity": "Film grain opacity:"
+                "vignette": "Vignette:"
             },
             "particles": "Particles",
             "particles_table": {

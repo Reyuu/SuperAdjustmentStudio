@@ -1,13 +1,32 @@
 #include "translation.h"
 #include "logger.h"
+#include "settings.h"
 
 #include <string>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <cstdarg>
 #include <windows.h>
 
 #define IDR_TRANSLATIONS 102
+
+// the copy RemoteContent downloaded from the repository, sits next to the settings
+static const char* TRANSLATION_CACHE_NAME = "translations.json";
+
+// overlay one tree onto another. the downloaded copy can be older than the build
+// reading it (rolled back branch, stale CDN copy) and replacing wholesale would
+// leave the strings this build added with no entry at all
+static void mergeTranslations(json& base, const json& overlay) {
+    for (auto it = overlay.begin(); it != overlay.end(); ++it) {
+        json& mine = base[it.key()];
+        if (mine.is_object() && it.value().is_object()) {
+            mergeTranslations(mine, it.value());
+        } else {
+            mine = it.value();
+        }
+    }
+}
 
 Translation* Translation::translationInstance = nullptr;
 
@@ -125,5 +144,28 @@ void Translation::loadTranslations() {
     }
 
     file >> translations;
+    if (translations.is_discarded() || !translations.is_object() || !translations.contains(currentLanguage)) {
+        Logger->error("translation: embedded translations have no '" + currentLanguage + "', ignoring them.");
+        translations = json();
+        return;
+    }
+
+    // the downloaded copy is newer than whatever shipped inside the .asi, so it wins
+    // wherever it has an entry. any failure keeps the embedded one
+    std::ifstream cached(Settings::instance().configDir() / TRANSLATION_CACHE_NAME, std::ios::binary);
+    if (cached.is_open()) {
+        json fetched;
+        try {
+            cached >> fetched;
+        } catch (const std::exception& e) {
+            Logger->info(std::string("translation: cached translations are broken, keeping the embedded ones: ") + e.what());
+        }
+        if (!fetched.is_discarded() && fetched.is_object()) {
+            mergeTranslations(translations, fetched);
+            Logger->info("translation: translations loaded from the cached repository copy.");
+            return;
+        }
+    }
+
     Logger->info("translation: translations loaded successfully.");
 }

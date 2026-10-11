@@ -9,7 +9,11 @@
 #include <numbers>
 #include <string>
 
+// folder picker (existing callers). opens in the last-used shell location.
 bool pickFolder(std::string& outPath);
+
+// single file picker. filter uses the common dialog convention
+bool pickFile(std::string& outPath, const char* filter);
 
 // UE3 -> transform in degrees for rotation and per-axis scale. Converted to whatever is usable at the engine.
 struct Transform {
@@ -19,8 +23,20 @@ struct Transform {
         float scale[3] = {1.0f, 1.0f, 1.0f};
 };
 
-// UE3 EClassFlags (verified against LE2 class flag dumps; these are the real values for LE2 engine build).
-// Note: Standard UE3 enum values (e.g. UT3) differ from BioWare's LE2 engine build bit assignments.
+// the bits are per engine build, not per UE3, so they cannot be shared. the LE2 block
+// is verified against LE2 dumps, the LE1 block is seeded with the standard UE3 values
+// and is NOT verified: spawnClass only uses it after an unmodified Spawn came back NULL
+#ifdef SDK_TARGET_LE1
+enum EClassFlags : DWORD {
+    CLASS_None = 0x00000000,
+    CLASS_Abstract = 0x00000001,
+    CLASS_NotPlaceable = 0x00000008,
+    CLASS_Deprecated = 0x00020000,
+    CLASS_Placeable = 0x00000040,
+    CLASS_Hidden = 0x04000000,
+};
+#else
+// verified against LE2 dumps, these are the real LE2 build values
 enum EClassFlags : DWORD {
     CLASS_None = 0x00000000,
     CLASS_Abstract = 0x00000001,
@@ -29,6 +45,7 @@ enum EClassFlags : DWORD {
     CLASS_Placeable = 0x00400000,
     CLASS_Hidden = 0x04000000,
 };
+#endif
 
 std::string FStringToUtf8(const FString& fStr);
 std::string WStringToUtf8(const std::wstring& wStr);

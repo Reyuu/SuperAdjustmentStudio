@@ -1,19 +1,30 @@
 #include "post_chain.h"
 
 #include <vector>
+
+#include "custom_shader_effect.h"
 #include "dxgi.h"
 #include "d3d11.h"
 
 #include "lut_effect.h"
+#include "application.h"
+#include "logger.h"
 
 PostChain::PostChain() {
     nodes_.push_back(std::make_unique<LutEffect>(depth_));
+    nodes_.push_back(std::make_unique<CustomShaderEffect>());
+    customShaders_ = static_cast<CustomShaderEffect*>(nodes_.back().get());
 }
+
+PostChain::~PostChain() = default;
 
 bool PostChain::applyGpu(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11DeviceContext* context, ID3D11RenderTargetView* backbufferRtv) {
     if (!swapChain || !device || !context || !backbufferRtv) {
         return false;
     }
+
+    // second chance for a queued screenshot bake when the engine tick is idle
+    drainBakeJobs();
 
     std::vector<IEffect*> active;
     for (auto& n : nodes_) {
@@ -97,6 +108,10 @@ bool PostChain::applyGpu(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11
     return true;
 }
 
+void PostChain::removeDepthHook() {
+    depth_.removeHook();
+}
+
 void PostChain::applyCpu(unsigned char* rgba, int w, int h) const {
     if (!rgba || w <= 0 || h <= 0) {
         return;
@@ -128,8 +143,63 @@ void PostChain::shutdown() {
     releaseTemps();
 }
 
-void PostChain::removeDepthHook() {
-    depth_.removeHook();
+bool PostChain::bakeGpu(unsigned char* rgba, int w, int h) {
+    if (!customShaders_ || !rgba || w <= 0 || h <= 0 || !customShaders_->isEnabled()) {
+        return false;
+    }
+
+    // the worker thread owns the pixels but not the immediate context: hand the
+    // job to the game thread and wait for it there
+    auto job = std::make_shared<BakeJob>();
+    job->pixels = rgba;
+    job->width = w;
+    job->height = h;
+    std::future<bool> result = job->finished.get_future();
+    queueBake(job);
+
+    // the game may not tick while the screenshot pipeline is busy
+    if (result.wait_for(std::chrono::seconds(30)) != std::future_status::ready) {
+        Logger->warn("post_chain: custom shader bake timed out, saving the image unbaked");
+        return false;
+    }
+    return result.get();
+}
+
+void PostChain::queueBake(std::shared_ptr<BakeJob> job) {
+    std::lock_guard<std::mutex> lock(bakeMutex_);
+    bakeQueue_.push_back(std::move(job));
+}
+
+void PostChain::drainBakeJobs() {
+    if (!customShaders_) {
+        return;
+    }
+    std::vector<std::shared_ptr<BakeJob>> jobs;
+    {
+        std::lock_guard<std::mutex> lock(bakeMutex_);
+        if (bakeQueue_.empty()) {
+            return;
+        }
+        jobs.swap(bakeQueue_);
+    }
+
+    ID3D11Device* device = Application::instance().renderer().device();
+    ID3D11DeviceContext* context = Application::instance().renderer().context();
+    for (auto& job : jobs) {
+        if (!job) {
+            continue;
+        }
+        bool baked = false;
+        try {
+            if (device && context) {
+                baked = customShaders_->bakeGpu(device, context, job->pixels, job->width, job->height, (unsigned)job->width, (unsigned)job->height);
+            }
+        } catch (...) {
+            // a failure here must never leave the screenshot worker waiting
+            Logger->error("post_chain: custom shader bake threw, the image is saved unbaked");
+        }
+        job->finished.set_value(baked);
+    }
 }
 
 bool PostChain::ensureTempsIfNeeded(ID3D11Device* device, unsigned width, unsigned height, DXGI_FORMAT format) {

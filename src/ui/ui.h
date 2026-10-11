@@ -154,6 +154,7 @@ class UI {
         int meshTargetIndex = 0; // MeshTarget: 0 = Body, 1 = Head //TODO: make it an enum
 
         std::string bonePawn;
+        std::string boneApplyPawn;
         std::vector<BonePoseInfo> bones;
         int boneIndex = 0;
         char boneSearch[128] = "";

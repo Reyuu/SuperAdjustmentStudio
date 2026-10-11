@@ -25,10 +25,12 @@ Please treat this release as <ins>**BETA**</ins>.
 - spawning lights, prefabs and other objects
 - spawning particles! ✨
 - assign VFX to objects
+- spawning NPCs/pawns! - for now only defined ones! 🧍‍♂️
 - manual package loading and preview - allows you to load additional content into the game (you have to know where a specific prefab/animation is located)
 - freecam - it can be used as a replacement to the game's default photo mode! It even works in conversations! 📷
 - photo utilities - grid overlay, basic photo adjustments and histogram
 - LUT support for color grading 🎨
+- custom HLSL shaders - write your own post-process effects with slider, drag, input, checkbox, radio, combo, listbox and color widgets 🎛️
 - saving and loading the snapshots! (saving the poses, the properties for the objects, transforms and so on)
 
 ### Known issues (what doesn't work)
@@ -43,7 +45,6 @@ Please treat this release as <ins>**BETA**</ins>.
 - improving the search
 - handling other properties (Components)
 - UI settings along with customizable keybinds
-- spawning a pawn - so you could pose different game characters together!
 - expanding to LE1 and LE3 - (LE3 might be easier than LE1)
 
 ## Installation

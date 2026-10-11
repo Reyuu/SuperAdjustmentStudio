@@ -2,6 +2,7 @@
 #include "IconsFontAwesome6.h"
 #include "imgui.h"
 #include "json.hpp"
+#include "settings.h"
 #include "snapshot_json.h"
 #include "application.h"
 
@@ -103,8 +104,6 @@ json SnapshotsManager::getFilterData() const {
     filterData["enabled"] = overlay.filterState;
     filterData["tint"] = json::array({overlay.tintColor[0], overlay.tintColor[1], overlay.tintColor[2]});
     filterData["tintStrength"] = overlay.tintStrength;
-    filterData["grainIntensity"] = overlay.grainIntensity;
-    filterData["grainOpacity"] = overlay.grainOpacity;
     filterData["noFog"] = overlay.noFogState;
     filterData["noLensFlare"] = overlay.noLensFlareState;
     return filterData;
@@ -139,18 +138,31 @@ json SnapshotsManager::getLutData() const {
     lutData["depthNear"] = o.lutDepthNear;
     lutData["depthFar"] = o.lutDepthFar;
     lutData["depthEveryN"] = o.lutDepthEveryN;
+
+    // custom HLSL slots travel with the post-process section
+    json customShaders = json::array();
+    for (const auto& slot : o.customShaders) {
+        json outSlot;
+        writeCustomShaderSlot(slot, outSlot);
+        customShaders.push_back(outSlot);
+    }
+    lutData["customShaders"] = customShaders;
     return lutData;
 }
 
 json SnapshotsManager::getAnimationData() const {
-    json animData;
+    json animData = json::array();
     Animation& anim = Application::instance().animation();
-    if (anim.playedAnimName.empty()) {
-        return animData;
+    for (const auto& kv : anim.played) {
+        if (kv.second.animName.empty()) {
+            continue;
+        }
+        json out;
+        out["pawn"] = kv.first;
+        out["anim"] = kv.second.animName;
+        out["loop"] = kv.second.loop;
+        animData.push_back(out);
     }
-    animData["pawn"] = anim.playedPawnName;
-    animData["anim"] = anim.playedAnimName;
-    animData["loop"] = anim.playedLoop;
     return animData;
 }
 
@@ -175,25 +187,28 @@ json SnapshotsManager::getVfxData() const {
 json SnapshotsManager::getBonesData() const {
     json bonesData = json::array();
     Bones& bones = Application::instance().bones();
-    std::lock_guard<std::mutex> lock(bones.bonePose.mtx);
-    if (bones.bonePose.posed.empty()) {
-        return bonesData;
+    std::lock_guard<std::mutex> lock(bones.poseMtx);
+    for (const auto& kv : bones.poses) {
+        const auto& pose = kv.second;
+        if (pose.posed.empty()) {
+            continue;
+        }
+        json entry;
+        entry["pawn"] = pose.pawn;
+        entry["target"] = (int)pose.target;
+        json posed = json::array();
+        for (const auto& bone : pose.posed) {
+            json out;
+            out["index"] = bone.index;
+            out["name"] = bone.boneName;
+            out["position"] = json::array({bone.pos[0], bone.pos[1], bone.pos[2]});
+            out["rotation"] = json::array({bone.rot[0], bone.rot[1], bone.rot[2]});
+            out["scale"] = json::array({bone.scale[0], bone.scale[1], bone.scale[2]});
+            posed.push_back(out);
+        }
+        entry["bones"] = posed;
+        bonesData.push_back(entry);
     }
-    json entry;
-    entry["pawn"] = bones.bonePose.pawn;
-    entry["target"] = (int)bones.bonePose.target;
-    json posed = json::array();
-    for (const auto& bone : bones.bonePose.posed) {
-        json out;
-        out["index"] = bone.index;
-        out["name"] = bone.boneName;
-        out["position"] = json::array({bone.pos[0], bone.pos[1], bone.pos[2]});
-        out["rotation"] = json::array({bone.rot[0], bone.rot[1], bone.rot[2]});
-        out["scale"] = json::array({bone.scale[0], bone.scale[1], bone.scale[2]});
-        posed.push_back(out);
-    }
-    entry["bones"] = posed;
-    bonesData.push_back(entry);
     return bonesData;
 }
 
@@ -408,8 +423,6 @@ void SnapshotsManager::applyFilterData(const json& filterData) {
     SAS_JSON_READ_BOOL(filterData, "enabled", overlay.filterState);
     SAS_JSON_READ_ARR3(filterData, "tint", overlay.tintColor);
     SAS_JSON_READ_NUMBER(filterData, "tintStrength", overlay.tintStrength);
-    SAS_JSON_READ_NUMBER(filterData, "grainIntensity", overlay.grainIntensity);
-    SAS_JSON_READ_NUMBER(filterData, "grainOpacity", overlay.grainOpacity);
     bool noFog = overlay.noFogState;
     SAS_JSON_READ_BOOL(filterData, "noFog", noFog);
     if (noFog != overlay.noFogState) {
@@ -466,10 +479,46 @@ void SnapshotsManager::applyLutData(const json& lutData) {
     SAS_JSON_READ_NUMBER(lutData, "depthNear", o.lutDepthNear);
     SAS_JSON_READ_NUMBER(lutData, "depthFar", o.lutDepthFar);
     SAS_JSON_READ_NUMBER(lutData, "depthEveryN", o.lutDepthEveryN);
+
+    if (lutData.contains("customShaders") && lutData["customShaders"].is_array()) {
+        std::vector<CustomShaderOptions> customShaders;
+        for (const auto& slot : lutData["customShaders"]) {
+            if ((int)customShaders.size() >= CUSTOM_SHADER_MAX_SLOTS) {
+                break;
+            }
+            CustomShaderOptions next;
+            if (loadCustomShaderSlot(slot, next)) {
+                customShaders.push_back(next);
+            }
+        }
+        o.customShaders = customShaders;
+    }
+
     Application::instance().settings().markChanged();
 }
 
 void SnapshotsManager::applyAnimationData(const json& animationData) {
+    if (animationData.is_array()) {
+        for (const auto& item : animationData) {
+            if (!item.is_object()) {
+                continue;
+            }
+            std::string pawn;
+            std::string anim;
+            bool loop = true;
+            SAS_JSON_READ_STRING(item, "pawn", pawn);
+            SAS_JSON_READ_STRING(item, "anim", anim);
+            SAS_JSON_READ_BOOL(item, "loop", loop);
+            if (anim.empty()) {
+                if (!pawn.empty()) {
+                    Application::instance().animation().resetAnimation(pawn);
+                }
+                continue;
+            }
+            Application::instance().animation().playAnimation(pawn, anim, loop);
+        }
+        return;
+    }
     if (!animationData.is_object()) {
         return;
     }
@@ -853,7 +902,7 @@ bool SnapshotsManager::hasSectionData(SnapshotSection section) {
             return !Application::instance().settings().options.lutLayers.empty();
         }
         case SnapshotAnimation: {
-            return !Application::instance().animation().playedAnimName.empty();
+            return !Application::instance().animation().played.empty();
         }
         case SnapshotVfx: {
             VFXManager& vfx = Application::instance().vfx();
@@ -862,8 +911,8 @@ bool SnapshotsManager::hasSectionData(SnapshotSection section) {
         }
         case SnapshotBones: {
             Bones& bones = Application::instance().bones();
-            std::lock_guard<std::mutex> lock(bones.bonePose.mtx);
-            return !bones.bonePose.posed.empty();
+            std::lock_guard<std::mutex> lock(bones.poseMtx);
+            return !bones.poses.empty();
         }
         case SnapshotSelection: {
             return !Application::instance().ui().getSelectedPawnName().empty();

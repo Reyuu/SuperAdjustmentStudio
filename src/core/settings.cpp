@@ -2,6 +2,9 @@
 #include "application.h"
 #include "logger.h"
 #include "json.hpp"
+#include "plugin.h"
+#include "remote.h"
+#include "snapshot_json.h"
 #include "translation.h"
 
 #include "IconsFontAwesome6.h"
@@ -102,12 +105,131 @@ void Settings::clampAndValidate() {
     }
 
     options.fontSize = std::clamp(options.fontSize, SETTINGS_FONT_SIZE_MIN, SETTINGS_FONT_SIZE_MAX);
+    if ((int)options.customShaders.size() > CUSTOM_SHADER_MAX_SLOTS) {
+        options.customShaders.resize(CUSTOM_SHADER_MAX_SLOTS);
+    }
     OverlayHotkey hotkey;
     if (!Settings::tryParseHotkey(options.showOverlay, &hotkey) || Settings::nameFromVk(hotkey.key).empty()) {
         options.showOverlay = "F10";
     } else {
         options.showOverlay = Settings::formatHotkey(hotkey);
     }
+}
+
+// named value maps: { "Name": value } per slot, keyed by annotation name
+static void loadNamedFloatMap(const nlohmann::json& object, const char* key, std::map<std::string, float>& out) {
+    const auto it = object.find(key);
+    if (it == object.end() || !it->is_object()) {
+        return;
+    }
+    for (const auto& entry : it->items()) {
+        if (entry.value().is_number()) {
+            out[entry.key()] = entry.value().get<float>();
+        }
+    }
+}
+
+static void loadNamedIntMap(const nlohmann::json& object, const char* key, std::map<std::string, int>& out) {
+    const auto it = object.find(key);
+    if (it == object.end() || !it->is_object()) {
+        return;
+    }
+    for (const auto& entry : it->items()) {
+        if (entry.value().is_number_integer()) {
+            out[entry.key()] = entry.value().get<int>();
+        }
+    }
+}
+
+static void loadNamedColorMap(const nlohmann::json& object, const char* key, std::map<std::string, std::array<float, 3>>& out) {
+    const auto it = object.find(key);
+    if (it == object.end() || !it->is_object()) {
+        return;
+    }
+    for (const auto& entry : it->items()) {
+        if (!entry.value().is_array() || entry.value().size() != 3) {
+            continue;
+        }
+        std::array<float, 3> color = {};
+        bool valid = true;
+        for (size_t i = 0; i < 3; ++i) {
+            if (!entry.value()[i].is_number()) {
+                valid = false;
+                break;
+            }
+            color[i] = entry.value()[i].get<float>();
+        }
+        if (valid) {
+            out[entry.key()] = color;
+        }
+    }
+}
+
+bool loadCustomShaderSlot(const nlohmann::json& slot, CustomShaderOptions& out) {
+    if (!slot.is_object()) {
+        return false;
+    }
+    CustomShaderOptions next;
+    SAS_JSON_READ_STRING(slot, "ref", next.ref);
+    if (next.ref.empty()) {
+        return false;
+    }
+    SAS_JSON_READ_BOOL(slot, "enabled", next.enabled);
+    loadNamedFloatMap(slot, "floats", next.floats);
+    loadNamedIntMap(slot, "ints", next.ints);
+    loadNamedColorMap(slot, "colors", next.colors);
+    out = std::move(next);
+    return true;
+}
+
+void writeCustomShaderSlot(const CustomShaderOptions& slot, nlohmann::json& out) {
+    out["ref"] = slot.ref;
+    out["enabled"] = slot.enabled;
+
+    nlohmann::json floats = nlohmann::json::object();
+    for (const auto& entry : slot.floats) {
+        floats[entry.first] = entry.second;
+    }
+    out["floats"] = floats;
+
+    nlohmann::json ints = nlohmann::json::object();
+    for (const auto& entry : slot.ints) {
+        ints[entry.first] = entry.second;
+    }
+    out["ints"] = ints;
+
+    nlohmann::json colors = nlohmann::json::object();
+    for (const auto& entry : slot.colors) {
+        colors[entry.first] = nlohmann::json::array({entry.second[0], entry.second[1], entry.second[2]});
+    }
+    out["colors"] = colors;
+}
+
+static void loadCustomShaders(const nlohmann::json& j, std::vector<CustomShaderOptions>& out) {
+    if (!j.contains("customShaders") || !j["customShaders"].is_array()) {
+        return;
+    }
+
+    out.clear();
+    for (const auto& slot : j["customShaders"]) {
+        if ((int)out.size() >= CUSTOM_SHADER_MAX_SLOTS) {
+            break;
+        }
+        CustomShaderOptions next;
+        if (loadCustomShaderSlot(slot, next)) {
+            out.push_back(std::move(next));
+        }
+    }
+}
+
+static void saveCustomShaders(const std::vector<CustomShaderOptions>& slots, nlohmann::json& j) {
+    nlohmann::json array = nlohmann::json::array();
+    for (const auto& slot : slots) {
+        nlohmann::json outSlot;
+        writeCustomShaderSlot(slot, outSlot);
+        array.push_back(outSlot);
+    }
+    j["customShaders"] = array;
 }
 
 void Settings::loadFromJson(const nlohmann::json& j) {
@@ -177,6 +299,8 @@ void Settings::loadFromJson(const nlohmann::json& j) {
     loadValue(j, "lutDepthFar", next.lutDepthFar);
     loadValue(j, "lutDepthEveryN", next.lutDepthEveryN);
 
+    loadCustomShaders(j, next.customShaders);
+
     bool changed = false;
     changed |= next.language != options.language;
     changed |= next.fontSize != options.fontSize;
@@ -196,6 +320,7 @@ void Settings::loadFromJson(const nlohmann::json& j) {
     changed |= next.lutDepthNear != options.lutDepthNear;
     changed |= next.lutDepthFar != options.lutDepthFar;
     changed |= next.lutDepthEveryN != options.lutDepthEveryN;
+    changed |= next.customShaders != options.customShaders;
 
     options = next;
     clampAndValidate();
@@ -243,6 +368,8 @@ nlohmann::json Settings::toJson() const {
     j["lutDepthNear"] = options.lutDepthNear;
     j["lutDepthFar"] = options.lutDepthFar;
     j["lutDepthEveryN"] = options.lutDepthEveryN;
+
+    saveCustomShaders(options.customShaders, j);
 
     return j;
 }
@@ -443,25 +570,27 @@ static std::string displayNameForVk(int vk) {
             return "VOLUMEDOWN";
         case VK_VOLUME_UP:
             return "VOLUMEUP";
-        case VK_MEDIA_NEXT_TRACK:
+        case VK_MEDIA_NEXT_TRACK: {
             return "MEDIANEXT";
-        case VK_MEDIA_PREV_TRACK:
+        case VK_MEDIA_PREV_TRACK: {
             return "MEDIAPREV";
-        case VK_MEDIA_STOP: {
-            return "MEDIASTOP";
-        case VK_MEDIA_PLAY_PAUSE: {
-            return "MEDIAPLAYPAUSE";
-            case VK_LAUNCH_MAIL: {
-                return "LAUNCHMAIL";
-                case VK_LAUNCH_MEDIA_SELECT: {
-                    return "LAUNCHMEDIA";
-                    case VK_LAUNCH_APP1: {
-                        return "LAUNCHAPP1";
-                        case VK_LAUNCH_APP2: {
-                            return "LAUNCHAPP2";
-                            default: {
-                                break;
+            case VK_MEDIA_STOP: {
+                return "MEDIASTOP";
+                case VK_MEDIA_PLAY_PAUSE: {
+                    return "MEDIAPLAYPAUSE";
+                    case VK_LAUNCH_MAIL: {
+                        return "LAUNCHMAIL";
+                        case VK_LAUNCH_MEDIA_SELECT: {
+                            return "LAUNCHMEDIA";
+                            case VK_LAUNCH_APP1: {
+                                return "LAUNCHAPP1";
+                                case VK_LAUNCH_APP2: {
+                                    return "LAUNCHAPP2";
+                                    default: {
+                                        break;
         }
+                                    }
+                                }
                             }
                         }
                     }
@@ -719,6 +848,25 @@ void Settings::renderSettingsWindow(bool* open) {
         ImGui::EndCombo();
     }
     ImGui::PopItemWidth();
+
+    ImGui::Separator();
+    ImGui::Text(t("ui.settings_table.version"));
+    ImGui::SameLine();
+    ImGui::TextUnformatted(PLUGIN_VERSION);
+
+    {
+        RemoteContent& remote = Application::instance().remoteContent();
+        if (remote.updateAvailable()) {
+            ImGui::Text(ICON_FA_DOWNLOAD " %s", remote.updateTag().c_str());
+            ImGui::SameLine();
+            if (ImGui::Button(t("ui.settings_table.open_release_page"))) {
+                ShellExecuteA(nullptr, "open", SAS_RELEASES_PAGE, nullptr, nullptr, SW_SHOWNORMAL);
+            }
+        }
+        if (ImGui::Button(t("ui.settings_table.check_updates"))) {
+            remote.startUpdateCheck(true); // manual: always answers, even when nothing needs doing
+        }
+    }
 
     ImGui::Text(t("ui.settings_table.overlay_hotkey"));
     ImGui::PushItemWidth(-100);

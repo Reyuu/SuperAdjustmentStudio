@@ -42,26 +42,6 @@ void PhotoOverlay::render(ID3D11Device* device) {
         if (tintStrength > 0.0f) {
             dl->AddRectFilled(ImVec2(0, 0), size, ImGui::GetColorU32(ImVec4(tintColor[0], tintColor[1], tintColor[2], tintStrength * 0.5f)));
         }
-        if (grainIntensity > 0.0f && grainOpacity > 0.0f) {
-            unsigned int seed = (unsigned int)ImGui::GetFrameCount() * 2654443741u;
-            const int n = (int)(grainIntensity * 2200.0f);
-            const int wi = (int)width;
-            const int hi = (int)height;
-            for (int i = 0; i < n; ++i) {
-                seed ^= seed << 13;
-                seed ^= seed >> 17;
-                seed ^= seed << 5;
-                const float x = (seed % wi);
-                seed ^= seed << 13;
-                seed ^= seed >> 17;
-                seed ^= seed << 5;
-                const float y = (seed % hi);
-                const float v = (seed >> 7) & 1;
-                int a = (int)((70 + (seed & 100)) * grainOpacity);
-                a = a > 255 ? 255 : a;
-                dl->AddRectFilled(ImVec2(x, y), ImVec2(x + 2.5f, y + 2.5f), v ? IM_COL32(255, 255, 255, a) : IM_COL32(0, 0, 0, a));
-            }
-        }
     }
     if (!enabledState) {
         return;
@@ -370,10 +350,6 @@ void PhotoOverlay::renderUi() {
         ImGui::PushItemWidth(-100);
         ImGui::ColorEdit3("##photo_tint", tintColor);
         ImGui::SliderFloat("##photo_tintstr", &tintStrength, SETTINGS_PHOTO_TINT_STRENGTH_MIN, SETTINGS_PHOTO_TINT_STRENGTH_MAX, "%.2f");
-        ImGui::Text(t("ui.filter_table.grain"));
-        ImGui::SliderFloat("##photo_grain", &grainIntensity, SETTINGS_PHOTO_GRAIN_INTENSITY_MIN, SETTINGS_PHOTO_GRAIN_INTENSITY_MAX, "%.2f");
-        ImGui::Text(t("ui.filter_table.grain_opacity"));
-        ImGui::SliderFloat("##photo_grainop", &grainOpacity, SETTINGS_PHOTO_GRAIN_OPACITY_MIN, SETTINGS_PHOTO_GRAIN_OPACITY_MAX, "%.2f");
         ImGui::PopItemWidth();
         ImGui::Unindent();
     }

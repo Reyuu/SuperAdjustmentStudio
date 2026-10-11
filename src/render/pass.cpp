@@ -13,6 +13,7 @@ FullscreenPass::~FullscreenPass() {
 void FullscreenPass::shutdown() {
     releaseDeviceObjects();
     releaseTemps();
+    includeHandler_ = nullptr;
 }
 
 void FullscreenPass::releaseDeviceObjects() {
@@ -38,12 +39,14 @@ void FullscreenPass::onResize() {
     releaseTemps();
 }
 
-bool FullscreenPass::initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize, const std::string& pixelEntry) {
+bool FullscreenPass::initialize(ID3D11Device* device, const std::vector<PassShader>& shaders, unsigned cbSize, const std::string& pixelEntry,
+                                ID3DInclude* includeHandler) {
     if (!device) {
         return false;
     }
     shaders_ = shaders;
     pixelEntry_ = pixelEntry;
+    includeHandler_ = includeHandler;
     releaseDeviceObjects();
     releaseTemps();
 
@@ -66,8 +69,8 @@ bool FullscreenPass::compileShaders(ID3D11Device* device) {
     for (const auto& s : shaders_) {
         ID3DBlob* errorBlob = nullptr;
         ID3DBlob* codeBlob = nullptr;
-        HRESULT hr =
-            D3DCompile(s.source.data(), s.source.size(), nullptr, nullptr, nullptr, s.entryPoint.c_str(), s.target.c_str(), 0, 0, &codeBlob, &errorBlob);
+        HRESULT hr = D3DCompile(s.source.data(), s.source.size(), nullptr, nullptr, includeHandler_, s.entryPoint.c_str(), s.target.c_str(), 0, 0, &codeBlob,
+                                &errorBlob);
         if (FAILED(hr)) {
             std::string msg = errorBlob ? std::string((char*)errorBlob->GetBufferPointer(), errorBlob->GetBufferSize()) : "unknown";
             Logger->error("pass: D3DCompile {} ({}) failed: {}", s.entryPoint, s.target, msg);
@@ -224,6 +227,16 @@ bool FullscreenPass::run(ID3D11DeviceContext* context, const void* cbData, unsig
         return false;
     }
     device->Release();
+
+    return draw(context, cbData, cbSize, inputs, inputCount, outputRtv, width, height);
+}
+
+// same draw as run(), but without touching this pass' temp textures
+bool FullscreenPass::draw(ID3D11DeviceContext* context, const void* cbData, unsigned cbSize, ID3D11ShaderResourceView* const* inputs, unsigned inputCount,
+                          ID3D11RenderTargetView* outputRtv, unsigned width, unsigned height) {
+    if (!context || !constantBuffer_ || !vertexShader_ || !pixelShader_ || !outputRtv) {
+        return false;
+    }
 
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     context->IASetInputLayout(nullptr);

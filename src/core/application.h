@@ -13,9 +13,11 @@
 #include "logger.h"
 #include "mouse.h"
 #include "native_renderer.h"
+#include "npcs.h"
 #include "particles.h"
 #include "prefabs.h"
 #include "props.h"
+#include "remote.h"
 #include "snapshots.h"
 #include "sdk.h"
 #include "settings.h"
@@ -93,6 +95,9 @@ class Application {
         ParticleManager& particles() {
             return particleInstance;
         }
+        NPCManager& npcs() {
+            return npcsInstance;
+        }
         LightManager& lights() {
             return lightsInstance;
         }
@@ -116,6 +121,10 @@ class Application {
 
         Translation& translation() {
             return translationInstance;
+        }
+
+        RemoteContent& remoteContent() {
+            return remoteInstance;
         }
 
         Screenshot& screenshot() {
@@ -152,12 +161,14 @@ class Application {
         Freecam freecamInstance;
         VFXManager vfxInstance;
         ParticleManager particleInstance;
+        NPCManager npcsInstance;
         LightManager lightsInstance;
         PrefabManager prefabsInstance;
         Settings settingsInstance;
         PhotoOverlay photoOverlayInstance;
         PostChain postChainInstance;
         Translation translationInstance;
+        RemoteContent remoteInstance;
         Screenshot screenshotInstance;
         SnapshotsManager snapshotsInstance;
 

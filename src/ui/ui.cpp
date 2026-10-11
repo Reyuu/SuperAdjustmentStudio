@@ -607,6 +607,7 @@ void UI::renderSelectionSection() {
     renderSelectionAnimation();
     Application::instance().vfx().renderUI();
     renderSelectionBones();
+    Application::instance().npcs().renderSelectionUI();
     renderSelectionOtherProps();
     ImGui::Unindent();
 }
@@ -638,13 +639,10 @@ void UI::renderSelectionTarget() {
     // might change this
     // only removes a pawn that we spawned, since removing for example Player pawn would be...
     // disastrous
-    auto& spawnedNames = Application::instance().engine().spawnedNames();
-    bool isFoundInCollection = false;
     bool isSpawned = false;
     if (!pawnNamesVector.empty() && pawnIndexInt >= 0 && pawnIndexInt < (int)pawnNamesVector.size()) {
         const std::string& selectedPawn = pawnNamesVector[pawnIndexInt];
-        isFoundInCollection = std::find(spawnedNames.begin(), spawnedNames.end(), selectedPawn) != spawnedNames.end();
-        isSpawned = isFoundInCollection;
+        isSpawned = Application::instance().engine().isSpawnedName(selectedPawn);
         if (ImGui::Button(ICON_FA_TRASH "##sel_target_trash") && isSpawned && !advancedSelection) {
             Application::instance().engine().removeActor(selectedPawn);
         }
@@ -769,6 +767,16 @@ void UI::renderSelectionAnimation() {
         return;
     }
     ImGui::Indent();
+#ifdef SDK_TARGET_LE1
+    // gated, measured rather than assumed: no UAnimNodeSlot exists in an LE1 tree,
+    // GetAnimLengthAndPos never resolves a custom anim, eventSetAnimPosition rejects
+    // every name, PlayCustomAnim* only stores the name, and the sequences are held by
+    // no node. all of it goes through UBioGestureAnimSetMgr::m_mapAnimSetRefCount, an
+    // FMap_Mirror with no SDK accessor
+    ImGui::TextDisabled(t("ui.animation_table.le1_unsupported"));
+    ImGui::Unindent();
+    return;
+#endif
     ImGui::TextDisabled(t("ui.animation_table.apply_desc"));
 
     if (!pawnNamesVector.empty()) {
@@ -882,13 +890,12 @@ void UI::renderSelectionBones() {
         return;
     }
 
-    const std::string& pawn = pawnNamesVector[pawnIndexInt];
+    const std::string pawn = pawnNamesVector[pawnIndexInt];
     AActor* poseActor = Application::instance().engine().findActorByName(pawn);
     bool isBioPawn = poseActor && poseActor->IsA(ABioPawn::StaticClass());
 
     if (bonePawn != pawn) {
         boneListTried = false;
-        Application::instance().bones().resetBonePose(bonePawn, (MeshTarget)meshTargetIndex);
         bonePawn = pawn;
         bones.clear();
         boneIndex = 0;
@@ -911,7 +918,6 @@ void UI::renderSelectionBones() {
     if (ImGui::Combo("##bones", &meshTargetIndex, meshTargets, maxTarget + 1)) {
         if (meshTargetIndex != oldTarget) {
             boneListTried = false;
-            Application::instance().bones().resetBonePose(bonePawn, (MeshTarget)meshTargetIndex);
             refreshBoneList(pawn);
         }
     }
@@ -1050,11 +1056,12 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
     }
     if (bEdited) {
         boneToApply = true;
+        boneApplyPawn = pawn;
         boneLastEdit = ImGui::GetTime();
     }
-    if (boneToApply) {
+    if (boneToApply && !boneApplyPawn.empty()) {
         applyDebounced(boneToApply, boneLastEdit, boneLastApply, [&] {
-            Application::instance().bones().setBonePose(pawn, (MeshTarget)meshTargetIndex, boneEdit);
+            Application::instance().bones().setBonePose(boneApplyPawn, (MeshTarget)meshTargetIndex, boneEdit);
         });
     }
     ImGui::Separator();
@@ -1080,8 +1087,8 @@ void UI::renderBonesDirectBones(const std::string& pawn) {
 }
 
 void UI::renderBonesReset() {
-    if (Application::instance().bones().bonePoseActive().load()) {
-        Application::instance().bones().resetBonePose(bonePawn, (MeshTarget)meshTargetIndex);
+    if (Application::instance().bones().bonePoseActive()) {
+        Application::instance().bones().resetAllBonePoses();
     }
 
     bonePawn.clear();
@@ -1190,6 +1197,7 @@ void UI::renderSpawnSection() {
         Application::instance().lights().renderUI();
         Application::instance().prefabs().renderUI();
         Application::instance().particles().renderUI();
+        Application::instance().npcs().renderSpawnUI();
         renderSpawnOtherProps();
     }
     ImGui::Unindent();

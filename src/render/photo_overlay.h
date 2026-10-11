@@ -127,8 +127,6 @@ class PhotoOverlay {
         bool filterState = SETTINGS_TOGGLE_OFF;
         float tintColor[3] = {SETTINGS_COLOR_WHITE_R, SETTINGS_COLOR_WHITE_G, SETTINGS_COLOR_WHITE_B};
         float tintStrength = SETTINGS_PHOTO_TINT_STRENGTH_DEFAULT;
-        float grainIntensity = SETTINGS_PHOTO_GRAIN_INTENSITY_DEFAULT;
-        float grainOpacity = SETTINGS_PHOTO_GRAIN_OPACITY_DEFAULT;
         bool noFogState = SETTINGS_TOGGLE_OFF;
         bool noLensFlareState = SETTINGS_TOGGLE_OFF;
 

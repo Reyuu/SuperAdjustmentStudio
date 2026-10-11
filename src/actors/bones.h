@@ -3,8 +3,10 @@
 
 #include <LESDK/Includes.hpp>
 #include <atomic>
+#include <map>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 enum MeshTarget : int {
@@ -25,8 +27,14 @@ struct BonePoseInfo {
 
 class Bones {
     public:
-        std::atomic<bool>& bonePoseActive() {
-            return bonePoseActiveState;
+        // true if any pawn has an active pose
+        bool bonePoseActive() {
+            std::lock_guard<std::mutex> lock(poseMtx);
+            return !poses.empty();
+        }
+        bool bonePoseActive(const std::string& pawnName, MeshTarget target) {
+            std::lock_guard<std::mutex> lock(poseMtx);
+            return poses.find({pawnName, (int)target}) != poses.end();
         }
 
         USkeletalMeshComponent* findPawnMeshForTarget(const std::string& pawnName, MeshTarget target);
@@ -36,12 +44,12 @@ class Bones {
         bool getBoneWorldBasis(const std::string& pawnName, MeshTarget target, int index, FVector& outPos, FVector& outX, FVector& outY, FVector& outZ);
         void setBonePose(const std::string& pawnName, MeshTarget target, const BonePoseInfo& pose);
         void resetBonePose(const std::string& pawnName, MeshTarget target);
+        void resetAllBonePoses();
         void absoluteResetBones(const std::string& pawnName, MeshTarget target);
         void keepBonePoses();
 
         struct BonePoseState {
             public:
-                std::mutex mtx;
                 std::vector<BonePoseInfo> posed;
                 std::string pawn;
                 MeshTarget target = MESH_BODY;
@@ -55,11 +63,11 @@ class Bones {
                 bool toApply = false;
         };
 
-        BonePoseState bonePose;
+        // multi-actor poses keyed by (pawn, target); guarded by poseMtx
+        std::mutex poseMtx;
+        std::map<std::pair<std::string, int>, BonePoseState> poses;
 
     private:
-        std::atomic<bool> bonePoseActiveState{false};
-
         void restoreBonePoseMesh(std::string pawn, MeshTarget target, std::vector<FBoneAtom> atoms, std::vector<int> indices, bool useSavedPose);
         void releaseAllBonesFromPose(std::string pawn, MeshTarget target);
 };

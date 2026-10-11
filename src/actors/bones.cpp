@@ -45,7 +45,11 @@ USkeletalMeshComponent* Bones::findPawnMeshForTarget(const std::string& pawnName
         if (!actor->IsA(ABioPawn::StaticClass())) {
             return nullptr;
         }
+#ifdef SDK_TARGET_LE1
+        return ((ABioPawn*)actor)->m_oHeadMesh;
+#else
         return ((ABioPawn*)actor)->HeadMesh;
+#endif
     }
 
     if (!actor->IsA(APawn::StaticClass())) {
@@ -95,121 +99,127 @@ void Bones::releaseAllBonesFromPose(std::string pawn, MeshTarget target) {
 
 void Bones::keepBonePoses() {
     ZoneScopedN("Bones::keepBonePoses");
-    std::vector<BonePoseInfo> posed;
-    std::vector<int> pending;
-    std::vector<FVector> pendingBasePos;
-    std::vector<int> baseIndices;
-    std::vector<FVector> basePos;
-    std::string pawn;
-    MeshTarget target;
-    int boneCount = 0;
-    bool toApply = false;
-
+    struct EntrySnapshot {
+            BonePoseState state;
+    };
+    std::vector<EntrySnapshot> entries;
     {
-        std::lock_guard<std::mutex> lock(bonePose.mtx);
-        if (!bonePoseActiveState.load()) {
+        std::lock_guard<std::mutex> lock(poseMtx);
+        if (poses.empty()) {
             return;
         }
-        posed = bonePose.posed;
-        pending = bonePose.pendingSnapshots;
-        pendingBasePos = bonePose.pendingBasePos;
-        baseIndices = bonePose.savedIndices;
-        basePos = bonePose.savedBasePos;
-        pawn = bonePose.pawn;
-        target = bonePose.target;
-        boneCount = bonePose.boneCount;
-        toApply = bonePose.toApply;
-    }
-
-    USkeletalMeshComponent* mesh = findPawnMeshForTarget(pawn, target);
-    if (!mesh || !mesh->SkeletalMesh) {
-        return;
-    }
-
-    int n = (int)mesh->SkeletalMesh->RefSkeleton.Count();
-    if (boneCount > 0 && n != boneCount) {
-        Logger->debug("keepBonePoses: skeleton swapped; dropping pose");
-        resetBonePose(pawn, target);
-        return;
-    }
-
-    if ((int)mesh->LocalAtoms.Count() != n) {
-        Logger->debug("keepBonePoses: LocalAtoms not bone-indexed (count mismatch); pose disabled");
-        resetBonePose(pawn, target);
-        return;
-    }
-
-    UAnimTree* tree = findAnimTree(mesh);
-    if (!tree) {
-        Logger->debug("keepBonePoses: no anim tree on target mesh; pose disabled");
-        Bones::resetBonePose(pawn, target);
-    }
-
-    if (!pending.empty()) {
-        std::lock_guard<std::mutex> lock(bonePose.mtx);
-        for (int k = 0; k < (int)pending.size(); ++k) {
-            int index = pending[k];
-            if (index < 0 || index >= (int)mesh->LocalAtoms.Count()) {
-                continue;
-            }
-            FBoneAtom orig = mesh->LocalAtoms.GetData()[index];
-            bonePose.savedAtoms.push_back(orig);
-            bonePose.savedIndices.push_back(index);
-            baseIndices.push_back(index);
-            // use the base position captured at the time the bone was added to pendingSnapshots
-            FVector anchor = orig.Translation;
-            if (k < (int)pendingBasePos.size()) {
-                anchor = pendingBasePos[k];
-            }
-            basePos.push_back(anchor);
-            bonePose.savedBasePos.push_back(anchor);
+        for (auto& kv : poses) {
+            entries.push_back({kv.second});
         }
-        bonePose.savedUseSavedPose = tree->bUseSavedPose;
-        bonePose.boneCount = n;
-        bonePose.pendingSnapshots.clear();
-        bonePose.pendingBasePos.clear();
     }
 
-    if ((int)tree->SavedPose.Count() != n) {
-        tree->SavedPose.Resize(n);
-    }
+    for (auto& snap : entries) {
+        BonePoseState& st = snap.state;
+        const std::string& pawn = st.pawn;
+        MeshTarget target = st.target;
 
-    FBoneAtom* sp = tree->SavedPose.GetData();
-    FBoneAtom* la = mesh->LocalAtoms.GetData();
-    memcpy(sp, la, n * sizeof(FBoneAtom));
-
-    for (const BonePoseInfo& p : posed) {
-        if (p.index < 0 || p.index >= n) {
+        USkeletalMeshComponent* mesh = findPawnMeshForTarget(pawn, target);
+        if (!mesh || !mesh->SkeletalMesh) {
             continue;
         }
-        FBoneAtom& a = sp[p.index];
-        a.Rotation = mesh->QuatFromRotator(
-            mesh->MakeRotator(DegreesToUnrealRotationUnits(p.rot[0]), DegreesToUnrealRotationUnits(p.rot[1]), DegreesToUnrealRotationUnits(p.rot[2])));
 
-        FVector base = la[p.index].Translation;
-        for (int k = 0; k < baseIndices.size() && k < basePos.size(); ++k) {
-            if (baseIndices[k] == p.index) {
-                base = basePos[k];
-                break;
-            }
+        int n = (int)mesh->SkeletalMesh->RefSkeleton.Count();
+        if (st.boneCount > 0 && n != st.boneCount) {
+            Logger->debug("keepBonePoses: skeleton swapped; dropping pose");
+            resetBonePose(pawn, target);
+            continue;
         }
-        a.Translation.X = base.X + p.pos[0];
-        a.Translation.Y = base.Y + p.pos[1];
-        a.Translation.Z = base.Z + p.pos[2];
-        a.Scale = (p.scale[0] > 0.0f) ? p.scale[0] : 1.0f;
-    }
-    tree->bUseSavedPose = true;
-    if (toApply) {
-        bool cleared = false;
-        {
-            std::lock_guard<std::mutex> lock(bonePose.mtx);
-            if (bonePose.toApply) {
-                bonePose.toApply = false;
-                cleared = true;
-            }
+
+        if ((int)mesh->LocalAtoms.Count() != n) {
+            Logger->debug("keepBonePoses: LocalAtoms not bone-indexed (count mismatch); pose disabled");
+            resetBonePose(pawn, target);
+            continue;
         }
-        if (cleared) {
-            mesh->ForceSkelUpdate();
+
+        UAnimTree* tree = findAnimTree(mesh);
+        if (!tree) {
+            Logger->debug("keepBonePoses: no anim tree on target mesh; pose disabled");
+            Bones::resetBonePose(pawn, target);
+            continue;
+        }
+
+        if (!st.pendingSnapshots.empty()) {
+            std::lock_guard<std::mutex> lock(poseMtx);
+            auto it = poses.find({pawn, (int)target});
+            if (it == poses.end()) {
+                continue;
+            }
+            BonePoseState& live = it->second;
+            for (size_t k = 0; k < live.pendingSnapshots.size(); ++k) {
+                int index = live.pendingSnapshots[k];
+                if (index < 0 || index >= (int)mesh->LocalAtoms.Count()) {
+                    continue;
+                }
+                FBoneAtom orig = mesh->LocalAtoms.GetData()[index];
+                live.savedAtoms.push_back(orig);
+                live.savedIndices.push_back(index);
+                // use the base position captured at the time the bone was added to pendingSnapshots
+                FVector anchor = orig.Translation;
+                if (k < live.pendingBasePos.size()) {
+                    anchor = live.pendingBasePos[k];
+                }
+                live.savedBasePos.push_back(anchor);
+                st.savedAtoms.push_back(orig);
+                st.savedIndices.push_back(index);
+                st.savedBasePos.push_back(anchor);
+            }
+            live.savedUseSavedPose = tree->bUseSavedPose;
+            live.boneCount = n;
+            live.pendingSnapshots.clear();
+            live.pendingBasePos.clear();
+            st.savedUseSavedPose = live.savedUseSavedPose;
+            st.boneCount = n;
+            st.pendingSnapshots.clear();
+            st.pendingBasePos.clear();
+        }
+
+        if ((int)tree->SavedPose.Count() != n) {
+            tree->SavedPose.Resize(n);
+        }
+
+        FBoneAtom* sp = tree->SavedPose.GetData();
+        FBoneAtom* la = mesh->LocalAtoms.GetData();
+        memcpy(sp, la, n * sizeof(FBoneAtom));
+
+        for (const BonePoseInfo& p : st.posed) {
+            if (p.index < 0 || p.index >= n) {
+                continue;
+            }
+            FBoneAtom& a = sp[p.index];
+            a.Rotation = mesh->QuatFromRotator(
+                mesh->MakeRotator(DegreesToUnrealRotationUnits(p.rot[0]), DegreesToUnrealRotationUnits(p.rot[1]), DegreesToUnrealRotationUnits(p.rot[2])));
+
+            FVector base = la[p.index].Translation;
+            for (size_t k = 0; k < st.savedIndices.size() && k < st.savedBasePos.size(); ++k) {
+                if (st.savedIndices[k] == p.index) {
+                    base = st.savedBasePos[k];
+                    break;
+                }
+            }
+            a.Translation.X = base.X + p.pos[0];
+            a.Translation.Y = base.Y + p.pos[1];
+            a.Translation.Z = base.Z + p.pos[2];
+            a.Scale = (p.scale[0] > 0.0f) ? p.scale[0] : 1.0f;
+        }
+        tree->bUseSavedPose = true;
+        if (st.toApply) {
+            bool cleared = false;
+            {
+                std::lock_guard<std::mutex> lock(poseMtx);
+                auto it = poses.find({pawn, (int)target});
+                if (it != poses.end() && it->second.toApply) {
+                    it->second.toApply = false;
+                    cleared = true;
+                }
+            }
+            if (cleared) {
+                mesh->ForceSkelUpdate();
+            }
         }
     }
 }
@@ -359,40 +369,17 @@ bool Bones::getBoneWorldBasis(const std::string& pawnName, MeshTarget target, in
 }
 
 void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const BonePoseInfo& pose) {
-    std::string oldPawn;
-    MeshTarget oldTarget = MESH_BODY;
-    std::vector<FBoneAtom> oldAtoms;
-    std::vector<int> oldIndices;
-    bool oldUseSavedPose = false;
-    bool hadOldData = false;
     FVector capturedBase{0, 0, 0};
     bool hasCapturedBase = false;
     {
-        std::lock_guard<std::mutex> lock(bonePose.mtx);
-        if (bonePoseActiveState.load() && (bonePose.pawn != pawnName || bonePose.target != target)) {
-            oldPawn = bonePose.pawn;
-            oldTarget = bonePose.target;
-            oldAtoms = bonePose.savedAtoms;
-            oldIndices = bonePose.savedIndices;
-            oldUseSavedPose = bonePose.savedUseSavedPose;
-            hadOldData = !oldAtoms.empty();
-            bonePose.posed.clear();
-            bonePose.savedAtoms.clear();
-            bonePose.savedIndices.clear();
-            bonePose.savedBasePos.clear();
-            bonePose.pendingSnapshots.clear();
-            bonePose.pendingBasePos.clear();
-            bonePose.toApply = false;
-            bonePose.boneCount = 0;
-            bonePoseActiveState.store(false);
-        }
-        bonePose.pawn = pawnName;
-        bonePose.target = target;
-        bonePoseActiveState.store(true);
+        std::lock_guard<std::mutex> lock(poseMtx);
+        BonePoseState& entry = poses[{pawnName, (int)target}];
+        entry.pawn = pawnName;
+        entry.target = target;
 
         int index = -1;
-        for (int i = 0; i < (int)bonePose.posed.size(); ++i) {
-            if (bonePose.posed[i].index == pose.index) {
+        for (int i = 0; i < (int)entry.posed.size(); ++i) {
+            if (entry.posed[i].index == pose.index) {
                 index = i;
                 break;
             }
@@ -400,9 +387,9 @@ void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const Bo
         if (index < 0) {
             BonePoseInfo b;
             b.index = pose.index;
-            bonePose.posed.push_back(b);
-            bonePose.pendingSnapshots.push_back(pose.index);
-            index = (int)bonePose.posed.size() - 1;
+            entry.posed.push_back(b);
+            entry.pendingSnapshots.push_back(pose.index);
+            index = (int)entry.posed.size() - 1;
             // capture base position now, before LocalAtoms is modified by later edits
             USkeletalMeshComponent* m = findPawnMeshForTarget(pawnName, target);
             if (m && m->SkeletalMesh && pose.index >= 0 && pose.index < (int)m->LocalAtoms.Count()) {
@@ -410,17 +397,11 @@ void Bones::setBonePose(const std::string& pawnName, MeshTarget target, const Bo
                 hasCapturedBase = true;
             }
             if (hasCapturedBase) {
-                bonePose.pendingBasePos.push_back(capturedBase);
+                entry.pendingBasePos.push_back(capturedBase);
             }
         }
-        bonePose.posed[index] = pose;
-        bonePose.toApply = true;
-    }
-
-    if (hadOldData) {
-        Application::instance().engine().postGameThreadTask([this, oldPawn, oldTarget, oldAtoms, oldIndices, oldUseSavedPose]() {
-            restoreBonePoseMesh(oldPawn, oldTarget, oldAtoms, oldIndices, oldUseSavedPose);
-        });
+        entry.posed[index] = pose;
+        entry.toApply = true;
     }
 }
 
@@ -430,22 +411,17 @@ void Bones::resetBonePose(const std::string& pawnName, MeshTarget target) {
     bool useSavedPose = false;
     bool hadData = false;
     {
-        std::lock_guard<std::mutex> lock(bonePose.mtx);
-        hadData = bonePoseActiveState.load() && !bonePose.savedAtoms.empty();
-        if (hadData) {
-            atoms = bonePose.savedAtoms;
-            indices = bonePose.savedIndices;
-            useSavedPose = bonePose.savedUseSavedPose;
+        std::lock_guard<std::mutex> lock(poseMtx);
+        auto it = poses.find({pawnName, (int)target});
+        if (it != poses.end()) {
+            hadData = !it->second.savedAtoms.empty();
+            if (hadData) {
+                atoms = it->second.savedAtoms;
+                indices = it->second.savedIndices;
+                useSavedPose = it->second.savedUseSavedPose;
+            }
+            poses.erase(it);
         }
-        bonePose.posed.clear();
-        bonePose.savedAtoms.clear();
-        bonePose.savedIndices.clear();
-        bonePose.savedBasePos.clear();
-        bonePose.pendingSnapshots.clear();
-        bonePose.pendingBasePos.clear();
-        bonePose.toApply = false;
-        bonePose.boneCount = 0;
-        bonePoseActiveState.store(false);
     }
     if (hadData) {
         Application::instance().engine().postGameThreadTask([this, pawnName, target, atoms, indices, useSavedPose]() {
@@ -458,18 +434,29 @@ void Bones::resetBonePose(const std::string& pawnName, MeshTarget target) {
     }
 }
 
+void Bones::resetAllBonePoses() {
+    std::map<std::pair<std::string, int>, BonePoseState> doomed;
+    {
+        std::lock_guard<std::mutex> lock(poseMtx);
+        doomed = poses;
+        poses.clear();
+    }
+    if (doomed.empty()) {
+        return;
+    }
+    Application::instance().engine().postGameThreadTask([this, doomed = std::move(doomed)]() {
+        for (auto& kv : doomed) {
+            if (!kv.second.savedAtoms.empty()) {
+                restoreBonePoseMesh(kv.second.pawn, kv.second.target, kv.second.savedAtoms, kv.second.savedIndices, kv.second.savedUseSavedPose);
+            }
+        }
+    });
+}
+
 void Bones::absoluteResetBones(const std::string& pawnName, MeshTarget target) {
     {
-        std::lock_guard<std::mutex> lock(bonePose.mtx);
-        bonePose.posed.clear();
-        bonePose.savedAtoms.clear();
-        bonePose.savedIndices.clear();
-        bonePose.savedBasePos.clear();
-        bonePose.pendingSnapshots.clear();
-        bonePose.pendingBasePos.clear();
-        bonePose.toApply = false;
-        bonePose.boneCount = 0;
-        bonePoseActiveState.store(false);
+        std::lock_guard<std::mutex> lock(poseMtx);
+        poses.erase({pawnName, (int)target});
     }
     Application::instance().engine().postGameThreadTask([this, pawnName, target]() {
         releaseAllBonesFromPose(pawnName, target);

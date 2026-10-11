@@ -3,10 +3,15 @@
 
 #include "dxgi.h"
 #include "d3d11.h"
+#include <chrono>
+#include <future>
+#include <mutex>
 #include <vector>
 #include <memory>
 
 #include "lut_depth.h"
+
+class CustomShaderEffect;
 
 struct PostFrame {
         ID3D11ShaderResourceView* input = nullptr;
@@ -36,6 +41,7 @@ class IEffect {
 class PostChain {
     public:
         PostChain();
+        ~PostChain();
         bool applyGpu(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D11DeviceContext* context, ID3D11RenderTargetView* backbufferRtv);
         void applyCpu(unsigned char* rgba, int w, int h) const;
         void renderUI();
@@ -43,21 +49,39 @@ class PostChain {
         void shutdown();
         void removeDepthHook();
 
+        bool bakeGpu(unsigned char* rgba, int w, int h);
+
+        // the screenshot worker cannot touch the immediate context, so the bake is
+        // queued and picked up by whichever game-thread callback runs first: the
+        // engine tick task drain or the next present.
+        struct BakeJob {
+                std::promise<bool> finished;
+                unsigned char* pixels = nullptr;
+                int width = 0;
+                int height = 0;
+        };
+        void queueBake(std::shared_ptr<BakeJob> job);
+        void drainBakeJobs();
+
     private:
         std::vector<std::unique_ptr<IEffect>> nodes_;
+        CustomShaderEffect* customShaders_ = nullptr; // owned by nodes_
 
         unsigned long long frameCounter_ = 0;
         ID3D11Texture2D* tempA_ = nullptr;
-        ID3D11Texture2D* tempB_ = nullptr;
         ID3D11ShaderResourceView* tempSrvA_ = nullptr;
-        ID3D11ShaderResourceView* tempSrvB_ = nullptr;
         ID3D11RenderTargetView* tempRtvA_ = nullptr;
+        ID3D11Texture2D* tempB_ = nullptr;
+        ID3D11ShaderResourceView* tempSrvB_ = nullptr;
         ID3D11RenderTargetView* tempRtvB_ = nullptr;
         unsigned tempW_ = 0;
         unsigned tempH_ = 0;
         DXGI_FORMAT tempFmt_ = DXGI_FORMAT_UNKNOWN;
 
         LutDepth depth_;
+
+        std::mutex bakeMutex_;
+        std::vector<std::shared_ptr<BakeJob>> bakeQueue_;
 
         bool ensureTempsIfNeeded(ID3D11Device* device, unsigned width, unsigned height, DXGI_FORMAT format);
         void releaseTemps();

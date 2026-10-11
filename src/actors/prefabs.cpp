@@ -590,8 +590,6 @@ void PrefabManager::spawnPrefab(const std::string& name) {
         rot.Roll += arcActor->Rotation.Roll;
 
         const DWORD originalFlags = cls->ClassFlags;
-        cls->ClassFlags |= CLASS_Placeable;
-        cls->ClassFlags &= ~CLASS_NotPlaceable;
         AActor* cdo = getClassDefaultActor(cls);
         bool cdoStatic = cdo ? cdo->bStatic : false, cdoNoDelete = cdo ? cdo->bNoDelete : false;
         if (cdo) {
@@ -599,10 +597,31 @@ void PrefabManager::spawnPrefab(const std::string& name) {
             cdo->bNoDelete = 0;
         }
 
+        // try the flags as they are, force CLASS_Placeable only on a refusal, see
+        // Engine::spawnClass. LE1 never pokes them, the values are unverified
+        auto spawnPrefabAttempt = [&](DWORD flags) -> AActor* {
+            cls->ClassFlags = flags;
 #ifdef SDK_TARGET_LE3
-        AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, arcActor, NULL, 1);
+            AActor* res = caller->Spawn(cls, NULL, SFXName(), loc, rot, arcActor, NULL, 1);
 #else
-        AActor* spawned = caller->Spawn(cls, NULL, SFXName(), loc, rot, arcActor, NULL, 1, 0);
+            AActor* res = caller->Spawn(cls, NULL, SFXName(), loc, rot, arcActor, NULL, 1, 0);
+#endif
+            cls->ClassFlags = originalFlags;
+            return res;
+        };
+        AActor* spawned = spawnPrefabAttempt(originalFlags);
+#ifndef SDK_TARGET_LE1
+        if (!spawned) {
+            Logger->debug("spawnPrefab: '" + FStringToUtf8(cls->GetFullName()) + "' refused with its own flags, retrying with CLASS_Placeable forced");
+            spawned = spawnPrefabAttempt((originalFlags | CLASS_Placeable) & ~CLASS_NotPlaceable);
+        }
+#else
+        if (!spawned) {
+            std::ostringstream refused;
+            refused << "spawnPrefab: '" << FStringToUtf8(cls->GetFullName()) << "' refused with ClassFlags=0x" << std::hex << originalFlags << std::dec
+                    << " (LE1 never forces the Placeable flag: its bit values are unverified)";
+            Logger->debug(refused.str());
+        }
 #endif
         if (cdo) {
             cdo->bStatic = cdoStatic;
