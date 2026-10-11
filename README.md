@@ -3,7 +3,7 @@
 </p>
 
 ## Overview
-**SuperAdjustmentStudio** - **SAS** - is a utility for the modders and virtual photographers to allow the adjustment of a scene, live in game, without the need of LEXplorer. Not everything can be adjusted, but it's enough for the basic manipulation. Currently handling only LE2 with plans to expand to LE1 and LE3.
+**SuperAdjustmentStudio** - **SAS** - is a utility for the modders and virtual photographers to allow the adjustment of a scene, live in game, without the need of LEXplorer. Not everything can be adjusted, but it's enough for the basic manipulation. Handling all Legendary Edition games!
 
 Please treat this release as <ins>**BETA**</ins>.
 
@@ -32,6 +32,7 @@ Please treat this release as <ins>**BETA**</ins>.
 - LUT support for color grading 🎨
 - custom HLSL shaders - write your own post-process effects with slider, drag, input, checkbox, radio, combo, listbox and color widgets 🎛️
 - saving and loading the snapshots! (saving the poses, the properties for the objects, transforms and so on)
+- spawn a character, and change its appearance (morphs, meshes, materials, etc.) - for now only the ones that are defined in the game! 🧍‍♀️
 
 ### Known issues (what doesn't work)
 - after animation is played back and the character reset - animations can stay broken, the solution is to play and then reset the animation again
@@ -45,7 +46,6 @@ Please treat this release as <ins>**BETA**</ins>.
 - improving the search
 - handling other properties (Components)
 - UI settings along with customizable keybinds
-- expanding to LE1 and LE3 - (LE3 might be easier than LE1)
 
 ## Installation
 ⚠️ **Requires ME3Tweaks ASI loader!** ⚠️
@@ -134,7 +134,14 @@ If I used your code and did not credit you, please reach out, I'll be more than 
 - to my friend Tris, who always listens to my technical yapping
 - Mass Effect Modding Discord
 - [d00t](https://github.com/llamathings), [Mgamerz](https://github.com/Mgamerz) and [Cersei](https://github.com/SirCxyrtyx) - for helping me with my understanding of LExSDK
-- [naNuke](https://www.nexusmods.com/profile/naNuke) - for the feedback and help 
+- [naNuke](https://www.nexusmods.com/profile/naNuke) - for the feedback and help
+
+#### Translation credits
+- [Stumpy](https://www.nexusmods.com/profile/d2ans0) - Russian and Spanish
+- [KrrKs](https://www.nexusmods.com/profile/KrrKs) - German
+- [Reyuu](https://www.nexusmods.com/profile/Reyuu) - Polish
+- 
+Want your name here? Contribute to the translation and I'll add you to the list!
 
 ## Other things
 **I do NOT allow this mod to be reposted just for the translation to be added.** Translation happens on Crowdin, contact me if you want to contribute!
