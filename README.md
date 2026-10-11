@@ -59,6 +59,9 @@ In **Freecam**:
 - `SHIFT + Right-click` to pan the camera (move it left, right, forward and backward)
 - `SHIFT + Left-click` to lift the camera (move it up and down)
 
+## Documentation
+See [docs/modders/index.md](docs/modders/index.md) for documentation for modders and virtual photographers.
+
 ## Contributing
 See [CONTRIBUTING.md](docs/contributing.md) for contribution guidelines.
 
